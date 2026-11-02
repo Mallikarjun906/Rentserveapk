@@ -1,0 +1,181 @@
+[
+  {
+    "_id": "6ad48b761d942e8cb54ce42a",
+    "userId": "6ad48b761d942e8cb54ce428",
+    "displayName": "Mallikarjun",
+    "bio": "sdfyuioszx",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "",
+    "createdAt": "2026-10-18T09:03:50.450Z",
+    "updatedAt": "2026-10-19T07:18:33.409Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ad50f88494a267cb556477e",
+    "userId": "6ad50f88494a267cb556477c",
+    "displayName": "mallikarjunbadiger",
+    "bio": "i have good experince",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "",
+    "createdAt": "2026-10-18T18:27:20.493Z",
+    "updatedAt": "2026-10-19T07:18:23.580Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb6f5a779c715b796d15d9",
+    "userId": "6adb6f5a779c715b796d15d7",
+    "displayName": "Vikas",
+    "bio": "i have good experince",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "",
+    "createdAt": "2026-10-23T14:29:46.850Z",
+    "updatedAt": "2026-10-23T14:54:57.031Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb7387779c715b796d1614",
+    "userId": "6adb7386779c715b796d1612",
+    "displayName": "Prakash",
+    "bio": "234r67687tyrewe",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "",
+    "createdAt": "2026-10-23T14:47:35.029Z",
+    "updatedAt": "2026-10-23T14:54:52.549Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb74669dfac4698f5f4cd0",
+    "userId": "6adb74669dfac4698f5f4cce",
+    "displayName": "Gottill",
+    "bio": "Certified employee ✅",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "rejected",
+    "reviewNote": "i need more details",
+    "createdAt": "2026-10-23T14:51:18.625Z",
+    "updatedAt": "2026-10-23T14:55:08.684Z",
+    "__v": 0
+  },
+  {
+    "_id": "6addd6d886e30748fe9a7d4d",
+    "userId": "6addd6d886e30748fe9a7d4b",
+    "displayName": "mallikarjun",
+    "bio": "auto driver i hav egood",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "Verified and approved by administrator.",
+    "profileImage": {
+      "url": "https://res.cloudinary.com/om6qrplk/image/upload/v1792923349/nuk-rentserve/provider-images/utppiyuvzplyuhp63biu.jpg",
+      "publicId": "nuk-rentserve/provider-images/utppiyuvzplyuhp63biu"
+    },
+    "vehicleImages": [
+      {
+        "url": "https://res.cloudinary.com/om6qrplk/image/upload/v1792923350/nuk-rentserve/provider-images/pi0ib4ceu1vdekgidb1w.jpg",
+        "publicId": "nuk-rentserve/provider-images/pi0ib4ceu1vdekgidb1w",
+        "_id": "6addd6d886e30748fe9a7d4e"
+      }
+    ],
+    "createdAt": "2026-10-25T10:15:52.968Z",
+    "updatedAt": "2026-10-31T05:55:08.625Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adee7fe9e34120de178710f",
+    "userId": "6adee7fe9e34120de178710d",
+    "displayName": "shravan",
+    "bio": "dgjhajkfsdkfbsfkbg",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "",
+    "profileImage": {
+      "url": "https://res.cloudinary.com/om6qrplk/image/upload/v1792993275/nuk-rentserve/provider-images/upm3dx1jermn5o6xyoku.jpg",
+      "publicId": "nuk-rentserve/provider-images/upm3dx1jermn5o6xyoku"
+    },
+    "vehicleImages": [
+      {
+        "url": "https://res.cloudinary.com/om6qrplk/image/upload/v1792993276/nuk-rentserve/provider-images/mzu6pnoc2smjiwueaup0.jpg",
+        "publicId": "nuk-rentserve/provider-images/mzu6pnoc2smjiwueaup0",
+        "_id": "6adee7fe9e34120de1787110"
+      }
+    ],
+    "createdAt": "2026-10-26T05:41:18.134Z",
+    "updatedAt": "2026-10-26T05:43:46.963Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adef4c4e956093698248ca1",
+    "userId": "6adef4c3e956093698248c9f",
+    "displayName": "Gajama mama",
+    "bio": "Low cost service",
+    "skills": [],
+    "experienceYears": 0,
+    "verificationStatus": "verified",
+    "reviewNote": "",
+    "profileImage": {
+      "url": "https://res.cloudinary.com/om6qrplk/image/upload/v1792996543/nuk-rentserve/provider-images/y2lub0d5xgfnnamoucty.jpg",
+      "publicId": "nuk-rentserve/provider-images/y2lub0d5xgfnnamoucty"
+    },
+    "vehicleImages": [
+      {
+        "url": "https://res.cloudinary.com/om6qrplk/image/upload/v1792996544/nuk-rentserve/provider-images/xab4oztjhwi6k2johi2v.jpg",
+        "publicId": "nuk-rentserve/provider-images/xab4oztjhwi6k2johi2v",
+        "_id": "6adef4c4e956093698248ca2"
+      }
+    ],
+    "createdAt": "2026-10-26T06:35:48.047Z",
+    "updatedAt": "2026-10-26T06:38:01.935Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae57ce59e64483a659f5646",
+    "userId": "6ae57ce11610605b1a2f5e30",
+    "__v": 0,
+    "bio": "Certified domestic & commercial wiring, inverter installation and repairs.",
+    "createdAt": "2026-10-31T05:30:12.135Z",
+    "displayName": "Demo Professional Electrician",
+    "experienceYears": 0,
+    "profileImage": {
+      "url": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80",
+      "publicId": "demo-provider-profile"
+    },
+    "reviewNote": "Verified and approved by administrator.",
+    "skills": [],
+    "updatedAt": "2026-10-31T05:55:20.707Z",
+    "vehicleImages": [],
+    "verificationStatus": "verified"
+  },
+  {
+    "_id": "6ae57ce59e64483a659f5648",
+    "userId": "6ae57ce21610605b1a2f5e39",
+    "__v": 0,
+    "bio": "Daily auto rickshaw travel across Bagalkot and Navanagar. Honest meter / Karnataka standard rates.",
+    "createdAt": "2026-10-31T05:30:12.378Z",
+    "displayName": "Demo Auto Driver",
+    "experienceYears": 0,
+    "profileImage": {
+      "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=80",
+      "publicId": "demo-driver-profile"
+    },
+    "reviewNote": "Verified and approved by administrator.",
+    "skills": [],
+    "updatedAt": "2026-10-31T05:55:16.510Z",
+    "vehicleImages": [
+      {
+        "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=80",
+        "publicId": "demo-driver-auto",
+        "_id": "6ae57dcf575c12576475e97b"
+      }
+    ],
+    "verificationStatus": "verified"
+  }
+]

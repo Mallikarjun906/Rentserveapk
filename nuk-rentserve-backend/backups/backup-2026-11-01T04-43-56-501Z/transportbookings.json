@@ -1,0 +1,65 @@
+[
+  {
+    "_id": "6adee8eb9e34120de17871fb",
+    "customerId": "6adee6c49e34120de1787094",
+    "providerId": "6adef4c3e956093698248c9f",
+    "vehicleType": "auto",
+    "pickup": "hunnur",
+    "destination": "jkd",
+    "scheduledAt": "2027-01-01T14:39:00.000Z",
+    "details": "`djhdjjbjcsvsjvbsjnv",
+    "status": "accepted",
+    "providerNote": "",
+    "declinedBy": [],
+    "createdAt": "2026-10-26T05:45:15.754Z",
+    "updatedAt": "2026-10-26T06:39:31.164Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae0874ca8531fa7af209bc0",
+    "customerId": "6adef33ce956093698248c5c",
+    "providerId": "6adef4c3e956093698248c9f",
+    "vehicleType": "auto",
+    "pickup": "Jamkhandi",
+    "destination": "Banahatti",
+    "scheduledAt": "2026-10-27T11:13:00.000Z",
+    "details": "2",
+    "status": "accepted",
+    "providerNote": "",
+    "declinedBy": [],
+    "createdAt": "2026-10-27T11:13:16.147Z",
+    "updatedAt": "2026-10-27T11:16:38.077Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae581082bd14bb4f9c0691c",
+    "customerId": "6ae57ce11610605b1a2f5e1c",
+    "providerId": null,
+    "vehicleType": "auto",
+    "pickup": "Navanagar Main Road, Bagalkot",
+    "destination": "Navanagar Market",
+    "scheduledAt": "2026-10-31T05:48:52.563Z",
+    "details": "Customer offered fare: ₹55",
+    "status": "unmatched",
+    "providerNote": "",
+    "declinedBy": [],
+    "dispatchQueue": [],
+    "dispatchIndex": 0,
+    "activeProviderId": null,
+    "dispatchExpiresAt": null,
+    "pickupCoordinates": {
+      "latitude": 16.1853,
+      "longitude": 75.6968
+    },
+    "destinationCoordinates": {
+      "latitude": 13.162700000000001,
+      "longitude": 76.00450000000001
+    },
+    "liveLocation": {
+      "updatedAt": null
+    },
+    "createdAt": "2026-10-31T05:47:52.826Z",
+    "updatedAt": "2026-10-31T05:47:53.333Z",
+    "__v": 0
+  }
+]

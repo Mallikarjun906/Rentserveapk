@@ -1,0 +1,24 @@
+{
+  "sourceDatabase": "test",
+  "createdAt": "2026-11-01T04:43:56.645Z",
+  "collections": {
+    "servicelistings": 3,
+    "emailotps": 0,
+    "providers": 0,
+    "reviews": 0,
+    "auditlogs": 14,
+    "bookings": 1,
+    "otps": 0,
+    "transportbookings": 3,
+    "users": 25,
+    "properties": 0,
+    "jobapplications": 0,
+    "passwordresettokens": 0,
+    "servicecategories": 7,
+    "providerapplications": 12,
+    "transportmessages": 2,
+    "enquiries": 8,
+    "supporttickets": 2,
+    "serviceproviders": 10
+  }
+}

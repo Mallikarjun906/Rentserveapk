@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-11-01T04:55:19.396Z",
+  "status": "SUCCESS",
+  "backupVerified": "backup-2026-11-01T04-43-56-501Z",
+  "removed": {
+    "users": 5,
+    "applications": 3,
+    "serviceProviders": 2,
+    "bookings": 3,
+    "transportBookings": 1,
+    "messages": 6,
+    "auditLogs": 13
+  },
+  "preserved": {
+    "genuineUsers": 21,
+    "genuineTransportBookings": 2,
+    "genuineServiceProviders": 9,
+    "genuineApplications": 10,
+    "genuineProperties": 0,
+    "genuineServiceListings": 3
+  }
+}

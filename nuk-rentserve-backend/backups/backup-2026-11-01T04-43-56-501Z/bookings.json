@@ -1,0 +1,31 @@
+[
+  {
+    "_id": "6ae6c32918da50cf560e4175",
+    "customerId": "6ae57ce11610605b1a2f5e1c",
+    "ownerId": null,
+    "providerId": "6ae57ce11610605b1a2f5e30",
+    "propertyId": null,
+    "serviceId": null,
+    "bookingType": "service",
+    "category": "Electrician",
+    "serviceCategory": "Electrician",
+    "location": "Navanagar, Bagalkot",
+    "locationCoordinates": {
+      "latitude": 16.1824,
+      "longitude": 75.6987
+    },
+    "scheduledDate": "2026-11-02T04:42:17.445Z",
+    "requestedMoveInDate": null,
+    "message": "Fix main switchboard tripping issue and test earthing in home office.",
+    "details": "Fix main switchboard tripping issue and test earthing in home office.",
+    "status": "accepted",
+    "rejectionReason": "",
+    "eligibleProviders": [
+      "6ae57ce11610605b1a2f5e30"
+    ],
+    "rejectedBy": [],
+    "createdAt": "2026-11-01T04:42:17.668Z",
+    "updatedAt": "2026-11-01T04:42:18.302Z",
+    "__v": 0
+  }
+]

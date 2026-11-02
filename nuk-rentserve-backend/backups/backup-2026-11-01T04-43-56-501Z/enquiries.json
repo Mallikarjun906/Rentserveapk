@@ -1,0 +1,90 @@
+[
+  {
+    "_id": "6ad862d3c367503090f2097f",
+    "customerId": "6ad86146c367503090f208ee",
+    "listingId": "6ad84fe213ba3b10bf7c86ac",
+    "listingType": "service",
+    "message": "I want work",
+    "contactStatus": "pending",
+    "createdAt": "2026-10-21T06:59:31.043Z",
+    "updatedAt": "2026-10-21T06:59:31.043Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ada3112073b9248a00c0298",
+    "customerId": "6ad867c3c367503090f20af3",
+    "listingId": "6ad8f54180f83f46fda19d9a",
+    "listingType": "service",
+    "message": "My home door is not working",
+    "contactStatus": "accepted",
+    "createdAt": "2026-10-22T15:51:46.050Z",
+    "updatedAt": "2026-10-26T05:33:49.670Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb76ee9dfac4698f5f4d5d",
+    "customerId": "6ad86146c367503090f208ee",
+    "listingId": "6adb7003779c715b796d15f3",
+    "listingType": "service",
+    "message": "Are you available tomorrow?",
+    "contactStatus": "pending",
+    "createdAt": "2026-10-23T15:02:06.213Z",
+    "updatedAt": "2026-10-23T15:02:06.213Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adee7139e34120de17870f1",
+    "customerId": "6adee6c49e34120de1787094",
+    "listingId": "6adb7003779c715b796d15f3",
+    "listingType": "service",
+    "message": "hii dear i need service",
+    "contactStatus": "pending",
+    "createdAt": "2026-10-26T05:37:23.581Z",
+    "updatedAt": "2026-10-26T05:37:23.581Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adef372e956093698248c7f",
+    "customerId": "6adee6c49e34120de1787094",
+    "listingId": "6ad8f54180f83f46fda19d9a",
+    "listingType": "service",
+    "message": "qwerjiiuytrewqertyu",
+    "contactStatus": "accepted",
+    "createdAt": "2026-10-26T06:30:10.346Z",
+    "updatedAt": "2026-10-27T06:10:35.146Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae583562bd14bb4f9c06a7f",
+    "customerId": "6ae57ce11610605b1a2f5e1c",
+    "listingId": "6ae582ce2bd14bb4f9c06a29",
+    "listingType": "service",
+    "message": "bzdkbkvjsdsd (Scheduled for: Tomorrow, 10:00 AM)",
+    "contactStatus": "pending",
+    "createdAt": "2026-10-31T05:57:42.251Z",
+    "updatedAt": "2026-10-31T05:57:42.251Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae5ecb92bd14bb4f9c06b16",
+    "customerId": "6ae57ce11610605b1a2f5e1c",
+    "listingId": "6ad8f54180f83f46fda19d9a",
+    "listingType": "service",
+    "message": "mallikasr\n\n (Scheduled for: Tomorrow, 10:00 AM)",
+    "contactStatus": "pending",
+    "createdAt": "2026-10-31T13:27:21.740Z",
+    "updatedAt": "2026-10-31T13:27:21.740Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae5ed952bd14bb4f9c06b7c",
+    "customerId": "6adee6c49e34120de1787094",
+    "listingId": "6ae582ce2bd14bb4f9c06a29",
+    "listingType": "service",
+    "message": "i need for work \n (Scheduled for: Tomorrow, 10:00 AM)",
+    "contactStatus": "pending",
+    "createdAt": "2026-10-31T13:31:01.421Z",
+    "updatedAt": "2026-10-31T13:31:01.421Z",
+    "__v": 0
+  }
+]

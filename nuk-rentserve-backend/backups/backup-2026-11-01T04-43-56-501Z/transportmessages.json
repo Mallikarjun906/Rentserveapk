@@ -1,0 +1,22 @@
+[
+  {
+    "_id": "6ae6c32b18da50cf560e418c",
+    "bookingId": "6ae6c32918da50cf560e4175",
+    "senderId": "6ae57ce11610605b1a2f5e1c",
+    "message": "Namaskara! Can you bring a multimeter and replacement MCB?",
+    "readAt": null,
+    "createdAt": "2026-11-01T04:42:19.124Z",
+    "updatedAt": "2026-11-01T04:42:19.124Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae6c32b18da50cf560e4194",
+    "bookingId": "6ae6c32918da50cf560e4175",
+    "senderId": "6ae57ce11610605b1a2f5e30",
+    "message": "Yes, I have high-grade Havells MCBs in stock. Will arrive by 10 AM.",
+    "readAt": null,
+    "createdAt": "2026-11-01T04:42:19.631Z",
+    "updatedAt": "2026-11-01T04:42:19.631Z",
+    "__v": 0
+  }
+]

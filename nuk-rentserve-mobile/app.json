@@ -1,0 +1,46 @@
+
+{
+  "expo": {
+    "name": "NUK RentServe",
+    "slug": "nuk-rentserve-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#D71920"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nukrentserve.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "NUK RentServe needs your location to show nearby rentals, services, and auto drivers.",
+        "NSCameraUsageDescription": "NUK RentServe needs camera access to take property, vehicle, and document photos.",
+        "NSPhotoLibraryUsageDescription": "NUK RentServe needs photo library access to upload property and document photos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#D71920"
+      },
+      "package": "com.nukrentserve.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

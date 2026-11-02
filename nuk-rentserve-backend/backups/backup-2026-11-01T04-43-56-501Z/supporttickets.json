@@ -1,0 +1,27 @@
+[
+  {
+    "_id": "6addde65256ccc8a09be3aa2",
+    "userId": null,
+    "name": "Local smoke test",
+    "email": "test@example.com",
+    "subject": "Support smoke test",
+    "message": "This is a local validation check for the support route.",
+    "status": "new",
+    "source": "web",
+    "createdAt": "2026-10-25T10:48:05.492Z",
+    "updatedAt": "2026-10-25T10:48:05.492Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adef2ade956093698248c45",
+    "userId": "6ad48b761d942e8cb54ce428",
+    "subject": "Login issue",
+    "category": "booking",
+    "message": "Vskdgididjd",
+    "status": "open",
+    "adminNote": "",
+    "createdAt": "2026-10-26T06:26:53.837Z",
+    "updatedAt": "2026-10-26T06:26:53.837Z",
+    "__v": 0
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "name": "nuk-rentserve-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NUK RentServe monorepo workspace for Backend, Mobile app, and Web frontend",
+  "scripts": {
+    "start:backend": "npm --prefix nuk-rentserve-backend start",
+    "dev:backend": "npm --prefix nuk-rentserve-backend run dev",
+    "test:backend": "npm --prefix nuk-rentserve-backend test",
+    "seed:demo": "npm --prefix nuk-rentserve-backend run seed:demo",
+    "test:integration": "npm --prefix nuk-rentserve-backend run test:integration",
+    "start:mobile": "npm --prefix nuk-rentserve-mobile start",
+    "mobile:web": "npm --prefix nuk-rentserve-mobile run web",
+    "mobile:android": "npm --prefix nuk-rentserve-mobile run android",
+    "start:frontend": "npm --prefix nuk-rentserve-frontend run dev"
+  }
+}

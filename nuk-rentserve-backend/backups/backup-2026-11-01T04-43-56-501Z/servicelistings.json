@@ -1,0 +1,68 @@
+[
+  {
+    "_id": "6ad8f54180f83f46fda19d9a",
+    "providerId": "6ad48b761d942e8cb54ce428",
+    "categoryId": "6ad484ead5d8636a57e78d14",
+    "title": "Mallikarjun Badiger",
+    "description": "zdfbzdkfbzdk",
+    "location": "Bagalkot",
+    "priceRange": {
+      "min": 200,
+      "max": 200
+    },
+    "payUnit": "fixed",
+    "workHours": "",
+    "images": [],
+    "availability": true,
+    "status": "published",
+    "createdAt": "2026-10-21T17:24:17.159Z",
+    "updatedAt": "2026-10-21T17:24:17.159Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb7003779c715b796d15f3",
+    "providerId": "6adb6f5a779c715b796d15d7",
+    "categoryId": "6ad484ebd5d8636a57e78d1a",
+    "title": "Vikas Galgali",
+    "description": "Faster Services",
+    "location": "Bagalkot",
+    "priceRange": {
+      "min": 100,
+      "max": 100
+    },
+    "payUnit": "fixed",
+    "workHours": "",
+    "images": [],
+    "availability": true,
+    "status": "published",
+    "createdAt": "2026-10-23T14:32:35.904Z",
+    "updatedAt": "2026-10-23T14:54:57.097Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ae582ce2bd14bb4f9c06a29",
+    "providerId": "6ae57ce11610605b1a2f5e30",
+    "categoryId": "6ad484ead5d8636a57e78d16",
+    "title": "Electrician services in Bagalkot",
+    "description": "Domestic wiring, switchboard fixing, circuit breaker repair and earthing.",
+    "location": "Bagalkot, Navanagar, Vidyagiri",
+    "priceRange": {
+      "min": 350,
+      "max": 350
+    },
+    "payUnit": "hour",
+    "workHours": "",
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80",
+        "publicId": "demo-provider-profile",
+        "_id": "6ae582ce2bd14bb4f9c06a2a"
+      }
+    ],
+    "availability": true,
+    "status": "published",
+    "createdAt": "2026-10-31T05:55:26.038Z",
+    "updatedAt": "2026-10-31T05:55:26.038Z",
+    "__v": 0
+  }
+]
