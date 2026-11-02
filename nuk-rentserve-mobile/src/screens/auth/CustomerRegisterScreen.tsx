@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
+import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -25,12 +26,14 @@ interface CustomerRegisterScreenProps {
   onLogin: () => void;
   onReadTerms: () => void;
   onSuccess: () => void;
+  onBack?: () => void;
 }
 
 export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
   onLogin,
   onReadTerms,
   onSuccess,
+  onBack,
 }) => {
   const { login } = useAuth();
   const { t } = useLocalization();
@@ -101,6 +104,11 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Header
+        title={t('Customer Sign Up', 'ಗ್ರಾಹಕರ ನೋಂದಣಿ')}
+        subtitle={t('Book local services, rentals & transport', 'ಸ್ಥಳೀಯ ಸೇವೆಗಳು, ಬಾಡಿಗೆ ಮತ್ತು ಪ್ರಯಾಣ')}
+        onBack={onBack || onLogin}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}

@@ -18,11 +18,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
+import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
+import { DocumentUploader } from '../../components/common/DocumentUploader';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -32,6 +34,7 @@ interface ProviderRegisterScreenProps {
   onLogin: () => void;
   onReadTerms: () => void;
   onSuccess: () => void;
+  onBack?: () => void;
 }
 
 interface UploadFile {
@@ -56,6 +59,7 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
   onLogin,
   onReadTerms,
   onSuccess,
+  onBack,
 }) => {
   const { login } = useAuth();
   const { t } = useLocalization();
@@ -243,6 +247,10 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       setError(t('Please describe your services', 'ನಿಮ್ಮ ಸೇವೆಯ ವಿವರಣೆಯನ್ನು ನಮೂದಿಸಿ'));
       return;
     }
+    if (!idFile) {
+      setError(t('Please attach your Government Identity Document (Aadhaar/DL/Voter ID)', 'ದಯವಿಟ್ಟು ಗುರುತಿನ ಚೀಟಿಯನ್ನು ಲಗತ್ತಿಸಿ'));
+      return;
+    }
     if (!consent) {
       setError(t('Consent is required to verify identity documents', 'ದಾಖಲೆ ಪರಿಶೀಲನೆಗೆ ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಅಗತ್ಯವಿದೆ'));
       return;
@@ -278,31 +286,42 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
         formData.append('longitude', String(coords.longitude));
       }
 
-      // Helper to append real selected file or fallback
-      const appendFile = (fieldName: string, upload: UploadFile | null, fallbackName: string, fallbackMime: string) => {
-        if (upload) {
-          if (Platform.OS === 'web' && upload.file) {
-            (formData as any).append(fieldName, upload.file, upload.name);
-          } else {
-            formData.append(fieldName, {
-              uri: upload.uri,
-              name: upload.name,
-              type: upload.type,
-            } as any);
-          }
+      // Append only real verified selected documents (never submit fake file://mock paths)
+      if (profileFile) {
+        if (Platform.OS === 'web' && profileFile.file) {
+          (formData as any).append('profileImage', profileFile.file, profileFile.name);
         } else {
-          // Fallback demo file reference for offline/test environments
-          formData.append(fieldName, {
-            uri: 'file://mock/' + fallbackName,
-            name: fallbackName,
-            type: fallbackMime,
+          formData.append('profileImage', {
+            uri: profileFile.uri,
+            name: profileFile.name,
+            type: profileFile.type,
           } as any);
         }
-      };
+      }
 
-      appendFile('profileImage', profileFile, 'provider-profile.jpg', 'image/jpeg');
-      appendFile('aadhaarDocument', idFile, 'government-id.pdf', 'application/pdf');
-      appendFile('addressProofDocument', addressFile, 'address-proof.pdf', 'application/pdf');
+      if (idFile) {
+        if (Platform.OS === 'web' && idFile.file) {
+          (formData as any).append('aadhaarDocument', idFile.file, idFile.name);
+        } else {
+          formData.append('aadhaarDocument', {
+            uri: idFile.uri,
+            name: idFile.name,
+            type: idFile.type,
+          } as any);
+        }
+      }
+
+      if (addressFile) {
+        if (Platform.OS === 'web' && addressFile.file) {
+          (formData as any).append('addressProofDocument', addressFile.file, addressFile.name);
+        } else {
+          formData.append('addressProofDocument', {
+            uri: addressFile.uri,
+            name: addressFile.name,
+            type: addressFile.type,
+          } as any);
+        }
+      }
 
       await authApi.registerProvider(formData);
 
@@ -348,6 +367,11 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Header
+        title={t('registerProviderTitle', 'ಸೇವಾ ಪೂರೈಕೆದಾರರಾಗಿ ನೋಂದಾಯಿಸಿ')}
+        subtitle="Professional Trade Partner Program"
+        onBack={onBack || onLogin}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
@@ -473,118 +497,32 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
               textarea
             />
 
-            {/* 1. DOCUMENT UPLOAD: PROFILE PHOTOGRAPH */}
-            <View style={styles.uploadSection}>
-              <Text style={styles.uploadSectionHeader}>📸 {t('Profile Photograph', 'ಫೋಟೋ')}</Text>
-              <View style={styles.uploadRow}>
-                {profileFile ? (
-                  <Image source={{ uri: profileFile.uri }} style={styles.previewThumb} />
-                ) : (
-                  <View style={styles.emptyThumb}>
-                    <Text style={styles.emptyThumbText}>👤</Text>
-                  </View>
-                )}
-                <View style={styles.uploadMeta}>
-                  <Text style={styles.uploadFileName} numberOfLines={1}>
-                    {profileFile ? profileFile.name : 'provider-profile.jpg'}
-                  </Text>
-                  <Text style={styles.uploadFormat}>JPG, JPEG, PNG, WEBP (Max 5MB)</Text>
-                  <View style={styles.uploadActionsRow}>
-                    <TouchableOpacity
-                      style={styles.chooseBtn}
-                      onPress={() => handlePickProfilePhoto(false)}
-                    >
-                      <Text style={styles.chooseBtnText}>📁 Gallery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.chooseBtn}
-                      onPress={() => handlePickProfilePhoto(true)}
-                    >
-                      <Text style={styles.chooseBtnText}>📷 Camera</Text>
-                    </TouchableOpacity>
-                    {profileFile ? (
-                      <TouchableOpacity
-                        style={styles.removeBtn}
-                        onPress={() => setProfileFile(null)}
-                      >
-                        <Text style={styles.removeBtnText}>✕ Remove</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-                <Badge tone={profileFile ? 'ok' : 'sun'} label={profileFile ? 'Selected' : 'Attached'} />
-              </View>
-            </View>
+            {/* Real Document Uploaders */}
+            <DocumentUploader
+              label={t('Profile Photograph', 'ಫೋಟೋ')}
+              description="Front facing photo / trade photo (JPG, PNG)"
+              acceptTypes="image"
+              file={profileFile}
+              onFileSelect={setProfileFile}
+              uploadState={loading ? 'uploading' : profileFile ? 'selected' : 'idle'}
+            />
 
-            {/* 2. DOCUMENT UPLOAD: GOVERNMENT IDENTITY (PDF / IMAGE) */}
-            <View style={styles.uploadSection}>
-              <Text style={styles.uploadSectionHeader}>🪪 {t('Government Identity Document (Aadhaar/DL/Voter)', 'ಗುರುತಿನ ಚೀಟಿ')}</Text>
-              <View style={styles.uploadRow}>
-                <View style={styles.docIconBox}>
-                  <Text style={styles.docIconText}>
-                    {idFile?.name.toLowerCase().endsWith('.pdf') ? '📄' : '🪪'}
-                  </Text>
-                </View>
-                <View style={styles.uploadMeta}>
-                  <Text style={styles.uploadFileName} numberOfLines={1}>
-                    {idFile ? idFile.name : 'government-id.pdf'}
-                  </Text>
-                  <Text style={styles.uploadFormat}>PDF, JPG, PNG (Max 5MB)</Text>
-                  <View style={styles.uploadActionsRow}>
-                    <TouchableOpacity
-                      style={styles.chooseBtn}
-                      onPress={() => handlePickDocument('aadhaar')}
-                    >
-                      <Text style={styles.chooseBtnText}>📎 Choose File</Text>
-                    </TouchableOpacity>
-                    {idFile ? (
-                      <TouchableOpacity
-                        style={styles.removeBtn}
-                        onPress={() => setIdFile(null)}
-                      >
-                        <Text style={styles.removeBtnText}>✕ Remove</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-                <Badge tone={idFile ? 'ok' : 'sun'} label={idFile ? 'Selected' : 'Attached'} />
-              </View>
-            </View>
+            <DocumentUploader
+              label={t('Government Identity Document (Aadhaar/DL/Voter)', 'ಗುರುತಿನ ಚೀಟಿ')}
+              description="Government identity document (PDF, JPG, PNG)"
+              file={idFile}
+              onFileSelect={setIdFile}
+              required
+              uploadState={loading ? 'uploading' : idFile ? 'selected' : 'idle'}
+            />
 
-            {/* 3. DOCUMENT UPLOAD: ADDRESS PROOF (PDF / IMAGE) */}
-            <View style={styles.uploadSection}>
-              <Text style={styles.uploadSectionHeader}>🏠 {t('Address Proof Document', 'ವಿಳಾಸ ಪುರಾವೆ')}</Text>
-              <View style={styles.uploadRow}>
-                <View style={styles.docIconBox}>
-                  <Text style={styles.docIconText}>
-                    {addressFile?.name.toLowerCase().endsWith('.pdf') ? '📄' : '🏠'}
-                  </Text>
-                </View>
-                <View style={styles.uploadMeta}>
-                  <Text style={styles.uploadFileName} numberOfLines={1}>
-                    {addressFile ? addressFile.name : 'address-proof.pdf'}
-                  </Text>
-                  <Text style={styles.uploadFormat}>PDF, JPG, PNG (Max 5MB)</Text>
-                  <View style={styles.uploadActionsRow}>
-                    <TouchableOpacity
-                      style={styles.chooseBtn}
-                      onPress={() => handlePickDocument('address')}
-                    >
-                      <Text style={styles.chooseBtnText}>📎 Choose File</Text>
-                    </TouchableOpacity>
-                    {addressFile ? (
-                      <TouchableOpacity
-                        style={styles.removeBtn}
-                        onPress={() => setAddressFile(null)}
-                      >
-                        <Text style={styles.removeBtnText}>✕ Remove</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-                <Badge tone={addressFile ? 'ok' : 'sun'} label={addressFile ? 'Selected' : 'Attached'} />
-              </View>
-            </View>
+            <DocumentUploader
+              label={t('Address Proof Document', 'ವಿಳಾಸ ಪುರಾವೆ')}
+              description="Electricity bill / rent agreement / Aadhaar (PDF, JPG, PNG)"
+              file={addressFile}
+              onFileSelect={setAddressFile}
+              uploadState={loading ? 'uploading' : addressFile ? 'selected' : 'idle'}
+            />
 
             {/* Consent checkbox */}
             <TouchableOpacity

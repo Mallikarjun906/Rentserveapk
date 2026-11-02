@@ -1,4 +1,4 @@
-// Driver Registration Screen (/register/driver)
+// Driver Registration Screen (/register/driver) with Real Document Uploads & Back Navigation
 
 import React, { useState } from 'react';
 import {
@@ -13,11 +13,13 @@ import {
   Alert,
 } from 'react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
+import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
+import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -27,12 +29,14 @@ interface DriverRegisterScreenProps {
   onLogin: () => void;
   onReadTerms: () => void;
   onSuccess: () => void;
+  onBack?: () => void;
 }
 
 export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
   onLogin,
   onReadTerms,
   onSuccess,
+  onBack,
 }) => {
   const { login } = useAuth();
   const { t } = useLocalization();
@@ -49,11 +53,11 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
   const [regNumber, setRegNumber] = useState('');
   const [dlNumber, setDlNumber] = useState('');
 
-  // Attached files state (supports web file inputs and mobile mocks)
-  const [profileImageName, setProfileImageName] = useState('driver-selfie.jpg');
-  const [dlDocName, setDlDocName] = useState('driving-licence.pdf');
-  const [rcDocName, setRcDocName] = useState('vehicle-rc.pdf');
-  const [addressDocName, setAddressDocName] = useState('address-proof.pdf');
+  // Real Upload Files (start strictly as null - never default to fake attached state)
+  const [profileImage, setProfileImage] = useState<UploadFile | null>(null);
+  const [dlDoc, setDlDoc] = useState<UploadFile | null>(null);
+  const [rcDoc, setRcDoc] = useState<UploadFile | null>(null);
+  const [addressDoc, setAddressDoc] = useState<UploadFile | null>(null);
 
   const [consent, setConsent] = useState(false);
   const [terms, setTerms] = useState(false);
@@ -87,6 +91,12 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       setError(t('Please enter your Vehicle Registration Number (e.g. KA 29 B 1234)', 'ವಾಹನ ನೋಂದಣಿ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ'));
       return;
     }
+
+    if (!dlDoc) {
+      setError(t('Please attach your Driving Licence document', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ದಾಖಲೆಯನ್ನು ಲಗತ್ತಿಸಿ'));
+      return;
+    }
+
     if (!consent) {
       setError(t('Explicit consent is required for government licence verification', 'ಲೈಸೆನ್ಸ್ ಪರಿಶೀಲನೆಗೆ ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಅಗತ್ಯವಿದೆ'));
       return;
@@ -113,30 +123,38 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       formData.append('terms', 'true');
       formData.append('consent', 'true');
 
-      // Attach documents (FormData compatible across Expo web & mobile)
-      formData.append('profileImage', {
-        uri: 'file://mock/profile.jpg',
-        name: profileImageName,
-        type: 'image/jpeg',
-      } as any);
+      // Attach only verified selected files
+      if (profileImage) {
+        formData.append('profileImage', {
+          uri: profileImage.uri,
+          name: profileImage.name,
+          type: profileImage.type,
+        } as any);
+      }
 
-      formData.append('drivingLicenceDocument', {
-        uri: 'file://mock/dl.pdf',
-        name: dlDocName,
-        type: 'application/pdf',
-      } as any);
+      if (dlDoc) {
+        formData.append('drivingLicenceDocument', {
+          uri: dlDoc.uri,
+          name: dlDoc.name,
+          type: dlDoc.type,
+        } as any);
+      }
 
-      formData.append('vehicleRcDocument', {
-        uri: 'file://mock/rc.pdf',
-        name: rcDocName,
-        type: 'application/pdf',
-      } as any);
+      if (rcDoc) {
+        formData.append('vehicleRcDocument', {
+          uri: rcDoc.uri,
+          name: rcDoc.name,
+          type: rcDoc.type,
+        } as any);
+      }
 
-      formData.append('addressProofDocument', {
-        uri: 'file://mock/address.pdf',
-        name: addressDocName,
-        type: 'application/pdf',
-      } as any);
+      if (addressDoc) {
+        formData.append('addressProofDocument', {
+          uri: addressDoc.uri,
+          name: addressDoc.name,
+          type: addressDoc.type,
+        } as any);
+      }
 
       await authApi.registerDriver(formData);
 
@@ -182,17 +200,21 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Visible In-App Back Navigation */}
+      <Header
+        title={t('Driver Registration', 'ಚಾಲಕರ ನೋಂದಣಿ')}
+        subtitle={t('Auto, Car & Goods Van Driver Onboarding', 'ವಾಹನ ಚಾಲಕರ ನೋಂದಣಿ')}
+        onBack={onBack || onLogin}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Logo size={46} />
+            <Logo size={42} />
             <Text style={styles.title}>{t('Driver Partner Registration', 'ಚಾಲಕರ ಪಾಲುದಾರ ನೋಂದಣಿ')}</Text>
-            <Text style={styles.sub}>
-              {t('Auto, Car & Goods Van Driver Onboarding', 'ಆಟೋ, ಕಾರು ಮತ್ತು ಗೂಡ್ಸ್ ವ್ಯಾನ್ ಚಾಲಕರ ನೋಂದಣಿ')}
-            </Text>
           </View>
 
           {/* Verification Notice Banner */}
@@ -304,41 +326,40 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 
             <Text style={styles.sectionHeader}>{t('3. Document Uploads', '೩. ದಾಖಲೆಗಳ ಅಪ್‌ಲೋಡ್')}</Text>
 
-            {/* Document Row: Profile Photo */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>📸 {t('Driver Photograph', 'ಚಾಲಕರ ಫೋಟೋ')}</Text>
-                <Text style={styles.docSub}>{profileImageName}</Text>
-              </View>
-              <Badge tone="ok" label="Attached" />
-            </View>
+            {/* Real Document Uploaders */}
+            <DocumentUploader
+              label={t('Driver Photograph', 'ಚಾಲಕರ ಫೋಟೋ')}
+              description="Front facing photo / selfie (JPG, PNG)"
+              acceptTypes="image"
+              file={profileImage}
+              onFileSelect={setProfileImage}
+              uploadState={loading ? 'uploading' : profileImage ? 'selected' : 'idle'}
+            />
 
-            {/* Document Row: Driving Licence */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>🪪 {t('Driving Licence (DL)', 'ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್')}</Text>
-                <Text style={styles.docSub}>{dlDocName}</Text>
-              </View>
-              <Badge tone="ok" label="Attached" />
-            </View>
+            <DocumentUploader
+              label={t('Driving Licence (DL)', 'ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್')}
+              description="Front & back or clear copy (PDF, JPG, PNG)"
+              file={dlDoc}
+              onFileSelect={setDlDoc}
+              required
+              uploadState={loading ? 'uploading' : dlDoc ? 'selected' : 'idle'}
+            />
 
-            {/* Document Row: Vehicle RC */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>📄 {t('Vehicle RC Document', 'ವಾಹನ ಆರ್‌ಸಿ')}</Text>
-                <Text style={styles.docSub}>{rcDocName}</Text>
-              </View>
-              <Badge tone="ok" label="Attached" />
-            </View>
+            <DocumentUploader
+              label={t('Vehicle RC Document', 'ವಾಹನ ಆರ್‌ಸಿ')}
+              description="Registration Certificate copy (PDF, JPG, PNG)"
+              file={rcDoc}
+              onFileSelect={setRcDoc}
+              uploadState={loading ? 'uploading' : rcDoc ? 'selected' : 'idle'}
+            />
 
-            {/* Document Row: Address Proof */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>🏠 {t('Address Proof Document', 'ವಿಳಾಸ ಪುರಾವೆ')}</Text>
-                <Text style={styles.docSub}>{addressDocName}</Text>
-              </View>
-              <Badge tone="ok" label="Attached" />
-            </View>
+            <DocumentUploader
+              label={t('Address Proof Document', 'ವಿಳಾಸ ಪುರಾವೆ')}
+              description="Aadhaar, Voter ID, or Utility Bill (PDF, JPG, PNG)"
+              file={addressDoc}
+              onFileSelect={setAddressDoc}
+              uploadState={loading ? 'uploading' : addressDoc ? 'selected' : 'idle'}
+            />
 
             {/* Explicit Consent Checkbox */}
             <TouchableOpacity
@@ -400,10 +421,9 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
-  scroll: { padding: 20, flexGrow: 1, justifyContent: 'center' },
-  header: { alignItems: 'center', marginBottom: 16 },
-  title: { fontSize: 23, fontWeight: '900', color: COLORS.ink, marginTop: 10, textAlign: 'center' },
-  sub: { fontSize: 13, color: COLORS.mute, marginTop: 4, textAlign: 'center' },
+  scroll: { padding: 16, flexGrow: 1, paddingBottom: 40 },
+  header: { alignItems: 'center', marginBottom: 12 },
+  title: { fontSize: 20, fontWeight: '900', color: COLORS.ink, marginTop: 8, textAlign: 'center' },
   noticeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -412,20 +432,20 @@ const styles = StyleSheet.create({
     borderColor: COLORS.sun,
     borderRadius: RADIUS.lg,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   noticeIcon: { fontSize: 20, marginRight: 8 },
   noticeText: { fontSize: 12, color: COLORS.ink, flex: 1, fontWeight: '600', lineHeight: 17 },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
-    padding: 20,
+    padding: 16,
     borderWidth: 1.5,
     borderColor: COLORS.line,
     marginBottom: 16,
   },
   sectionHeader: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.brand,
     marginTop: 8,
@@ -438,7 +458,7 @@ const styles = StyleSheet.create({
   vehiclePill: {
     flex: 1,
     paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     borderRadius: RADIUS.md,
     borderWidth: 1.5,
     borderColor: COLORS.line,
@@ -446,22 +466,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   vehiclePillActive: { borderColor: COLORS.brand, backgroundColor: COLORS.brandTint },
-  vehiclePillText: { fontSize: 12, fontWeight: '700', color: COLORS.ink },
+  vehiclePillText: { fontSize: 11, fontWeight: '700', color: COLORS.ink },
   vehiclePillTextActive: { color: COLORS.brand },
-  docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.paper,
-    padding: 12,
-    borderRadius: RADIUS.md,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  docInfo: { flex: 1, marginRight: 8 },
-  docTitle: { fontSize: 13, fontWeight: '700', color: COLORS.ink },
-  docSub: { fontSize: 11, color: COLORS.mute, marginTop: 2 },
   toggleText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
   termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, marginBottom: 12 },
   checkbox: {
@@ -480,7 +486,7 @@ const styles = StyleSheet.create({
   termsText: { fontSize: 12, color: COLORS.ink, flex: 1, lineHeight: 18 },
   termsLink: { fontWeight: '700', color: COLORS.brand },
   submitBtn: { marginTop: 8 },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   footerText: { fontSize: 14, color: COLORS.mute },
   loginLink: { fontSize: 14, fontWeight: '800', color: COLORS.brand },
   successScroll: { padding: 24, flexGrow: 1, justifyContent: 'center', alignItems: 'center' },

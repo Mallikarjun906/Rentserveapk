@@ -30,6 +30,7 @@ interface AuthContextType {
   setRole: (role: AppRole) => Promise<void>;
   isLoading: boolean;
   login: (login: string, pass: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   adminLogin: (login: string, pass: string) => Promise<void>;
   register: (data: {
     name: string;
@@ -53,6 +54,7 @@ const AuthContext = createContext<AuthContextType>({
   setRole: async () => {},
   isLoading: true,
   login: async () => {},
+  loginWithGoogle: async () => {},
   adminLogin: async () => {},
   register: async () => {},
   logout: async () => {},
@@ -134,6 +136,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    const res = await authApi.googleLogin(credential);
+    if (res.accessToken) {
+      await Storage.setToken(res.accessToken);
+      setToken(res.accessToken);
+    }
+    if (res.refreshToken) {
+      await Storage.setRefreshToken(res.refreshToken);
+    }
+    if (res.user) {
+      await Storage.setUser(res.user);
+      setUser(res.user);
+
+      if (res.user.role === 'admin') setRoleState('Administrator');
+      else if (res.user.role === 'driver') setRoleState('Auto/Car Driver');
+      else if (res.user.role === 'student') setRoleState('Student Rental Partner');
+      else if (res.user.role === 'provider') setRoleState('Service Provider');
+      else if (res.user.role === 'owner') setRoleState('Property Owner');
+      else setRoleState('Customer');
+    }
+  };
+
   const adminLogin = async (loginInput: string, pass: string) => {
     const res = await authApi.adminLogin(loginInput, pass);
     if (res.accessToken) {
@@ -206,6 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRole,
         isLoading,
         login,
+        loginWithGoogle,
         adminLogin,
         register,
         logout,

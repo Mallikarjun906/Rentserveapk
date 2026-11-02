@@ -388,6 +388,6 @@ const styles = StyleSheet.create({
   },
   scrollList: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
 });

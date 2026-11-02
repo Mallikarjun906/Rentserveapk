@@ -14,12 +14,13 @@ export interface ChatMessage {
   };
   message: string;
   createdAt: string;
+  readAt?: string | null;
 }
 
 export interface ConversationThread {
   id: string;
   bookingId: string;
-  bookingType: 'transport' | 'service' | 'property';
+  bookingType: 'transport' | 'service' | 'property' | 'direct';
   name: string;
   role: string;
   phone?: string;
@@ -29,6 +30,19 @@ export interface ConversationThread {
   status?: string;
 }
 
+export interface ConversationInitResponse {
+  conversationId: string;
+  id: string;
+  bookingId: string;
+  recipient: {
+    id: string;
+    name: string;
+    role: string;
+    phone: string;
+  };
+  conversation?: any;
+}
+
 export const chatApi = {
   // Fetch all active conversation threads for current user
   async getConversations(): Promise<ConversationThread[]> {
@@ -36,12 +50,36 @@ export const chatApi = {
       const res: any = await apiClient.get('/chat/conversations');
       const items = Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
       return items;
-    } catch {
+    } catch (err: any) {
+      console.warn('Failed to load conversations:', err.message);
       return [];
     }
   },
 
-  // Fetch conversation messages for a booking
+  // Get or create a direct conversation with a service provider or property owner
+  async getOrCreateConversation(params: {
+    recipientId: string;
+    serviceId?: string;
+    propertyId?: string;
+    title?: string;
+  }): Promise<ConversationInitResponse> {
+    const res: any = await apiClient.post('/chat/conversation', params);
+    const data = res.data || res;
+    return {
+      conversationId: data.conversationId || data.id || data.bookingId,
+      id: data.id || data.conversationId || data.bookingId,
+      bookingId: data.bookingId || data.conversationId || data.id,
+      recipient: data.recipient || {
+        id: params.recipientId,
+        name: 'Provider / Contact',
+        role: 'Service',
+        phone: '',
+      },
+      conversation: data.conversation,
+    };
+  },
+
+  // Fetch conversation messages for a booking or conversation
   async getMessages(bookingId: string): Promise<ChatMessage[]> {
     try {
       const res: any = await apiClient.get(`/chat/${bookingId}/messages`);
@@ -57,15 +95,9 @@ export const chatApi = {
     }
   },
 
-  // Send message
+  // Send message - preserves errors so UI can show failure and allow retry
   async sendMessage(bookingId: string, message: string): Promise<ChatMessage> {
-    try {
-      const res: any = await apiClient.post(`/chat/${bookingId}/messages`, { message });
-      return res.data || res;
-    } catch {
-      // Fallback for transport bookings
-      const res: any = await apiClient.post(`/transport-bookings/${bookingId}/messages`, { message });
-      return res.data || res;
-    }
+    const res: any = await apiClient.post(`/chat/${bookingId}/messages`, { message });
+    return res.data || res;
   },
 };

@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
+    paddingBottom: 60,
   },
   statsRow: {
     flexDirection: 'row',

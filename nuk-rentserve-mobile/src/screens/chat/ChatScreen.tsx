@@ -47,6 +47,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const loadMessages = useCallback(async (isSilent = false) => {
     if (!bookingId) {
+      if (!isSilent) setError('No conversation thread ID provided. Please open chat from a booking or provider profile.');
       setLoading(false);
       return;
     }
@@ -83,16 +84,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!text || sending) return;
 
     if (!bookingId) {
-      // Offline fallback if no booking ID
-      const fakeMsg: any = {
-        _id: 'local-' + Date.now(),
-        bookingId: 'local',
-        senderId: { _id: user?.id || 'me', name: user?.name || 'Me', role: user?.role || 'user' },
-        message: text,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, fakeMsg]);
-      setInput('');
+      setError('Cannot send message: no active conversation or booking thread ID was found.');
       return;
     }
 
@@ -101,6 +93,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       const saved = await chatApi.sendMessage(bookingId, text);
       setMessages((prev) => [...prev, saved]);
       setInput('');
+      setError('');
     } catch (e: any) {
       setError(e.message || 'Message delivery failed. Please retry.');
     } finally {
@@ -148,19 +141,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
         style={styles.flex}
       >
-        {loading ? (
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+            {bookingId ? (
+              <TouchableOpacity onPress={() => loadMessages()} style={styles.retryBtn}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
+        {loading && messages.length === 0 ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="large" color={COLORS.crimson} />
             <Text style={styles.loadingText}>Loading conversation history…</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-            <TouchableOpacity onPress={() => loadMessages()} style={styles.retryBtn}>
-              <Text style={styles.retryBtnText}>Retry</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <ScrollView
@@ -210,7 +208,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           isMe ? styles.myTime : styles.otherTime,
                         ]}
                       >
-                        {formatMessageTime(m.createdAt)}
+                        {formatMessageTime(m.createdAt)} {isMe ? (m.readAt ? '✓✓' : '✓') : ''}
                       </Text>
                     </View>
                   </View>

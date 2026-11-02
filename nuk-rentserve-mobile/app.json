@@ -4,6 +4,7 @@
     "name": "NUK RentServe",
     "slug": "nuk-rentserve-mobile",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -41,6 +42,14 @@
     },
     "plugins": [
       "expo-asset"
-    ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/9975e43d-8eac-4e92-a9f5-48a9c040962e"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9975e43d-8eac-4e92-a9f5-48a9c040962e"
+      }
+    }
   }
 }

@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: RADIUS.full,
   },
-  scroll: { padding: 20 },
+  scroll: { padding: 20, paddingBottom: 110 },
   userCard: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,

@@ -21,13 +21,14 @@ import { Input } from '../../components/common/Input';
 import { useLocalization } from '../../context/LocalizationContext';
 import { serviceApi, ServiceListing } from '../../api/serviceApi';
 import { rentalApi } from '../../api/rentalApi';
+import { chatApi } from '../../api/chatApi';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
 
 interface ProviderProfileScreenProps {
   providerId: string;
   onBack: () => void;
-  onOpenChat: () => void;
+  onOpenChat: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
 }
 
 export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
@@ -38,6 +39,7 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
   const { t } = useLocalization();
   const [service, setService] = useState<ServiceListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chatStarting, setChatStarting] = useState(false);
 
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [scheduledWhen, setScheduledWhen] = useState('Tomorrow, 10:00 AM');
@@ -108,6 +110,33 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
       Alert.alert('Booking Request', 'Could not submit booking: ' + (e?.message || 'Please try again.'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenDirectChat = async () => {
+    if (!service) return;
+    const targetUserId = typeof service.providerId === 'object' && service.providerId ? (service.providerId as any)._id : String(service.providerId || '');
+    if (!targetUserId) {
+      Alert.alert('Notice', 'Provider contact information is currently unavailable.');
+      return;
+    }
+    setChatStarting(true);
+    try {
+      const conv = await chatApi.getOrCreateConversation({
+        recipientId: targetUserId,
+        serviceId: service._id || providerId,
+        title: name,
+      });
+      onOpenChat({
+        bookingId: conv.conversationId || conv.id || conv.bookingId,
+        name,
+        role: categoryName,
+        phone,
+      });
+    } catch (err: any) {
+      Alert.alert('Chat Notice', err.message || 'Could not open conversation. Please try again.');
+    } finally {
+      setChatStarting(false);
     }
   };
 
@@ -201,14 +230,22 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
           <Text style={styles.bodyText}>Direct contact with 0% platform fee. Settle charges directly in cash.</Text>
           <View style={styles.btnRow}>
             <Button
-              title="📞 Call Provider"
+              title="📞 Call"
               variant="outline"
               size="sm"
               onPress={() => Linking.openURL(`tel:${phone}`)}
               style={{ flex: 1 }}
             />
             <Button
-              title="🗓 Book Service"
+              title={chatStarting ? 'Connecting…' : '💬 Message'}
+              variant="outline"
+              size="sm"
+              disabled={chatStarting}
+              onPress={handleOpenDirectChat}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title="🗓 Book"
               size="sm"
               onPress={() => setBookModalOpen(true)}
               style={{ flex: 1 }}
@@ -292,7 +329,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: RADIUS.full,
   },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 16, paddingBottom: 90 },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },
   topRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.crimsonTint, justifyContent: 'center', alignItems: 'center' },

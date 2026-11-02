@@ -302,6 +302,63 @@ describe("Mandatory 20 End-to-End Production Acceptance Scenarios", () => {
     expect(readRes.body.data.length).toBe(2);
   });
 
+  // 8b. Direct Customer-to-Provider messaging (without prior booking)
+  test("Scenario 8b: Direct Customer-to-Provider messaging, unread counts, and provider reply", async () => {
+    // Customer initiates direct conversation with provider
+    const initRes = await request(app)
+      .post("/api/v1/chat/conversation")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ recipientId: providerUser._id });
+
+    expect(initRes.status).toBe(200);
+    const convId = initRes.body.data.id || initRes.body.data.conversationId;
+    expect(convId).toBeTruthy();
+
+    // Customer sends direct message
+    const sendRes1 = await request(app)
+      .post(`/api/v1/chat/${convId}/messages`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ message: "Hello! Are you available for a house wiring check today?" });
+
+    expect(sendRes1.status).toBe(201);
+    expect(sendRes1.body.data.message).toBe("Hello! Are you available for a house wiring check today?");
+
+    // Provider gets conversations list and verifies unread badge
+    const provConvsRes = await request(app)
+      .get("/api/v1/chat/conversations")
+      .set("Authorization", `Bearer ${providerToken}`);
+
+    expect(provConvsRes.status).toBe(200);
+    const directThread = provConvsRes.body.data.find(c => c.id === convId.toString());
+    expect(directThread).toBeTruthy();
+    expect(directThread.unread).toBe(1);
+
+    // Provider reads conversation messages (which clears unread)
+    const provReadRes = await request(app)
+      .get(`/api/v1/chat/${convId}/messages`)
+      .set("Authorization", `Bearer ${providerToken}`);
+
+    expect(provReadRes.status).toBe(200);
+    expect(provReadRes.body.data.length).toBe(1);
+
+    // Provider replies to customer
+    const sendRes2 = await request(app)
+      .post(`/api/v1/chat/${convId}/messages`)
+      .set("Authorization", `Bearer ${providerToken}`)
+      .send({ message: "Yes! I can visit your location by 4 PM." });
+
+    expect(sendRes2.status).toBe(201);
+
+    // Customer reads thread and sees both messages
+    const custReadRes = await request(app)
+      .get(`/api/v1/chat/${convId}/messages`)
+      .set("Authorization", `Bearer ${customerToken}`);
+
+    expect(custReadRes.status).toBe(200);
+    expect(custReadRes.body.data.length).toBe(2);
+    expect(custReadRes.body.data[1].message).toBe("Yes! I can visit your location by 4 PM.");
+  });
+
   // 12. Driver registration and approval
   test("Scenario 12: Driver registration, DL & RC upload, and admin approval", async () => {
     const regRes = await request(app)

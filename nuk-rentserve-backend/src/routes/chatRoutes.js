@@ -5,6 +5,7 @@ const { authenticate } = require("../middleware/authMiddleware");
 // All chat endpoints strictly require authentication
 router.use(authenticate);
 
+router.post("/conversation", controller.getOrCreateConversation);
 router.get("/conversations", controller.getConversations);
 router.get("/:bookingId/messages", controller.getMessages);
 router.post("/:bookingId/messages", controller.sendMessage);

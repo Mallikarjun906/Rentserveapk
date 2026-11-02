@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
+import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -64,6 +65,11 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Header
+        title="Admin Portal"
+        subtitle="Restricted Security Access"
+        onBack={onBackToApp}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}

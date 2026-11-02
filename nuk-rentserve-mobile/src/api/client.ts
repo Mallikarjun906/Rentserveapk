@@ -6,7 +6,7 @@ import { Storage } from '../utils/storage';
 
 export const apiClient = axios.create({
   baseURL: CONFIG.API_BASE_URL,
-  timeout: 15000,
+  timeout: 45000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -124,12 +124,20 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Extract human-readable error message from backend envelope
-    const message =
+    // Extract human-readable error message from backend envelope or network state
+    let message =
       error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      'An unexpected error occurred. Please try again.';
+      error.response?.data?.error;
+
+    if (!message) {
+      if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+        message = 'Connection timed out. The server may be starting up, please tap Retry in a moment.';
+      } else if (error.message === 'Network Error' || !error.response) {
+        message = 'Unable to reach NUK server. Please check your internet connection and tap Retry.';
+      } else {
+        message = error.message || 'An unexpected error occurred. Please try again.';
+      }
+    }
 
     return Promise.reject(new Error(message));
   }

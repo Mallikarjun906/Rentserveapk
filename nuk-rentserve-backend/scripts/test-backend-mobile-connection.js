@@ -2,7 +2,7 @@
  * Comprehensive Backend-Mobile Integration Test Script using native fetch
  */
 
-const BASE_URL = 'http://localhost:5000/api/v1';
+const BASE_URL = process.env.API_BASE_URL || 'https://rentserveapk.onrender.com/api/v1';
 
 const credentials = {
   customer: { email: 'demo.customer@nukrentserve.com', password: 'Demo@Customer123' },

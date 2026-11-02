@@ -23,11 +23,12 @@ import { formatINR } from '../../utils/formatters';
 import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { rentalApi, Property } from '../../api/rentalApi';
+import { chatApi } from '../../api/chatApi';
 
 interface PropertyDetailScreenProps {
   propertyId: string;
   onBack: () => void;
-  onOpenChat: () => void;
+  onOpenChat: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
 }
 
 export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
@@ -39,6 +40,7 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
   const { isSaved, toggleSaved } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chatStarting, setChatStarting] = useState(false);
 
   const [visitModalOpen, setVisitModalOpen] = useState(false);
   const [preferredDate, setPreferredDate] = useState('This Saturday, 4:00 PM');
@@ -80,6 +82,33 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
       Alert.alert('Visit Request', 'Could not submit visit request: ' + (e?.message || 'Please try again.'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!property) return;
+    const ownerId = typeof property.ownerId === 'object' ? (property.ownerId as any)?._id : property.ownerId;
+    if (!ownerId) {
+      Alert.alert('Owner Contact', 'Could not locate the owner profile to start a conversation.');
+      return;
+    }
+    setChatStarting(true);
+    try {
+      const conv = await chatApi.getOrCreateConversation({
+        recipientId: ownerId,
+        propertyId: property._id,
+        title: property.title,
+      });
+      onOpenChat({
+        bookingId: conv.id || conv.conversationId || conv.bookingId,
+        name: listerName,
+        role: 'Property Owner',
+        phone: listerPhone,
+      });
+    } catch (e: any) {
+      Alert.alert('Chat Error', e?.message || 'Could not initiate chat with the owner.');
+    } finally {
+      setChatStarting(false);
     }
   };
 
@@ -198,14 +227,22 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
 
           <View style={styles.btnRow}>
             <Button
-              title="📞 Call Owner"
+              title="📞 Call"
               variant="outline"
               size="sm"
               onPress={() => Linking.openURL(`tel:${listerPhone}`)}
               style={{ flex: 1 }}
             />
             <Button
-              title="🗓 Request Visit"
+              title={chatStarting ? 'Connecting…' : '💬 Message'}
+              variant="outline"
+              size="sm"
+              disabled={chatStarting}
+              onPress={handleStartChat}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title="🗓 Visit"
               size="sm"
               onPress={() => setVisitModalOpen(true)}
               style={{ flex: 1 }}
@@ -254,7 +291,7 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.paper },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 16, paddingBottom: 100 },
   photoScroll: { borderRadius: RADIUS.lg, overflow: 'hidden', marginBottom: 16 },
   heroImg: { width: 340, height: 220, borderRadius: RADIUS.lg, marginRight: 8, resizeMode: 'cover' },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },

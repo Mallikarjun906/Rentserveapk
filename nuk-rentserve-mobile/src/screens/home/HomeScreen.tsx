@@ -44,7 +44,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const { language, setLanguage, t } = useLocalization();
   const { user, isSaved, toggleSaved } = useAuth();
-  const { cityName, setCityName } = useLocationContext();
+  const {
+    cityName,
+    setCityName,
+    isDefaultFallback,
+    detectCurrentLocation,
+    isLoadingLocation,
+    detectedAddress,
+  } = useLocationContext();
   const { phase, activeBooking } = useActiveRide();
 
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
@@ -116,24 +123,70 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             style={styles.citySelector}
             onPress={() => setCityPickerOpen(!cityPickerOpen)}
           >
-            <Text style={styles.cityLabel}>{t('location', 'ನಗರ')}</Text>
-            <Text style={styles.cityName}>📍 {cityName} ▼</Text>
+            <Text style={styles.cityLabel}>
+              {isDefaultFallback ? `${t('defaultArea', 'ಮೂಲ ಪ್ರದೇಶ')}: ` : '📍 '}
+              {cityName}
+            </Text>
+            <Text style={styles.cityName} numberOfLines={1}>
+              {isDefaultFallback ? `${cityName} (Default) ▼` : `${cityName} (GPS) ▼`}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={toggleLanguage} style={styles.langToggle}>
-          <Text style={styles.langToggleText}>
-            {language === 'en' ? 'ಕನ್ನಡ' : 'English'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.topBarRight}>
+          <TouchableOpacity
+            onPress={() => detectCurrentLocation(true)}
+            style={styles.gpsDetectBtn}
+            disabled={isLoadingLocation}
+          >
+            <Text style={styles.gpsDetectText}>
+              {isLoadingLocation ? '⏳' : '⌖ GPS'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={toggleLanguage} style={styles.langToggle}>
+            <Text style={styles.langToggleText}>
+              {language === 'en' ? 'ಕನ್ನಡ' : 'English'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* City Dropdown Selector */}
       {cityPickerOpen && (
         <View style={[styles.cityDropdown, SHADOWS.pop]}>
-          <Text style={styles.cityDropTitle}>
-            {t('Select City', 'ನಗರವನ್ನು ಆಯ್ಕೆಮಾಡಿ')}
+          <View style={styles.cityDropdownHeader}>
+            <Text style={styles.cityDropTitle}>
+              {t('Select Service Area', 'ಸೇವಾ ಪ್ರದೇಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ')}
+            </Text>
+            <TouchableOpacity onPress={() => setCityPickerOpen(false)}>
+              <Text style={styles.closeDropText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Quick GPS Location Detection Button */}
+          <TouchableOpacity
+            style={styles.useGpsTile}
+            onPress={async () => {
+              await detectCurrentLocation(false);
+              setCityPickerOpen(false);
+            }}
+          >
+            <Text style={styles.useGpsIcon}>⌖</Text>
+            <View style={styles.useGpsInfo}>
+              <Text style={styles.useGpsTitle}>
+                {t('Detect My Current GPS Location', 'ನನ್ನ ಪ್ರಸ್ತುತ ಸ್ಥಳವನ್ನು ಪತ್ತೆಮಾಡಿ')}
+              </Text>
+              <Text style={styles.useGpsSub} numberOfLines={1}>
+                {detectedAddress || 'Automatic Android GPS detection'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <Text style={styles.manualAreaLabel}>
+            {t('Or Select Karnataka District / Town:', 'ಅಥವಾ ಜಿಲ್ಲೆ ಆಯ್ಕೆಮಾಡಿ:')}
           </Text>
+
           <View style={styles.cityList}>
             {CONFIG.SUPPORTED_CITIES.map((c) => (
               <TouchableOpacity
@@ -345,6 +398,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.ink,
   },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  gpsDetectBtn: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.brand,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+  },
+  gpsDetectText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.brand,
+  },
   langToggle: {
     backgroundColor: COLORS.brandTint,
     paddingHorizontal: 12,
@@ -361,20 +432,65 @@ const styles = StyleSheet.create({
   cityDropdown: {
     position: 'absolute',
     top: 60,
-    left: 20,
-    right: 20,
+    left: 16,
+    right: 16,
     zIndex: 100,
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg,
     padding: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
+  },
+  cityDropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  closeDropText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.mute,
+    paddingHorizontal: 4,
+  },
+  useGpsTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.brandTint,
+    borderWidth: 1.5,
+    borderColor: COLORS.brand,
+    borderRadius: RADIUS.md,
+    padding: 10,
+    marginBottom: 12,
+  },
+  useGpsIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  useGpsInfo: {
+    flex: 1,
+  },
+  useGpsTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.brand,
+  },
+  useGpsSub: {
+    fontSize: 11,
+    color: COLORS.mute,
+    marginTop: 2,
+  },
+  manualAreaLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.mute,
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
   cityDropTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.ink,
-    marginBottom: 10,
   },
   cityList: {
     flexDirection: 'row',
@@ -403,6 +519,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
+    paddingBottom: 100,
   },
   activeRideBanner: {
     flexDirection: 'row',

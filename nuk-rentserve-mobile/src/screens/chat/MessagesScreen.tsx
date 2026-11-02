@@ -95,7 +95,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({ onOpenChat }) =>
         ) : threads.length === 0 ? (
           <EmptyState
             title="No Active Conversations"
-            description="When a transport ride or service booking is accepted, your direct chat with the driver or provider will appear here."
+            description="When you contact a driver, service provider, or property owner, your direct messages and updates will appear here."
             actionLabel="Refresh"
             onAction={() => loadConversations()}
           />
@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
+    paddingBottom: 100,
     flexGrow: 1,
   },
   centerBox: {

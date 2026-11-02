@@ -10,6 +10,7 @@ import {
   StatusBar,
   Platform,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { COLORS, RADIUS } from '../constants/theme';
 import { useLocalization } from '../context/LocalizationContext';
@@ -156,6 +157,20 @@ export const RootNavigator: React.FC = () => {
     reset(tab);
   };
 
+  // Android Hardware Back Button handling: Pops screen if stack > 1, otherwise exits
+  useEffect(() => {
+    const handleHardwareBack = () => {
+      if (stack.length > 1) {
+        setStack((prev) => prev.slice(0, -1));
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
+    return () => sub.remove();
+  }, [stack.length]);
+
   // URL path synchronization for web browser
   useEffect(() => {
     if (Platform.OS === 'web' && typeof globalThis !== 'undefined' && (globalThis as any).window?.location) {
@@ -207,7 +222,6 @@ export const RootNavigator: React.FC = () => {
             onRegisterStudent={() => go('register-student')}
             onAdminLogin={() => go('admin-login')}
             onForgotPassword={() => go('forgot')}
-            onOtpLogin={(phone) => go('otp', { phone })}
             onSuccess={() => {
               if (user?.role === 'provider') reset('provider-dashboard');
               else if (user?.role === 'driver') reset('driver-dashboard');
@@ -222,6 +236,7 @@ export const RootNavigator: React.FC = () => {
             onLogin={() => go('login')}
             onReadTerms={() => go('terms', { role: 'Customer' })}
             onSuccess={() => reset('home')}
+            onBack={back}
           />
         );
       case 'register-driver':
@@ -230,6 +245,7 @@ export const RootNavigator: React.FC = () => {
             onLogin={() => go('login')}
             onReadTerms={() => go('terms', { role: 'Auto/Car Driver' })}
             onSuccess={() => reset('driver-dashboard')}
+            onBack={back}
           />
         );
       case 'register-student':
@@ -238,6 +254,7 @@ export const RootNavigator: React.FC = () => {
             onLogin={() => go('login')}
             onReadTerms={() => go('terms', { role: 'Student Rental Partner' })}
             onSuccess={() => reset('student-dashboard')}
+            onBack={back}
           />
         );
       case 'register-provider':
@@ -246,12 +263,13 @@ export const RootNavigator: React.FC = () => {
             onLogin={() => go('login')}
             onReadTerms={() => go('terms', { role: 'Service Provider' })}
             onSuccess={() => reset('provider-dashboard')}
+            onBack={back}
           />
         );
       case 'admin-login':
         return (
           <AdminLoginScreen
-            onBackToApp={() => go('login')}
+            onBackToApp={back}
             onSuccess={() => reset('admin-dashboard')}
           />
         );
@@ -261,6 +279,7 @@ export const RootNavigator: React.FC = () => {
             onLogin={() => go('login')}
             onReadTerms={(role) => go('terms', { role })}
             onSuccess={() => reset('home')}
+            onBack={back}
           />
         );
       case 'otp':
@@ -338,9 +357,10 @@ export const RootNavigator: React.FC = () => {
             onBack={back}
             onOpenChat={(driver) =>
               go('chat', {
-                name: driver.name,
-                role: driver.vehicleModel,
-                phone: driver.phone,
+                bookingId: driver?.bookingId || driver?._id,
+                name: driver?.name || 'Driver',
+                role: driver?.vehicleModel || 'Auto Driver',
+                phone: driver?.phone,
               })
             }
           />
@@ -359,11 +379,12 @@ export const RootNavigator: React.FC = () => {
         return (
           <LiveTrackingScreen
             onBack={back}
-            onOpenChat={() =>
+            onOpenChat={(params?: any) =>
               go('chat', {
-                name: 'Ravi Kumar',
-                role: 'Auto Driver · KA 29 B 4821',
-                phone: '+919845012345',
+                bookingId: params?.bookingId || current.params?.bookingId,
+                name: params?.name || 'Auto Driver',
+                role: params?.role || 'Driver',
+                phone: params?.phone || '+919845012345',
               })
             }
             onFinishRide={back}
@@ -374,11 +395,12 @@ export const RootNavigator: React.FC = () => {
           <PropertyDetailScreen
             propertyId={current.params?.id || 'p1'}
             onBack={back}
-            onOpenChat={() =>
+            onOpenChat={(params) =>
               go('chat', {
-                name: 'Suresh Hiremath',
-                role: 'Property Owner',
-                phone: '+919845012345',
+                bookingId: params.bookingId,
+                name: params.name,
+                role: params.role,
+                phone: params.phone,
               })
             }
           />
@@ -388,11 +410,12 @@ export const RootNavigator: React.FC = () => {
           <ProviderProfileScreen
             providerId={current.params?.id || 's1'}
             onBack={back}
-            onOpenChat={() =>
+            onOpenChat={(params) =>
               go('chat', {
-                name: 'Manjunath Electricals',
-                role: 'Electrician',
-                phone: '+919845012345',
+                bookingId: params.bookingId,
+                name: params.name,
+                role: params.role,
+                phone: params.phone,
               })
             }
           />

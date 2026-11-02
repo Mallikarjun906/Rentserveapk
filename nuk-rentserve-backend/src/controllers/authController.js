@@ -138,7 +138,14 @@ const googleLogin = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Google credential is required.");
   }
 
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  const allowedAudiences = [
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_ANDROID_CLIENT_ID,
+    process.env.GOOGLE_IOS_CLIENT_ID,
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID
+  ].filter(Boolean);
+
+  if (allowedAudiences.length === 0) {
     throw new ApiError(500, "Google Sign-In is not configured.");
   }
 
@@ -147,7 +154,7 @@ const googleLogin = asyncHandler(async (req, res) => {
   try {
     ticket = await googleClient.verifyIdToken({
       idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID
+      audience: allowedAudiences.length === 1 ? allowedAudiences[0] : allowedAudiences
     });
   } catch {
     throw new ApiError(401, "Google verification failed. Please try again.");
@@ -177,13 +184,10 @@ const googleLogin = asyncHandler(async (req, res) => {
   }
 
   if (user) {
-    // Do not automatically link an existing password account.
-    // Require its owner to sign in using the existing method first.
+    // Safely link Google account to existing user account if not yet linked
     if (!user.googleId) {
-      throw new ApiError(
-        409,
-        "An account with this email already exists. Sign in with your existing method first."
-      );
+      user.googleId = profile.sub;
+      await user.save();
     }
   } else {
     user = await User.create({

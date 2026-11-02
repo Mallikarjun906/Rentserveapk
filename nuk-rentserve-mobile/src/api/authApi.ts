@@ -45,6 +45,12 @@ export const authApi = {
     return res.data || res;
   },
 
+  // Google OAuth Login
+  async googleLogin(credential: string): Promise<AuthResponse> {
+    const res: any = await apiClient.post('/auth/google', { credential });
+    return res.data || res;
+  },
+
   // 1. Customer Registration
   async registerCustomer(data: {
     name: string;

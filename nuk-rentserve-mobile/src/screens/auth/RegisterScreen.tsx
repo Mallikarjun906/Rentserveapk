@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
+import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -25,12 +26,14 @@ interface RegisterScreenProps {
   onLogin: () => void;
   onReadTerms: (role: string) => void;
   onSuccess: () => void;
+  onBack?: () => void;
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onLogin,
   onReadTerms,
   onSuccess,
+  onBack,
 }) => {
   const { register, setRole, setTermsAccepted } = useAuth();
   const { t } = useLocalization();
@@ -103,18 +106,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Header
+        title={t('registerTitle', 'ಹೊಸ ಖಾತೆ ರಚಿಸಿ')}
+        subtitle={t('registerSub', 'ಸ್ಥಳೀಯ ಸೇವೆಗಳನ್ನು ಪಡೆಯಲು ನೋಂದಾಯಿಸಿ')}
+        onBack={onBack || onLogin}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
         <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Logo size={48} />
-            <Text style={styles.title}>{t('registerTitle', 'ಹೊಸ ಖಾತೆ ರಚಿಸಿ')}</Text>
-            <Text style={styles.sub}>{t('registerSub', 'ಸ್ಥಳೀಯ ಸೇವೆಗಳನ್ನು ಪಡೆಯಲು ನೋಂದಾಯಿಸಿ')}</Text>
-          </View>
-
           {error ? <ErrorBanner message={error} onRetry={handleRegister} /> : null}
 
           {/* Form */}

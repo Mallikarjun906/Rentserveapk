@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
   tabPillActive: { borderColor: COLORS.brand, backgroundColor: COLORS.brandTint },
   tabPillText: { fontSize: 12, fontWeight: '700', color: COLORS.ink },
   tabPillTextActive: { color: COLORS.brand },
-  scroll: { padding: 16 },
+  scroll: { padding: 16, paddingBottom: 60 },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
   metricCard: {
     flex: 1,
