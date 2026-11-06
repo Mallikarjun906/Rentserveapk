@@ -16,6 +16,7 @@ export interface User {
   approvalStatus?: ApprovalStatus;
   rejectionReason?: string;
   isActive?: boolean;
+  isOnline?: boolean;
   vehicleNumber?: string;
   vehicleModel?: string;
   collegeName?: string;

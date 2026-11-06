@@ -81,10 +81,10 @@ export const providerApi = {
     return Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
   },
 
-  // Accept or reject request
+  // Accept, reject, or update request status
   async respondToRequest(
     id: string,
-    status: 'accepted' | 'rejected',
+    status: 'accepted' | 'rejected' | 'in_progress' | 'completed',
     reason?: string
   ): Promise<any> {
     const res: any = await apiClient.patch(`/bookings/${id}/status`, { status, reason });

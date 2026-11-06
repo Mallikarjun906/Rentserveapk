@@ -33,7 +33,40 @@ export interface TransportBooking {
   updatedAt: string;
 }
 
+export interface NearbyDriver {
+  id: string;
+  vehicleType: string;
+  vehicleModel: string;
+  approximateDistanceKm: number | null;
+  estimatedEtaMinutes: number | null;
+  area: string;
+  isOnline: boolean;
+}
+
+export interface NearbyDriversResponse {
+  count: number;
+  drivers: NearbyDriver[];
+  searchRadiusKm: number;
+}
+
 export const transportApi = {
+  // Query nearby available online drivers based on genuine backend records
+  async getNearbyDrivers(params?: {
+    latitude?: number;
+    longitude?: number;
+    vehicleType?: 'auto' | 'car' | 'goods-van';
+    radiusKm?: number;
+  }): Promise<NearbyDriversResponse> {
+    const query = new URLSearchParams();
+    if (params?.latitude != null) query.append('latitude', String(params.latitude));
+    if (params?.longitude != null) query.append('longitude', String(params.longitude));
+    if (params?.vehicleType) query.append('vehicleType', params.vehicleType);
+    if (params?.radiusKm != null) query.append('radiusKm', String(params.radiusKm));
+
+    const qs = query.toString();
+    const res: any = await apiClient.get(`/transport-bookings/nearby-drivers${qs ? `?${qs}` : ''}`);
+    return res.data || res;
+  },
   // Customer creates a new auto or scheduled transport request
   async createBooking(data: {
     vehicleType: 'auto' | 'car' | 'goods-van';
@@ -63,7 +96,18 @@ export const transportApi = {
   // Driver fetches their currently assigned active booking
   async getAssignedTrip(): Promise<TransportBooking | null> {
     const res: any = await apiClient.get('/transport-bookings/assigned');
-    return res.data || res;
+    const items = res.data || res;
+    if (Array.isArray(items)) {
+      return items.length > 0 ? items[0] : null;
+    }
+    return items || null;
+  },
+
+  // Driver fetches all trips assigned to them (accepted, in_progress, completed history)
+  async getDriverHistory(): Promise<TransportBooking[]> {
+    const res: any = await apiClient.get('/transport-bookings/mine');
+    const items = res.data || res;
+    return Array.isArray(items) ? items : [];
   },
 
   // Customer or Driver polls the real-time tracking snapshot

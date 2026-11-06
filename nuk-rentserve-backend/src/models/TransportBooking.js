@@ -7,6 +7,7 @@ const schema = new mongoose.Schema({
   destination: { type: String, required: true, trim: true, minlength: 2, maxlength: 200 },
   scheduledAt: { type: Date, required: true, index: true },
   details: { type: String, trim: true, maxlength: 1200, default: "" },
+  fare: { type: Number, default: 0, min: 0 },
   status: { type: String, enum: ["pending", "accepted", "in_progress", "completed", "rejected", "cancelled", "unmatched"], default: "pending", index: true },
   providerNote: { type: String, trim: true, maxlength: 500, default: "" },
   declinedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

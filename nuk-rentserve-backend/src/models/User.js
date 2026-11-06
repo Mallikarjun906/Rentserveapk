@@ -75,6 +75,12 @@ const userSchema = new mongoose.Schema(
       default: "Bagalkot"
     },
 
+    isOnline: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
+
     isActive: {
       type: Boolean,
       default: true

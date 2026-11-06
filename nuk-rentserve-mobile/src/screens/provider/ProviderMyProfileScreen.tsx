@@ -26,6 +26,8 @@ import {
   Edit3,
   ExternalLink,
   CheckCircle2,
+  HelpCircle,
+  FileText,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -43,11 +45,15 @@ import { CONFIG } from '../../constants/config';
 interface ProviderMyProfileScreenProps {
   onBack?: () => void;
   onLogout: () => void;
+  onNavigateTerms?: (role: string) => void;
+  onNavigateSupport?: () => void;
 }
 
 export const ProviderMyProfileScreen: React.FC<ProviderMyProfileScreenProps> = ({
   onBack,
   onLogout,
+  onNavigateTerms,
+  onNavigateSupport,
 }) => {
   const { user, logout } = useAuth();
   const { t } = useLocalization();
@@ -332,6 +338,47 @@ export const ProviderMyProfileScreen: React.FC<ProviderMyProfileScreenProps> = (
                 </View>
                 <ExternalLink size={16} color={COLORS.mute} />
               </TouchableOpacity>
+            </View>
+
+            {/* Quick Links: Support & Terms */}
+            <View style={[styles.card, SHADOWS.card]}>
+              <Text style={styles.cardHeading}>
+                {t('Help & Legal', 'ಸಹಾಯ ಮತ್ತು ನಿಯಮಗಳು')}
+              </Text>
+
+              {onNavigateSupport ? (
+                <TouchableOpacity
+                  style={styles.docRow}
+                  onPress={onNavigateSupport}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.docLeft}>
+                    <HelpCircle size={20} color={COLORS.brand} style={{ marginRight: 10 }} />
+                    <View>
+                      <Text style={styles.docTitle}>{t('Support & Help Desk', 'ಗ್ರಾಹಕ ಬೆಂಬಲ')}</Text>
+                      <Text style={styles.docSub}>Raise a support ticket or grievance</Text>
+                    </View>
+                  </View>
+                  <ExternalLink size={16} color={COLORS.mute} />
+                </TouchableOpacity>
+              ) : null}
+
+              {onNavigateTerms ? (
+                <TouchableOpacity
+                  style={styles.docRow}
+                  onPress={() => onNavigateTerms('Service Provider')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.docLeft}>
+                    <FileText size={20} color={COLORS.ink} style={{ marginRight: 10 }} />
+                    <View>
+                      <Text style={styles.docTitle}>{t('Terms of Service & Rules', 'ಸೇವಾ ನಿಯಮಗಳು')}</Text>
+                      <Text style={styles.docSub}>Provider compliance & policies</Text>
+                    </View>
+                  </View>
+                  <ExternalLink size={16} color={COLORS.mute} />
+                </TouchableOpacity>
+              ) : null}
             </View>
 
             {/* Logout Action */}

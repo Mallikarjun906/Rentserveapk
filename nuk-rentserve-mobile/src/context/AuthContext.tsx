@@ -29,9 +29,9 @@ interface AuthContextType {
   role: AppRole;
   setRole: (role: AppRole) => Promise<void>;
   isLoading: boolean;
-  login: (login: string, pass: string) => Promise<void>;
-  loginWithGoogle: (credential: string) => Promise<void>;
-  adminLogin: (login: string, pass: string) => Promise<void>;
+  login: (login: string, pass: string) => Promise<User | null>;
+  loginWithGoogle: (credential: string) => Promise<User | null>;
+  adminLogin: (login: string, pass: string) => Promise<User | null>;
   register: (data: {
     name: string;
     email: string;
@@ -53,9 +53,9 @@ const AuthContext = createContext<AuthContextType>({
   role: 'Customer',
   setRole: async () => {},
   isLoading: true,
-  login: async () => {},
-  loginWithGoogle: async () => {},
-  adminLogin: async () => {},
+  login: async () => null,
+  loginWithGoogle: async () => null,
+  adminLogin: async () => null,
   register: async () => {},
   logout: async () => {},
   savedIds: [],
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })();
   }, []);
 
-  const login = async (loginInput: string, pass: string) => {
+  const login = async (loginInput: string, pass: string): Promise<User | null> => {
     const res = await authApi.login(loginInput, pass);
     if (res.accessToken) {
       await Storage.setToken(res.accessToken);
@@ -134,9 +134,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       else if (res.user.role === 'owner') setRoleState('Property Owner');
       else setRoleState('Customer');
     }
+    return res.user || null;
   };
 
-  const loginWithGoogle = async (credential: string) => {
+  const loginWithGoogle = async (credential: string): Promise<User | null> => {
     const res = await authApi.googleLogin(credential);
     if (res.accessToken) {
       await Storage.setToken(res.accessToken);
@@ -156,9 +157,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       else if (res.user.role === 'owner') setRoleState('Property Owner');
       else setRoleState('Customer');
     }
+    return res.user || null;
   };
 
-  const adminLogin = async (loginInput: string, pass: string) => {
+  const adminLogin = async (loginInput: string, pass: string): Promise<User | null> => {
     const res = await authApi.adminLogin(loginInput, pass);
     if (res.accessToken) {
       await Storage.setToken(res.accessToken);
@@ -172,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setRoleState('Administrator');
     }
+    return res.user || null;
   };
 
   const register = async (data: {

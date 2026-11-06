@@ -43,13 +43,13 @@ const ActiveRideContext = createContext<ActiveRideContextType>({
   phase: 'idle',
   setPhase: () => {},
   activeBooking: null,
-  pickupName: 'Navanagar Main Road, Bagalkot',
+  pickupName: '',
   setPickupName: () => {},
-  pickupCoords: CONFIG.DEFAULT_LOCATION,
+  pickupCoords: { latitude: 0, longitude: 0 },
   setPickupCoords: () => {},
   destName: '',
   setDestName: () => {},
-  destCoords: CONFIG.DEFAULT_LOCATION,
+  destCoords: { latitude: 0, longitude: 0 },
   setDestCoords: () => {},
   estimatedKm: 3.5,
   setEstimatedKm: () => {},
@@ -66,13 +66,13 @@ export const ActiveRideProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [phase, setPhase] = useState<RidePhase>('idle');
   const [activeBooking, setActiveBooking] = useState<TransportBooking | null>(null);
 
-  const [pickupName, setPickupName] = useState('Navanagar Main Road, Bagalkot');
-  const [pickupCoords, setPickupCoords] = useState<Coordinates>(CONFIG.DEFAULT_LOCATION);
+  const [pickupName, setPickupName] = useState('');
+  const [pickupCoords, setPickupCoords] = useState<Coordinates>({ latitude: 0, longitude: 0 });
 
   const [destName, setDestName] = useState('');
   const [destCoords, setDestCoords] = useState<Coordinates>({
-    latitude: CONFIG.DEFAULT_LOCATION.latitude + 0.02,
-    longitude: CONFIG.DEFAULT_LOCATION.longitude + 0.02,
+    latitude: 0,
+    longitude: 0,
   });
 
   const [estimatedKm, setEstimatedKmState] = useState(3.5);
@@ -98,13 +98,14 @@ export const ActiveRideProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const booking = await transportApi.createBooking({
         vehicleType: 'auto',
-        pickup: pickupName,
-        destination: destName || 'Bagalkot Bus Stand',
+        pickup: pickupName || 'Current Location',
+        destination: destName || 'Destination',
         scheduledAt: new Date(Date.now() + 60000).toISOString(),
         details: `Customer offered fare: ₹${offeredFare}`,
-        pickupCoordinates: pickupCoords,
-        destinationCoordinates: destCoords,
-      });
+        fare: offeredFare,
+        pickupCoordinates: pickupCoords?.latitude ? pickupCoords : undefined,
+        destinationCoordinates: destCoords?.latitude ? destCoords : undefined,
+      } as any);
       setActiveBooking(booking);
     } catch (err) {
       console.warn('Booking creation offline fallback simulation:', err);
@@ -113,8 +114,8 @@ export const ActiveRideProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         _id: 'auto-' + Date.now(),
         customerId: 'demo-user',
         vehicleType: 'auto',
-        pickup: pickupName,
-        destination: destName || 'Bagalkot Bus Stand',
+        pickup: pickupName || 'Current Location',
+        destination: destName || 'Destination',
         scheduledAt: new Date().toISOString(),
         status: 'pending',
         fare: offeredFare,

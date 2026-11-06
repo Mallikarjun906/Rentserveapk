@@ -29,6 +29,7 @@ async function getProviderQueue(vehicleType, pickup, pickupCoordinates, excluded
   let candidates = await ProviderApplication.find({
     category,
     status: "approved",
+    isOnline: { $ne: false },
     userId: { $nin: excluded }
   }).select("userId city taluk district locationCoordinates").lean();
   const pickupText = String(pickup || "").toLowerCase();
@@ -85,7 +86,7 @@ async function advanceExpiredForProvider() {
 }
 
 const create = asyncHandler(async (req, res) => {
-  const { vehicleType, pickup, destination, scheduledAt, details = "", pickupCoordinates, destinationCoordinates } = req.body;
+  const { vehicleType, pickup, destination, scheduledAt, details = "", fare = 0, pickupCoordinates, destinationCoordinates } = req.body;
   if (!Object.hasOwn(typeToCategory, vehicleType)) throw new ApiError(400, "Choose a valid vehicle type.");
   const cleanPickup = String(pickup || "").trim();
   const cleanDestination = String(destination || "").trim();
@@ -96,9 +97,10 @@ const create = asyncHandler(async (req, res) => {
   const origin = coords(pickupCoordinates);
   const destinationPoint = coords(destinationCoordinates);
   const queue = await getProviderQueue(vehicleType, cleanPickup, origin);
+  const parsedFare = Number(fare) > 0 ? Number(fare) : 0;
   const booking = await TransportBooking.create({
     customerId: req.user.id, vehicleType, pickup: cleanPickup, destination: cleanDestination,
-    scheduledAt: when, details: String(details).trim(), pickupCoordinates: origin || undefined, destinationCoordinates: destinationPoint || undefined,
+    scheduledAt: when, details: String(details).trim(), fare: parsedFare, pickupCoordinates: origin || undefined, destinationCoordinates: destinationPoint || undefined,
     dispatchQueue: queue, dispatchIndex: 0
   });
   if (queue.length) await dispatchNext(booking);
@@ -111,28 +113,40 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const mine = asyncHandler(async (req, res) => {
-  const items = await TransportBooking.find({ customerId: req.user.id }).select("-dispatchQueue").populate("providerId", "name phone email").sort({ createdAt: -1 }).limit(100);
+  const isDriverOrProvider = ["driver", "provider"].includes(req.user.role);
+  const filter = isDriverOrProvider
+    ? { providerId: req.user.id }
+    : { customerId: req.user.id };
+  const items = await TransportBooking.find(filter)
+    .select("-dispatchQueue")
+    .populate("providerId", "name phone email")
+    .populate("customerId", "name phone email location")
+    .sort({ createdAt: -1 })
+    .limit(100);
   res.json(new ApiResponse(200, items));
 });
 
 const available = asyncHandler(async (req, res) => {
-  const application = await ProviderApplication.findOne({ userId: req.user.id, status: "approved" }).select("category");
+  const application = await ProviderApplication.findOne({ userId: req.user.id, status: "approved" }).select("category isOnline");
   if (!application) throw new ApiError(403, "Only approved providers can view transport requests.");
+  const User = require("../models/User");
+  const user = await User.findById(req.user.id).select("isOnline");
+  if (user?.isOnline === false || application?.isOnline === false) {
+    return res.json(new ApiResponse(200, []));
+  }
   const vehicleType = Object.keys(typeToCategory).find((key) => typeToCategory[key] === application.category);
   if (!vehicleType) return res.json(new ApiResponse(200, []));
   await advanceExpiredForProvider();
   const items = await TransportBooking.find({
     vehicleType, status: "pending", activeProviderId: req.user.id,
     dispatchExpiresAt: { $gt: new Date() }
-  }).select("-dispatchQueue").populate("customerId", "name location").sort({ scheduledAt: 1 }).limit(100);
+  }).select("-dispatchQueue").populate("customerId", "name phone location").sort({ scheduledAt: 1 }).limit(100);
   res.json(new ApiResponse(200, items));
 });
 
-
-
 const assigned = asyncHandler(async (req, res) => {
   const items = await TransportBooking.find({ providerId: req.user.id, status: { $in: ["accepted", "in_progress"] } })
-    .select("-dispatchQueue").populate("customerId", "name").sort({ updatedAt: -1 }).limit(100);
+    .select("-dispatchQueue").populate("customerId", "name phone location").sort({ updatedAt: -1 }).limit(100);
   res.json(new ApiResponse(200, items));
 });
 
@@ -270,4 +284,58 @@ const updateStatus = asyncHandler(async (req, res) => {
   throw new ApiError(403, "You cannot update this transport request.");
 });
 
-module.exports = { create, mine, available, assigned, getMessages, sendMessage, updateStatus, updateLocation, getTracking, updateTripLocation };
+const getNearbyDrivers = asyncHandler(async (req, res) => {
+  const { latitude, longitude, vehicleType = "auto", radiusKm = 15 } = req.query;
+  const category = typeToCategory[vehicleType] || "Auto";
+  const origin = coords({ latitude, longitude });
+  const radius = Math.min(Math.max(Number(radiusKm) || 15, 1), 50);
+
+  // Query approved, online drivers
+  const applications = await ProviderApplication.find({
+    category,
+    status: "approved",
+    isOnline: { $ne: false }
+  }).select("userId city taluk district locationCoordinates vehicleType vehicleModel").lean();
+
+  const drivers = [];
+  for (const app of applications) {
+    const driverCoords = coords(app.locationCoordinates);
+    let distance = null;
+    if (origin && driverCoords) {
+      distance = Math.round(distanceKm(origin, driverCoords) * 10) / 10;
+    }
+    // Filter out if origin exists and distance is beyond search radius
+    if (origin && distance !== null && distance > radius) {
+      continue;
+    }
+
+    // Estimate realistic ETA based on 25 km/h city average
+    const etaMinutes = distance !== null ? Math.max(2, Math.round((distance / 25) * 60)) : null;
+
+    drivers.push({
+      id: String(app.userId),
+      vehicleType: app.vehicleType || vehicleType,
+      vehicleModel: app.vehicleModel || (vehicleType === "auto" ? "Bajaj RE Auto" : "Commercial Vehicle"),
+      approximateDistanceKm: distance,
+      estimatedEtaMinutes: etaMinutes,
+      area: app.city || app.taluk || app.district || "Bagalkot",
+      isOnline: true
+    });
+  }
+
+  // Sort closest drivers first
+  drivers.sort((a, b) => {
+    if (a.approximateDistanceKm !== null && b.approximateDistanceKm !== null) {
+      return a.approximateDistanceKm - b.approximateDistanceKm;
+    }
+    return 0;
+  });
+
+  return res.json(new ApiResponse(200, {
+    count: drivers.length,
+    drivers,
+    searchRadiusKm: radius
+  }, drivers.length > 0 ? "Nearby drivers found." : "No drivers are currently available nearby."));
+});
+
+module.exports = { create, mine, available, assigned, getNearbyDrivers, getMessages, sendMessage, updateStatus, updateLocation, getTracking, updateTripLocation };

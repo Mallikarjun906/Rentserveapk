@@ -38,7 +38,7 @@ interface LoginScreenProps {
   onRegisterStudent: () => void;
   onAdminLogin: () => void;
   onForgotPassword: () => void;
-  onSuccess: () => void;
+  onSuccess: (user?: any) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
@@ -74,8 +74,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setError('');
     setLoading(true);
     try {
-      await login(identifier.trim(), password);
-      onSuccess();
+      const loggedIn = await login(identifier.trim(), password);
+      onSuccess(loggedIn);
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
     } finally {

@@ -160,7 +160,16 @@ export const RootNavigator: React.FC = () => {
 
   const back = () => {
     if (stack.length > 1) {
+      if (Platform.OS === 'web' && typeof globalThis !== 'undefined' && (globalThis as any).window?.history) {
+        try {
+          (globalThis as any).window.history.back();
+        } catch {}
+      }
       setStack((prev) => prev.slice(0, -1));
+    } else if (stack.length === 1 && stack[0].name === 'provider-profile') {
+      switchTab('provider-dashboard');
+    } else if (stack.length === 1 && stack[0].name === 'driver-profile') {
+      switchTab('driver-dashboard');
     }
   };
 
@@ -174,11 +183,19 @@ export const RootNavigator: React.FC = () => {
     reset(tab);
   };
 
-  // Android Hardware Back Button handling: Pops screen if stack > 1, otherwise exits
+  // Android Hardware Back Button handling: Pops secondary screen, returns from profile to dashboard, or exits
   useEffect(() => {
     const handleHardwareBack = () => {
       if (stack.length > 1) {
         setStack((prev) => prev.slice(0, -1));
+        return true;
+      }
+      if (stack.length === 1 && stack[0].name === 'provider-profile') {
+        switchTab('provider-dashboard');
+        return true;
+      }
+      if (stack.length === 1 && stack[0].name === 'driver-profile') {
+        switchTab('driver-dashboard');
         return true;
       }
       return false;
@@ -186,7 +203,43 @@ export const RootNavigator: React.FC = () => {
 
     const sub = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
     return () => sub.remove();
-  }, [stack.length]);
+  }, [stack]);
+
+  // Web Browser Back Button (popstate) handling
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof globalThis !== 'undefined' && (globalThis as any).window) {
+      const win = (globalThis as any).window;
+      const handlePop = () => {
+        setStack((prev) => {
+          if (prev.length > 1) {
+            return prev.slice(0, -1);
+          }
+          if (prev.length === 1 && prev[0].name === 'provider-profile') {
+            return [{ name: 'provider-dashboard' }];
+          }
+          if (prev.length === 1 && prev[0].name === 'driver-profile') {
+            return [{ name: 'driver-dashboard' }];
+          }
+          return prev;
+        });
+      };
+      win.addEventListener('popstate', handlePop);
+      return () => win.removeEventListener('popstate', handlePop);
+    }
+  }, []);
+
+  // Strict RBAC safety guard: Providers & Drivers are never placed on Customer Home
+  useEffect(() => {
+    if (user?.role === 'provider') {
+      if (['home', 'explore', 'bookings'].includes(current.name)) {
+        reset('provider-dashboard');
+      }
+    } else if (user?.role === 'driver') {
+      if (['home', 'explore', 'bookings'].includes(current.name)) {
+        reset('driver-dashboard');
+      }
+    }
+  }, [user?.role, current.name]);
 
   // URL path synchronization for web browser
   useEffect(() => {
@@ -245,10 +298,11 @@ export const RootNavigator: React.FC = () => {
             onRegisterStudent={() => go('register-student')}
             onAdminLogin={() => go('admin-login')}
             onForgotPassword={() => go('forgot')}
-            onSuccess={() => {
-              if (user?.role === 'provider') reset('provider-dashboard');
-              else if (user?.role === 'driver') reset('driver-dashboard');
-              else if (user?.role === 'admin') reset('admin-dashboard');
+            onSuccess={(loggedInUser) => {
+              const u = loggedInUser || user;
+              if (u?.role === 'provider') reset('provider-dashboard');
+              else if (u?.role === 'driver') reset('driver-dashboard');
+              else if (u?.role === 'admin') reset('admin-dashboard');
               else reset('home');
             }}
           />
@@ -458,14 +512,18 @@ export const RootNavigator: React.FC = () => {
       case 'driver-dashboard':
         return (
           <DriverDashboardScreen
-            onBack={back}
+            onBack={stack.length > 1 ? back : undefined}
             onNavigateOnboarding={() => go('driver-onboarding')}
+            onOpenChat={(params) => go('chat', params)}
           />
         );
       case 'driver-profile':
         return (
           <DriverMyProfileScreen
-            onBack={back}
+            onBack={() => {
+              if (stack.length > 1) back();
+              else switchTab('driver-dashboard');
+            }}
             onLogout={() => reset('login')}
           />
         );
@@ -481,15 +539,20 @@ export const RootNavigator: React.FC = () => {
       case 'provider-dashboard':
         return (
           <ProviderDashboardScreen
-            onBack={back}
+            onBack={stack.length > 1 ? back : undefined}
             onOpenChat={(params) => go('chat', params)}
           />
         );
       case 'provider-profile':
         return (
           <ProviderMyProfileScreen
-            onBack={back}
+            onBack={() => {
+              if (stack.length > 1) back();
+              else switchTab('provider-dashboard');
+            }}
             onLogout={() => reset('login')}
+            onNavigateTerms={(role) => go('terms', { role })}
+            onNavigateSupport={() => go('support')}
           />
         );
 
@@ -540,7 +603,92 @@ export const RootNavigator: React.FC = () => {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <View style={styles.screenContainer}>{renderScreen()}</View>
+      {isProvider && ['provider-dashboard', 'provider-profile', 'chat', 'terms', 'support'].includes(current.name) ? (
+        <View style={styles.screenContainer}>
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                display: current.name === 'provider-dashboard' ? 'flex' : 'none',
+              },
+            ]}
+          >
+            <ProviderDashboardScreen
+              onBack={stack.length > 1 ? back : undefined}
+              onOpenChat={(params) => go('chat', params)}
+            />
+          </View>
+
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                display: current.name === 'provider-profile' ? 'flex' : 'none',
+              },
+            ]}
+          >
+            <ProviderMyProfileScreen
+              onBack={() => {
+                if (stack.length > 1) back();
+                else switchTab('provider-dashboard');
+              }}
+              onLogout={() => reset('login')}
+              onNavigateTerms={(role) => go('terms', { role })}
+              onNavigateSupport={() => go('support')}
+            />
+          </View>
+
+          {/* Secondary screen overlay (chat, terms, support) preserves Provider Dashboard state */}
+          {!['provider-dashboard', 'provider-profile'].includes(current.name) && (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.paper }]}>
+              {renderScreen()}
+            </View>
+          )}
+        </View>
+      ) : isDriver && ['driver-dashboard', 'driver-profile', 'driver-onboarding', 'chat', 'terms', 'support'].includes(current.name) ? (
+        <View style={styles.screenContainer}>
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                display: current.name === 'driver-dashboard' ? 'flex' : 'none',
+              },
+            ]}
+          >
+            <DriverDashboardScreen
+              onBack={stack.length > 1 ? back : undefined}
+              onNavigateOnboarding={() => go('driver-onboarding')}
+              onOpenChat={(params) => go('chat', params)}
+            />
+          </View>
+
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                display: current.name === 'driver-profile' ? 'flex' : 'none',
+              },
+            ]}
+          >
+            <DriverMyProfileScreen
+              onBack={() => {
+                if (stack.length > 1) back();
+                else switchTab('driver-dashboard');
+              }}
+              onLogout={() => reset('login')}
+            />
+          </View>
+
+          {/* Secondary screen overlay (driver-onboarding, chat, terms, support) */}
+          {!['driver-dashboard', 'driver-profile'].includes(current.name) && (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.paper }]}>
+              {renderScreen()}
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={styles.screenContainer}>{renderScreen()}</View>
+      )}
 
       {/* Customer 5-Tab Navigation Bar */}
       {showCustomerTabs && (
@@ -688,14 +836,14 @@ export const RootNavigator: React.FC = () => {
             activeOpacity={0.7}
           >
             <View style={[styles.iconBubble, current.name === 'driver-dashboard' && styles.iconBubbleActive]}>
-              <Car
+              <LayoutDashboard
                 size={20}
                 color={current.name === 'driver-dashboard' ? COLORS.brand : COLORS.mute}
                 strokeWidth={current.name === 'driver-dashboard' ? 2.4 : 1.8}
               />
             </View>
             <Text style={[styles.tabLabel, current.name === 'driver-dashboard' && styles.tabLabelActive]}>
-              {t('tabTrips', 'ಟ್ರಿಪ್ಸ್')}
+              {t('tabDashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
             </Text>
           </TouchableOpacity>
 

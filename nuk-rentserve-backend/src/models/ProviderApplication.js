@@ -85,6 +85,7 @@ const schema = new mongoose.Schema({
   identityReviewNote: { type: String, trim: true, maxlength: 500, default: "" },
   identityReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   identityReviewedAt: { type: Date, default: null },
+  isOnline: { type: Boolean, default: true, index: true },
   isDemo: { type: Boolean, default: false, index: true }
 }, { timestamps: true });
 

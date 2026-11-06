@@ -193,8 +193,8 @@ const received = asyncHandler(async (req, res) => {
 
 const updateStatus = asyncHandler(async (req, res) => {
   const { status, reason = "" } = req.body;
-  if (!["accepted", "rejected", "cancelled", "completed"].includes(status)) {
-    throw new ApiError(400, "Status must be accepted, rejected, cancelled, or completed.");
+  if (!["accepted", "rejected", "cancelled", "completed", "in_progress"].includes(status)) {
+    throw new ApiError(400, "Status must be accepted, rejected, cancelled, in_progress, or completed.");
   }
 
   const booking = await Booking.findById(req.params.id)

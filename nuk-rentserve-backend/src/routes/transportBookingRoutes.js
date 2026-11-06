@@ -5,9 +5,10 @@ const { allowRoles, requireApproval } = require("../middleware/roleMiddleware");
 
 router.use(authenticate);
 
-// Customer bookings
+// Customer & Driver bookings history
 router.post("/", allowRoles("customer", "owner"), controller.create);
-router.get("/mine", allowRoles("customer", "owner"), controller.mine);
+router.get("/mine", allowRoles("customer", "owner", "driver", "provider"), controller.mine);
+router.get("/nearby-drivers", allowRoles("customer", "owner", "driver", "provider", "admin"), controller.getNearbyDrivers);
 
 // Driver transport queues & location updates (strictly require approved driver/provider)
 router.get("/available", allowRoles("driver", "provider"), requireApproval, controller.available);

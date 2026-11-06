@@ -52,7 +52,8 @@ export const DriverMyProfileScreen: React.FC<DriverMyProfileScreenProps> = ({
 
   const [loading, setLoading] = useState(true);
   const [myApp, setMyApp] = useState<any>(null);
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(user?.isOnline !== false);
+  const [onlineUpdating, setOnlineUpdating] = useState(false);
 
   // Edit Profile Modal
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -78,6 +79,9 @@ export const DriverMyProfileScreen: React.FC<DriverMyProfileScreenProps> = ({
           setEditName(meRes.value.name || '');
           setEditPhone(meRes.value.phone || '');
           setEditCity(meRes.value.location || 'Bagalkot');
+          if (typeof meRes.value.isOnline === 'boolean') {
+            setIsOnline(meRes.value.isOnline);
+          }
         }
         setLoading(false);
       }
@@ -87,6 +91,19 @@ export const DriverMyProfileScreen: React.FC<DriverMyProfileScreenProps> = ({
       active = false;
     };
   }, []);
+
+  const handleToggleOnline = async (val: boolean) => {
+    setOnlineUpdating(true);
+    setIsOnline(val);
+    try {
+      await authApi.updateMe({ isOnline: val });
+    } catch {
+      // Revert if error
+      setIsOnline(!val);
+    } finally {
+      setOnlineUpdating(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
@@ -247,9 +264,10 @@ export const DriverMyProfileScreen: React.FC<DriverMyProfileScreenProps> = ({
                 </View>
                 <Switch
                   value={isOnline}
-                  onValueChange={setIsOnline}
+                  onValueChange={handleToggleOnline}
                   trackColor={{ false: COLORS.line, true: COLORS.brandTint }}
                   thumbColor={isOnline ? COLORS.brand : '#D1D5DB'}
+                  disabled={onlineUpdating}
                 />
               </View>
             </View>
@@ -267,8 +285,8 @@ export const DriverMyProfileScreen: React.FC<DriverMyProfileScreenProps> = ({
                 <View style={{ flex: 1 }}>
                   <Text style={styles.credLabel}>Registered Vehicle</Text>
                   <Text style={styles.credValue}>
-                    {myApp?.vehicleType ? myApp.vehicleType.toUpperCase() : 'AUTO RICKSHAW'}
-                    {myApp?.vehicleRegistrationNumber ? ` · ${myApp.vehicleRegistrationNumber}` : ' · KA 29 B 4821'}
+                    {myApp?.vehicleType ? myApp.vehicleType.toUpperCase() : user?.vehicleModel || 'AUTO RICKSHAW'}
+                    {myApp?.vehicleRegistrationNumber ? ` · ${myApp.vehicleRegistrationNumber}` : user?.vehicleNumber ? ` · ${user.vehicleNumber}` : ' · Not registered'}
                   </Text>
                 </View>
               </View>
@@ -280,7 +298,31 @@ export const DriverMyProfileScreen: React.FC<DriverMyProfileScreenProps> = ({
                 <View style={{ flex: 1 }}>
                   <Text style={styles.credLabel}>Driving Licence (DL)</Text>
                   <Text style={styles.credValue}>
-                    {myApp?.drivingLicenceNumber || 'KA2920210048123'}
+                    {myApp?.drivingLicenceNumber || user?.phone ? `DL-${user?.phone}` : 'Verification Pending'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.credRow}>
+                <View style={styles.credIconBox}>
+                  <ShieldCheck size={20} color={COLORS.brand} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.credLabel}>Commercial Insurance & Fitness</Text>
+                  <Text style={styles.credValue}>
+                    {approvalStatus === 'approved' ? 'Valid & Insured for Commercial Transport' : 'Under Review'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.credRow}>
+                <View style={styles.credIconBox}>
+                  <Phone size={20} color={COLORS.bad} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.credLabel}>Emergency Helpline</Text>
+                  <Text style={styles.credValue}>
+                    112 (National Emergency) · +91 98450 12345 (NUK Helpdesk)
                   </Text>
                 </View>
               </View>
