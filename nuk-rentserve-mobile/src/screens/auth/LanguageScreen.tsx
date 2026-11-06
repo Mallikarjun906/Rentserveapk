@@ -6,11 +6,11 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Logo } from '../../components/common/Logo';
 import { Button } from '../../components/common/Button';
+import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { useLocalization } from '../../context/LocalizationContext';
 
 interface LanguageScreenProps {
@@ -21,11 +21,11 @@ export const LanguageScreen: React.FC<LanguageScreenProps> = ({ onContinue }) =>
   const { language, setLanguage, t } = useLocalization();
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenContainer topSafe={true} bottomSafe={true} backgroundColor={COLORS.paper}>
       <View style={styles.container}>
         {/* Brand Header */}
         <View style={styles.header}>
-          <Logo size={56} />
+          <Logo size={64} />
           <Text style={styles.title}>
             {language === 'kn' ? 'ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Choose Your Language'}
           </Text>
@@ -104,26 +104,23 @@ export const LanguageScreen: React.FC<LanguageScreenProps> = ({ onContinue }) =>
           />
         </View>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: COLORS.paper,
-  },
   container: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 20,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     color: COLORS.ink,
     marginTop: 18,
@@ -198,6 +195,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.line,
   },
   bottomBar: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
 });

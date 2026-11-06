@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -38,7 +37,7 @@ export const TermsViewerScreen: React.FC<TermsViewerScreenProps> = ({
   const isKn = language === 'kn';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={isKn ? 'ನಿಯಮಗಳು ಮತ್ತು ಗೌಪ್ಯತೆ' : 'Terms & Privacy Policy'}
         subtitle={`Version ${TERMS_VERSION} · ${TERMS_DATE}`}
@@ -146,12 +145,12 @@ export const TermsViewerScreen: React.FC<TermsViewerScreenProps> = ({
 
         <View style={{ height: 30 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },

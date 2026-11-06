@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { Heart, MapPin, ArrowRight } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { formatINR } from '../../utils/formatters';
 import { Badge } from '../common/Badge';
@@ -70,8 +71,13 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               onPress={onToggleSaved}
               style={styles.heartBtn}
               accessibilityLabel="Save property"
+              activeOpacity={0.8}
             >
-              <Text style={styles.heartIcon}>{isSaved ? '❤️' : '🤍'}</Text>
+              <Heart
+                size={18}
+                color={isSaved ? COLORS.brand : COLORS.white}
+                fill={isSaved ? COLORS.brand : 'rgba(0,0,0,0.3)'}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -82,8 +88,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             tone={item.isStudentPartner ? 'info' : 'ok'}
             label={
               item.isStudentPartner
-                ? `🎓 ${t('studentPartner', 'ವಿದ್ಯಾರ್ಥಿ ಪಾಲುದಾರರು')}`
-                : `🏡 ${t('verifiedOwner', 'ಆಸ್ತಿ ಮಾಲೀಕರು')}`
+                ? t('studentPartner', 'ವಿದ್ಯಾರ್ಥಿ ಪಾಲುದಾರರು')
+                : t('verifiedOwner', 'ಆಸ್ತಿ ಮಾಲೀಕರು')
             }
           />
         </View>
@@ -94,9 +100,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
-        <Text style={styles.location} numberOfLines={1}>
-          📍 {item.location}
-        </Text>
+        <View style={styles.locRow}>
+          <MapPin size={12} color={COLORS.mute} />
+          <Text style={styles.location} numberOfLines={1}>
+            {item.location}
+          </Text>
+        </View>
 
         {/* Facilities Chips */}
         {item.facilities && item.facilities.length > 0 && (
@@ -126,7 +135,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </View>
 
           <View style={styles.viewBtn}>
-            <Text style={styles.viewBtnText}>{t('viewAll', 'ವಿವರಗಳು')} →</Text>
+            <Text style={styles.viewBtnText}>{t('viewAll', 'ವಿವರಗಳು')}</Text>
+            <ArrowRight size={13} color={COLORS.brand} />
           </View>
         </View>
       </View>
@@ -141,12 +151,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.line,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   imageContainer: {
     width: '100%',
     height: 180,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: COLORS.paper,
     position: 'relative',
   },
   image: {
@@ -162,41 +172,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  heartBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heartIcon: {
-    fontSize: 16,
-  },
   imageOverlayBottom: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 10,
     left: 10,
+  },
+  heartBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   details: {
     padding: 14,
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.ink,
     marginBottom: 4,
   },
+  locRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
   location: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.mute,
-    marginBottom: 10,
+    flex: 1,
   },
   facilitiesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   facilityChip: {
     backgroundColor: COLORS.paper,
@@ -215,14 +228,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
-    paddingTop: 10,
   },
   rent: {
     fontSize: 18,
     fontWeight: '900',
-    color: COLORS.brand,
+    color: COLORS.ink,
   },
   rentPeriod: {
     fontSize: 12,
@@ -235,14 +248,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   viewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     backgroundColor: COLORS.brandTint,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: RADIUS.md,
   },
   viewBtnText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.brand,
   },
 });

@@ -1,4 +1,4 @@
-// Reusable Document & Identity Photo Uploader with Real File Selection, Validation & States
+// Professional Document & Photo Uploader Component with Real File Selection, Validation & Lucide Icons
 
 import React from 'react';
 import {
@@ -12,7 +12,18 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, RADIUS } from '../../constants/theme';
+import {
+  Camera,
+  Image as ImageIcon,
+  FileText,
+  Paperclip,
+  X,
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react-native';
+import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Badge } from './Badge';
 
 export interface UploadFile {
@@ -28,9 +39,11 @@ export type UploadState = 'idle' | 'selected' | 'uploading' | 'uploaded' | 'erro
 interface DocumentUploaderProps {
   label: string;
   description?: string;
+  hint?: string;
   acceptTypes?: 'image' | 'document' | 'all';
   file: UploadFile | null;
-  onFileSelect: (file: UploadFile | null) => void;
+  onFileSelect?: (file: UploadFile | null) => void;
+  onFileChange?: (file: UploadFile | null) => void;
   uploadState?: UploadState;
   errorMessage?: string;
   allowCamera?: boolean;
@@ -39,16 +52,24 @@ interface DocumentUploaderProps {
 
 export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   label,
-  description = 'PDF, JPG, PNG (Max 5MB)',
+  description,
+  hint,
   acceptTypes = 'all',
   file,
   onFileSelect,
+  onFileChange,
   uploadState = file ? 'selected' : 'idle',
   errorMessage,
   allowCamera = true,
   required = false,
 }) => {
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+  const resolvedDescription = description || hint || 'PDF, JPG, PNG (Max 5MB)';
+
+  const emitFile = (f: UploadFile | null) => {
+    onFileSelect?.(f);
+    onFileChange?.(f);
+  };
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes || bytes <= 0) return '';
@@ -92,7 +113,7 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
             ? 'image/png'
             : 'image/jpeg');
 
-        onFileSelect({
+        emitFile({
           uri: asset.uri,
           name: asset.name || `document-${Date.now()}.${isPdf ? 'pdf' : 'jpg'}`,
           type: mime,
@@ -149,10 +170,9 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         }
 
         const ext = asset.mimeType?.includes('png') ? 'png' : 'jpg';
-        const filename =
-          asset.fileName || `photo-${Date.now()}.${ext}`;
+        const filename = asset.fileName || `photo-${Date.now()}.${ext}`;
 
-        onFileSelect({
+        emitFile({
           uri: asset.uri,
           name: filename,
           type: asset.mimeType || (ext === 'png' ? 'image/png' : 'image/jpeg'),
@@ -165,72 +185,76 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     }
   };
 
-  const getBadgeProps = () => {
-    if (uploadState === 'uploading') {
-      return { tone: 'sun' as const, label: 'Uploading…' };
-    }
-    if (uploadState === 'uploaded') {
-      return { tone: 'ok' as const, label: 'Uploaded ✓' };
-    }
-    if (uploadState === 'error') {
-      return { tone: 'bad' as const, label: 'Upload Failed' };
-    }
-    if (file) {
-      return { tone: 'ok' as const, label: 'Selected' };
-    }
-    return { tone: 'mute' as const, label: required ? 'Required' : 'Not Attached' };
-  };
-
   const isImage =
     file &&
-    (file.type.startsWith('image/') ||
-      file.name.match(/\.(jpg|jpeg|png|webp)$/i));
+    (file.type?.startsWith('image/') ||
+      file.name?.match(/\.(jpg|jpeg|png|webp)$/i));
 
   const isPdf =
     file &&
     (file.type === 'application/pdf' ||
-      file.name.toLowerCase().endsWith('.pdf'));
+      file.name?.toLowerCase().endsWith('.pdf'));
 
-  const badge = getBadgeProps();
+  const getStatusBadge = () => {
+    if (uploadState === 'uploading') {
+      return <Badge tone="warn" label="Uploading…" />;
+    }
+    if (uploadState === 'uploaded') {
+      return <Badge tone="ok" label="Verified Upload" />;
+    }
+    if (uploadState === 'error') {
+      return <Badge tone="bad" label="Upload Failed" />;
+    }
+    if (file) {
+      return <Badge tone="info" label="Ready to Upload" />;
+    }
+    return <Badge tone="mute" label={required ? 'Required' : 'Optional'} />;
+  };
 
   return (
     <View style={styles.container}>
+      {/* Label and Badge Row */}
       <View style={styles.topRow}>
         <Text style={styles.label}>
           {label} {required && <Text style={styles.requiredStar}>*</Text>}
         </Text>
-        <Badge tone={badge.tone} label={badge.label} />
+        {getStatusBadge()}
       </View>
 
+      {/* Upload Box Card */}
       <View style={[styles.card, file ? styles.cardActive : null]}>
-        {/* Preview Thumbnail / Icon */}
-        <View style={styles.iconBox}>
+        {/* Thumbnail / Icon Box */}
+        <View style={styles.previewBox}>
           {isImage ? (
             <Image source={{ uri: file.uri }} style={styles.thumbnail} />
           ) : isPdf ? (
-            <Text style={styles.pdfIcon}>📄</Text>
+            <View style={[styles.typeIconBox, { backgroundColor: '#FEE2E2' }]}>
+              <FileText size={24} color={COLORS.bad} />
+            </View>
           ) : (
-            <Text style={styles.emptyIcon}>📎</Text>
+            <View style={[styles.typeIconBox, { backgroundColor: COLORS.paper }]}>
+              <UploadCloud size={24} color={COLORS.mute} />
+            </View>
           )}
         </View>
 
-        {/* File Information */}
-        <View style={styles.infoCol}>
+        {/* File Information & Action Controls */}
+        <View style={styles.contentCol}>
           <Text
             style={[styles.fileName, !file && styles.noFileText]}
             numberOfLines={1}
             ellipsizeMode="middle"
           >
-            {file ? file.name : 'No document selected'}
+            {file ? file.name : 'No file chosen'}
           </Text>
 
           <Text style={styles.fileMeta}>
             {file && file.size
               ? `${formatFileSize(file.size)} · ${isPdf ? 'PDF Document' : 'Image'}`
-              : description}
+              : resolvedDescription}
           </Text>
 
-          {/* Action Buttons */}
+          {/* Action Button Row */}
           <View style={styles.actionsRow}>
             {acceptTypes !== 'image' && (
               <TouchableOpacity
@@ -238,7 +262,8 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                 onPress={handlePickDocument}
                 activeOpacity={0.7}
               >
-                <Text style={styles.actionBtnText}>📎 File / PDF</Text>
+                <Paperclip size={13} color={COLORS.ink} style={styles.btnIcon} />
+                <Text style={styles.actionBtnText}>Document</Text>
               </TouchableOpacity>
             )}
 
@@ -247,7 +272,8 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               onPress={() => handlePickPhoto(false)}
               activeOpacity={0.7}
             >
-              <Text style={styles.actionBtnText}>🖼️ Gallery</Text>
+              <ImageIcon size={13} color={COLORS.ink} style={styles.btnIcon} />
+              <Text style={styles.actionBtnText}>Gallery</Text>
             </TouchableOpacity>
 
             {allowCamera && (
@@ -256,17 +282,19 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                 onPress={() => handlePickPhoto(true)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.actionBtnText}>📷 Camera</Text>
+                <Camera size={13} color={COLORS.ink} style={styles.btnIcon} />
+                <Text style={styles.actionBtnText}>Camera</Text>
               </TouchableOpacity>
             )}
 
             {file ? (
               <TouchableOpacity
                 style={styles.removeBtn}
-                onPress={() => onFileSelect(null)}
+                onPress={() => emitFile(null)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.removeBtnText}>✕ Remove</Text>
+                <X size={13} color={COLORS.bad} style={styles.btnIcon} />
+                <Text style={styles.removeBtnText}>Remove</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -277,8 +305,12 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         )}
       </View>
 
+      {/* Error Banner */}
       {errorMessage ? (
-        <Text style={styles.errorText}>⚠️ {errorMessage}</Text>
+        <View style={styles.errorRow}>
+          <AlertCircle size={14} color={COLORS.bad} style={{ marginRight: 6 }} />
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
       ) : null}
     </View>
   );
@@ -286,41 +318,43 @@ export const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 14,
+    marginBottom: 16,
+    width: '100%',
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   label: {
     fontSize: 13,
     fontWeight: '800',
     color: COLORS.ink,
+    letterSpacing: 0.1,
   },
   requiredStar: {
-    color: COLORS.crimson,
+    color: COLORS.brand,
     fontWeight: '900',
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.paper,
+    backgroundColor: COLORS.white,
     borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.lg,
     padding: 12,
   },
   cardActive: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#F8FAFC',
+    borderColor: COLORS.brand,
+    backgroundColor: '#FFFDFD',
   },
-  iconBox: {
-    width: 44,
-    height: 44,
+  previewBox: {
+    width: 48,
+    height: 48,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
     justifyContent: 'center',
@@ -329,17 +363,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   thumbnail: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     resizeMode: 'cover',
   },
-  pdfIcon: {
-    fontSize: 22,
+  typeIconBox: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  emptyIcon: {
-    fontSize: 20,
-  },
-  infoCol: {
+  contentCol: {
     flex: 1,
   },
   fileName: {
@@ -350,27 +384,32 @@ const styles = StyleSheet.create({
   noFileText: {
     color: COLORS.mute,
     fontWeight: '600',
-    fontStyle: 'italic',
   },
   fileMeta: {
     fontSize: 11,
     color: COLORS.mute,
     marginTop: 2,
-    marginBottom: 6,
+    fontWeight: '500',
   },
   actionsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 2,
+    marginTop: 8,
   },
   actionBtn: {
-    backgroundColor: COLORS.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.sm,
     paddingVertical: 5,
     paddingHorizontal: 8,
+  },
+  btnIcon: {
+    marginRight: 4,
   },
   actionBtnText: {
     fontSize: 11,
@@ -378,9 +417,11 @@ const styles = StyleSheet.create({
     color: COLORS.ink,
   },
   removeBtn: {
-    backgroundColor: COLORS.crimsonTint,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: COLORS.crimson,
+    borderColor: '#FECACA',
     borderRadius: RADIUS.sm,
     paddingVertical: 5,
     paddingHorizontal: 8,
@@ -388,15 +429,21 @@ const styles = StyleSheet.create({
   removeBtnText: {
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.crimson,
+    color: COLORS.bad,
   },
   spinner: {
     marginLeft: 8,
   },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingHorizontal: 4,
+  },
   errorText: {
-    fontSize: 11,
-    color: COLORS.crimson,
-    marginTop: 4,
+    fontSize: 12,
+    color: COLORS.bad,
     fontWeight: '600',
+    flex: 1,
   },
 });

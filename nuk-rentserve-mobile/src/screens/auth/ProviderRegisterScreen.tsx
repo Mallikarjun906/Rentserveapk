@@ -1,22 +1,28 @@
-// Service Provider Registration Screen (/register/provider)
+// Service Provider Registration Screen (/register/provider) with Real Document Uploads & Lucide Icons
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Image,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
+import {
+  Wrench,
+  MapPin,
+  ShieldCheck,
+  Check,
+  Clock,
+  Eye,
+  EyeOff,
+  UserPlus,
+} from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
@@ -24,7 +30,7 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
-import { DocumentUploader } from '../../components/common/DocumentUploader';
+import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -35,14 +41,6 @@ interface ProviderRegisterScreenProps {
   onReadTerms: () => void;
   onSuccess: () => void;
   onBack?: () => void;
-}
-
-interface UploadFile {
-  uri: string;
-  name: string;
-  type: string;
-  size?: number;
-  file?: any;
 }
 
 const CATEGORIES = [
@@ -61,6 +59,7 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
   onSuccess,
   onBack,
 }) => {
+  const insets = useSafeAreaInsets();
   const { login } = useAuth();
   const { t } = useLocalization();
 
@@ -115,120 +114,31 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
           longitude: pos.coords.longitude,
         });
 
-        // Convert coordinates into human readable address
         const reverse = await Location.reverseGeocodeAsync({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         });
-
-        if (reverse && reverse.length > 0) {
-          const place = reverse[0];
-          const detectedCity = place.city || place.subregion || place.district || 'Bagalkot';
-          const streetInfo = [place.name, place.street, place.subregion].filter(Boolean).join(', ');
-
+        if (reverse && reverse[0]) {
+          const loc = reverse[0];
+          const detectedCity = loc.city || loc.subregion || loc.district || 'Bagalkot';
           setCity(detectedCity);
-          if (streetInfo && !address) {
-            setAddress(streetInfo);
-          }
-          setLocationStatusText(`📍 Detected: ${detectedCity} (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+          const detectedAddr = [loc.name, loc.street, loc.subregion].filter(Boolean).join(', ');
+          if (detectedAddr) setAddress(detectedAddr);
+          setLocationStatusText(`Location set: ${detectedCity} (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
         }
       }
-    } catch (err: any) {
+    } catch {
       if (userInitiated) {
-        Alert.alert('GPS Notice', 'Could not detect position automatically. Please enter your address manually.');
+        Alert.alert('Location Detection', 'Could not fetch current GPS location. Please enter manually.');
       }
     } finally {
       setDetectingLocation(false);
     }
   };
 
-  useEffect(() => {
-    detectLocation(false);
-  }, []);
-
-  // Pick Profile Photograph
-  const handlePickProfilePhoto = async (useCamera = false) => {
-    try {
-      let result;
-      if (useCamera) {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Camera Permission', 'Camera access is needed to capture your profile photo.');
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Gallery Permission', 'Photo library access is needed to choose your profile photo.');
-          return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
-      }
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        const filename = asset.fileName || `provider-profile-${Date.now()}.jpg`;
-        const mimeType = asset.mimeType || 'image/jpeg';
-        setProfileFile({
-          uri: asset.uri,
-          name: filename,
-          type: mimeType,
-          size: asset.fileSize,
-          file: (asset as any).file,
-        });
-      }
-    } catch (e: any) {
-      Alert.alert('Photo Error', e.message || 'Could not pick photograph.');
-    }
-  };
-
-  // Pick Identity or Address Document (PDF, JPG, PNG, WEBP)
-  const handlePickDocument = async (field: 'aadhaar' | 'address') => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (asset.size && asset.size > 5 * 1024 * 1024) {
-          Alert.alert('File Limit', 'Please upload documents smaller than 5 MB.');
-          return;
-        }
-        const isPdf = asset.name?.toLowerCase().endsWith('.pdf') || asset.mimeType === 'application/pdf';
-        const docObj: UploadFile = {
-          uri: asset.uri,
-          name: asset.name || `${field}-doc-${Date.now()}.${isPdf ? 'pdf' : 'jpg'}`,
-          type: asset.mimeType || (isPdf ? 'application/pdf' : 'image/jpeg'),
-          size: asset.size,
-          file: asset.file,
-        };
-
-        if (field === 'aadhaar') {
-          setIdFile(docObj);
-        } else {
-          setAddressFile(docObj);
-        }
-      }
-    } catch (e: any) {
-      Alert.alert('Document Error', e.message || 'Could not select document.');
-    }
-  };
-
   const handleRegister = async () => {
     if (!fullName.trim() || fullName.trim().length < 3) {
-      setError(t('Please enter your full name', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ'));
+      setError(t('Please enter your full business / personal name', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ'));
       return;
     }
     if (!isValidPhone(phone)) {
@@ -243,16 +153,12 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       setError(t('Password must be at least 8 characters', 'ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳಾಗಿರಬೇಕು'));
       return;
     }
-    if (!description.trim() || description.trim().length < 5) {
-      setError(t('Please describe your services', 'ನಿಮ್ಮ ಸೇವೆಯ ವಿವರಣೆಯನ್ನು ನಮೂದಿಸಿ'));
-      return;
-    }
     if (!idFile) {
-      setError(t('Please attach your Government Identity Document (Aadhaar/DL/Voter ID)', 'ದಯವಿಟ್ಟು ಗುರುತಿನ ಚೀಟಿಯನ್ನು ಲಗತ್ತಿಸಿ'));
+      setError(t('Please attach your Government Identity / Aadhaar document', 'ಸರ್ಕಾರಿ ಐಡಿ ಅಥವಾ ಆಧಾರ್ ದಾಖಲೆಯನ್ನು ಲಗತ್ತಿಸಿ'));
       return;
     }
     if (!consent) {
-      setError(t('Consent is required to verify identity documents', 'ದಾಖಲೆ ಪರಿಶೀಲನೆಗೆ ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಅಗತ್ಯವಿದೆ'));
+      setError(t('Consent is required for document verification', 'ದಾಖಲೆ ಪರಿಶೀಲನೆಗೆ ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಅಗತ್ಯವಿದೆ'));
       return;
     }
     if (!terms) {
@@ -271,65 +177,46 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       formData.append('password', password);
       formData.append('address', address.trim() || 'Bagalkot');
       formData.append('city', city.trim());
-      formData.append('taluk', city.trim());
-      formData.append('district', city.trim());
-      formData.append('dob', '1995-01-01');
       formData.append('category', category);
       formData.append('experience', experience);
-      formData.append('description', description.trim());
+      formData.append('description', description.trim() || `${category} services in ${city}`);
       formData.append('terms', 'true');
       formData.append('consent', 'true');
 
       if (coords) {
-        formData.append('locationCoordinates', JSON.stringify(coords));
         formData.append('latitude', String(coords.latitude));
         formData.append('longitude', String(coords.longitude));
       }
 
-      // Append only real verified selected documents (never submit fake file://mock paths)
       if (profileFile) {
-        if (Platform.OS === 'web' && profileFile.file) {
-          (formData as any).append('profileImage', profileFile.file, profileFile.name);
-        } else {
-          formData.append('profileImage', {
-            uri: profileFile.uri,
-            name: profileFile.name,
-            type: profileFile.type,
-          } as any);
-        }
+        formData.append('profileImage', {
+          uri: profileFile.uri,
+          name: profileFile.name,
+          type: profileFile.type,
+        } as any);
       }
 
       if (idFile) {
-        if (Platform.OS === 'web' && idFile.file) {
-          (formData as any).append('aadhaarDocument', idFile.file, idFile.name);
-        } else {
-          formData.append('aadhaarDocument', {
-            uri: idFile.uri,
-            name: idFile.name,
-            type: idFile.type,
-          } as any);
-        }
+        formData.append('aadhaarDocument', {
+          uri: idFile.uri,
+          name: idFile.name,
+          type: idFile.type,
+        } as any);
       }
 
       if (addressFile) {
-        if (Platform.OS === 'web' && addressFile.file) {
-          (formData as any).append('addressProofDocument', addressFile.file, addressFile.name);
-        } else {
-          formData.append('addressProofDocument', {
-            uri: addressFile.uri,
-            name: addressFile.name,
-            type: addressFile.type,
-          } as any);
-        }
+        formData.append('addressDocument', {
+          uri: addressFile.uri,
+          name: addressFile.name,
+          type: addressFile.type,
+        } as any);
       }
 
       await authApi.registerProvider(formData);
-
-      // Log in session
       await login(email.trim().toLowerCase(), password);
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || 'Provider registration failed.');
+      setError(err.message || 'Provider registration failed. Please check details.');
     } finally {
       setLoading(false);
     }
@@ -337,22 +224,25 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
 
   if (submitted) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.root, { paddingBottom: insets.bottom }]}>
+        <Header title={t('Application Submitted', 'ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ')} />
         <ScrollView contentContainerStyle={styles.successScroll}>
-          <View style={styles.successBox}>
-            <Text style={styles.successEmoji}>⏳</Text>
-            <Badge tone="sun" label={t('Pending Approval', 'ಅನುಮೋದನೆ ಬಾಕಿ ಇದೆ')} />
+          <View style={[styles.successBox, SHADOWS.card]}>
+            <View style={styles.clockCircle}>
+              <Clock size={40} color={COLORS.warn} />
+            </View>
+            <Badge tone="warn" label={t('Pending Verification', 'ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ')} />
             <Text style={styles.successTitle}>
               {t('Provider Application Submitted!', 'ಸೇವಾ ಪೂರೈಕೆದಾರರ ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ!')}
             </Text>
             <Text style={styles.successSub}>
               {t(
-                'Our administration desk is verifying your government ID and service credentials. Your provider dashboard is ready.',
-                'ನಮ್ಮ ಆಡಳಿತ ಮಂಡಳಿಯು ನಿಮ್ಮ ದಾಖಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸುತ್ತಿದೆ. ನಿಮ್ಮ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಸಿದ್ಧವಾಗಿದೆ.'
+                'Our administration team in Bagalkot will review your documents within 24 hours. Once approved, you can publish service listings and receive customer enquiries.',
+                'ನಮ್ಮ ಆಡಳಿತ ತಂಡವು 24 ಗಂಟೆಗಳ ಒಳಗೆ ನಿಮ್ಮ ದಾಖಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸುತ್ತದೆ. ಅನುಮೋದನೆಯ ನಂತರ ಸೇವೆಗಳನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಬಹುದು.'
               )}
             </Text>
             <Button
-              title={t('Open Provider Dashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ತೆರೆಯಿರಿ')}
+              title={t('Go to Provider Dashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹೋಗಿ')}
               onPress={onSuccess}
               variant="primary"
               size="lg"
@@ -361,51 +251,58 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
             />
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.root, { paddingBottom: insets.bottom }]}>
       <Header
-        title={t('registerProviderTitle', 'ಸೇವಾ ಪೂರೈಕೆದಾರರಾಗಿ ನೋಂದಾಯಿಸಿ')}
-        subtitle="Professional Trade Partner Program"
+        title={t('Provider Registration', 'ಸೇವಾ ಪೂರೈಕೆದಾರರ ನೋಂದಣಿ')}
+        subtitle={t('Plumber, Electrician, Carpenter & Technicians', 'ಟೆಕ್ನಿಷಿಯನ್ ಮತ್ತು ಸೇವಾ ನೋಂದಣಿ')}
         onBack={onBack || onLogin}
       />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Header */}
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Logo size={48} />
-            <Text style={styles.title}>
-              {t('registerProviderTitle', 'ಸೇವಾ ಪೂರೈಕೆದಾರರಾಗಿ ನೋಂದಾಯಿಸಿ')}
-            </Text>
-            <Text style={styles.sub}>
-              {t('registerProviderSub', 'ಸ್ಥಳೀಯ ಗ್ರಾಹಕರಿಗೆ ಸೇವೆ ಒದಗಿಸಿ, ನೇರ ಆದಾಯ ಗಳಿಸಿ')}
+            <Logo size={46} />
+            <Text style={styles.title}>{t('Register as a Service Provider', 'ಸೇವಾ ಪಾಲುದಾರರಾಗಿ ನೋಂದಾಯಿಸಿ')}</Text>
+          </View>
+
+          {/* Notice Banner */}
+          <View style={styles.noticeBanner}>
+            <ShieldCheck size={18} color={COLORS.brand} style={{ marginRight: 8, marginTop: 1 }} />
+            <Text style={styles.noticeText}>
+              {t(
+                'Notice: All service professionals must be verified by administrators before publishing services.',
+                'ಗಮನಿಸಿ: ಸೇವೆಗಳನ್ನು ಪ್ರಕಟಿಸುವ ಮೊದಲು ದಾಖಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ.'
+              )}
             </Text>
           </View>
 
           {error ? <ErrorBanner message={error} onRetry={handleRegister} /> : null}
 
-          {/* Form Card */}
-          <View style={[styles.formCard, SHADOWS.card]}>
+          <View style={[styles.card, SHADOWS.card]}>
+            <Text style={styles.sectionHeader}>{t('1. Personal & Business Details', '೧. ವೈಯಕ್ತಿಕ ವಿವರಗಳು')}</Text>
+
             <Input
-              label={t('Full Name (as per Govt ID)', 'ಪೂರ್ಣ ಹೆಸರು')}
-              placeholder="e.g. Anand Hiremath"
+              label={t('Full Name / Agency Name', 'ಪೂರ್ಣ ಹೆಸರು')}
+              placeholder="e.g. Ramesh Badiger"
               value={fullName}
               onChangeText={setFullName}
             />
 
             <Input
               label={t('Mobile Number', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ')}
-              placeholder="10-digit number"
+              placeholder="10-digit mobile"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              maxLength={10}
+              prefix="+91"
             />
 
             <Input
@@ -418,64 +315,38 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
             />
 
             <Input
-              label={t('Create Password', 'ಪಾಸ್‌ವರ್ಡ್')}
-              placeholder="Minimum 8 characters"
+              label={t('Password', 'ಗುಪ್ತಪದ')}
+              placeholder="At least 8 characters"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={COLORS.mute} />
+                  ) : (
+                    <Eye size={20} color={COLORS.mute} />
+                  )}
                 </TouchableOpacity>
               }
             />
 
-            {/* GPS Location Bar */}
-            <View style={styles.locationHeaderRow}>
-              <Text style={styles.inputLabel}>{t('Location & GPS', 'ಸ್ಥಳ ಮತ್ತು ಜಿಪಿಎಸ್')}</Text>
-              <TouchableOpacity
-                style={styles.autoLocBtn}
-                onPress={() => detectLocation(true)}
-                disabled={detectingLocation}
-              >
-                {detectingLocation ? (
-                  <ActivityIndicator size="small" color={COLORS.crimson} />
-                ) : (
-                  <Text style={styles.autoLocText}>📍 {t('Auto-Detect GPS', 'ಜಿಪಿಎಸ್ ಪತ್ತೆ')}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.sectionHeader}>{t('2. Service Expertise', '೨. ಸೇವಾ ಪರಿಣತಿ')}</Text>
 
-            {locationStatusText ? (
-              <View style={styles.locBadge}>
-                <Text style={styles.locBadgeText}>{locationStatusText}</Text>
-              </View>
-            ) : null}
-
-            <Input
-              label={t('Service Address / Workshop Location', 'ಕಾರ್ಯಾಗಾರ / ವಿಳಾಸ')}
-              placeholder="Shop / Area, Bagalkot"
-              value={address}
-              onChangeText={setAddress}
-            />
-
-            <Input
-              label={t('City', 'ನಗರ')}
-              placeholder="Bagalkot"
-              value={city}
-              onChangeText={setCity}
-            />
-
-            {/* Category Select */}
-            <Text style={styles.inputLabel}>{t('Service Trade Category', 'ಸೇವಾ ವರ್ಗ')}</Text>
-            <View style={styles.catGrid}>
+            {/* Category selection */}
+            <Text style={styles.fieldLabel}>{t('Primary Service Category', 'ಮುಖ್ಯ ಸೇವಾ ವರ್ಗ')}</Text>
+            <View style={styles.categoryGrid}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.catPill, category === cat && styles.catPillActive]}
+                  style={[styles.catChip, category === cat && styles.catChipActive]}
                   onPress={() => setCategory(cat)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.catPillText, category === cat && styles.catPillTextActive]}>
+                  <Text style={[styles.catText, category === cat && styles.catTextActive]}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -484,23 +355,56 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
 
             <Input
               label={t('Experience', 'ಅನುಭವ')}
-              placeholder="e.g. 5 years in residential wiring"
+              placeholder="e.g. 5 years"
               value={experience}
               onChangeText={setExperience}
             />
 
             <Input
-              label={t('Service Description', 'ಸೇವೆಯ ವಿವರಣೆ')}
-              placeholder="Detail your trade services, repair equipment and working hours"
+              label={t('Service Description', 'ಸೇವಾ ವಿವರಣೆ')}
+              placeholder="Brief description of your work, tools and warranty"
               value={description}
               onChangeText={setDescription}
               textarea
             />
 
-            {/* Real Document Uploaders */}
+            <Text style={styles.sectionHeader}>{t('3. Workshop / Location', '೩. ಕಾರ್ಯಾಗಾರ / ಸ್ಥಳ')}</Text>
+
+            <TouchableOpacity
+              style={styles.gpsBtn}
+              onPress={() => detectLocation(true)}
+              disabled={detectingLocation}
+              activeOpacity={0.8}
+            >
+              <MapPin size={16} color={COLORS.brand} style={{ marginRight: 8 }} />
+              <Text style={styles.gpsBtnText}>
+                {detectingLocation ? 'Detecting GPS…' : 'Detect GPS Location'}
+              </Text>
+            </TouchableOpacity>
+
+            {locationStatusText ? (
+              <Text style={styles.locationStatus}>{locationStatusText}</Text>
+            ) : null}
+
+            <Input
+              label={t('Address / Workshop', 'ವಿಳಾಸ')}
+              placeholder="Shop No, Locality, Bagalkot"
+              value={address}
+              onChangeText={setAddress}
+            />
+
+            <Input
+              label={t('City / Town', 'ನಗರ')}
+              placeholder="Bagalkot"
+              value={city}
+              onChangeText={setCity}
+            />
+
+            <Text style={styles.sectionHeader}>{t('4. Document Verification', '೪. ದಾಖಲೆಗಳ ಪರಿಶೀಲನೆ')}</Text>
+
             <DocumentUploader
-              label={t('Profile Photograph', 'ಫೋಟೋ')}
-              description="Front facing photo / trade photo (JPG, PNG)"
+              label={t('Profile / Workshop Photograph', 'ಫೋಟೋ')}
+              description="Front facing photo (JPG, PNG)"
               acceptTypes="image"
               file={profileFile}
               onFileSelect={setProfileFile}
@@ -508,8 +412,8 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
             />
 
             <DocumentUploader
-              label={t('Government Identity Document (Aadhaar/DL/Voter)', 'ಗುರುತಿನ ಚೀಟಿ')}
-              description="Government identity document (PDF, JPG, PNG)"
+              label={t('Government ID / Aadhaar Document', 'ಸರ್ಕಾರಿ ಗುರುತಿನ ಚೀಟಿ / ಆಧಾರ್')}
+              description="Front & back or clear copy (PDF, JPG, PNG)"
               file={idFile}
               onFileSelect={setIdFile}
               required
@@ -517,345 +421,244 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
             />
 
             <DocumentUploader
-              label={t('Address Proof Document', 'ವಿಳಾಸ ಪುರಾವೆ')}
-              description="Electricity bill / rent agreement / Aadhaar (PDF, JPG, PNG)"
+              label={t('Address Proof / Utility Bill / Trade Licence', 'ವಿಳಾಸ ಪುರಾವೆ')}
+              description="Electricity bill or Trade Licence (PDF, JPG, PNG)"
               file={addressFile}
               onFileSelect={setAddressFile}
               uploadState={loading ? 'uploading' : addressFile ? 'selected' : 'idle'}
             />
 
-            {/* Consent checkbox */}
+            {/* Checkboxes */}
             <TouchableOpacity
-              style={styles.termsRow}
+              style={styles.checkboxRow}
               onPress={() => setConsent(!consent)}
+              activeOpacity={0.7}
             >
               <View style={[styles.checkbox, consent && styles.checkboxActive]}>
-                {consent && <Text style={styles.checkMark}>✓</Text>}
+                {consent ? <Check size={14} color={COLORS.white} strokeWidth={3} /> : null}
               </View>
-              <Text style={styles.termsText}>
-                {t('I provide explicit consent for government identity and address verification.', 'ಗುರುತಿನ ಚೀಟಿ ಪರಿಶೀಲನೆಗೆ ನಾನು ಒಪ್ಪಿಗೆ ನೀಡುತ್ತೇನೆ.')}
+              <Text style={styles.checkboxLabel}>
+                {t(
+                  'I consent to identity verification by NUK RentServe for customer safety and platform trust.',
+                  'ಗ್ರಾಹಕರ ಸುರಕ್ಷತೆಗಾಗಿ ನನ್ನ ದಾಖಲೆಗಳ ಪರಿಶೀಲನೆಗೆ ನಾನು ಒಪ್ಪಿಗೆ ನೀಡುತ್ತೇನೆ.'
+                )}
               </Text>
             </TouchableOpacity>
 
-            {/* Terms checkbox */}
             <TouchableOpacity
-              style={styles.termsRow}
+              style={styles.checkboxRow}
               onPress={() => setTerms(!terms)}
+              activeOpacity={0.7}
             >
               <View style={[styles.checkbox, terms && styles.checkboxActive]}>
-                {terms && <Text style={styles.checkMark}>✓</Text>}
+                {terms ? <Check size={14} color={COLORS.white} strokeWidth={3} /> : null}
               </View>
-              <Text style={styles.termsText}>
-                {t('I agree to the', 'ನಾನು ಒಪ್ಪುತ್ತೇನೆ')}{' '}
+              <Text style={styles.checkboxLabel}>
+                {t('I accept NUK RentServe Service Provider', 'ನಾನು ಒಪ್ಪುತ್ತೇನೆ')}{' '}
                 <Text style={styles.termsLink} onPress={onReadTerms}>
-                  {t('Service Provider Terms', 'ಸೇವಾ ಪೂರೈಕೆದಾರರ ನಿಯಮಗಳು')}
+                  {t('Terms & Conditions', 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು')}
                 </Text>
               </Text>
             </TouchableOpacity>
 
             <Button
-              title={t('Submit Provider Application', 'ಅರ್ಜಿ ಸಲ್ಲಿಸಿ')}
+              title={t('Submit Provider Registration', 'ನೋಂದಣಿ ಸಲ್ಲಿಸಿ')}
               onPress={handleRegister}
               variant="primary"
               size="lg"
               fullWidth
               loading={loading}
+              icon={<UserPlus size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
               style={styles.submitBtn}
             />
-          </View>
 
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>
-              {t('Already registered as a provider?', 'ಈಗಾಗಲೇ ನೋಂದಾಯಿಸಿದ್ದೀರಾ?')}{' '}
-            </Text>
-            <TouchableOpacity onPress={onLogin}>
-              <Text style={styles.loginLink}>{t('Sign In', 'ಲಾಗಿನ್')}</Text>
+            <TouchableOpacity onPress={onLogin} style={styles.loginLink}>
+              <Text style={styles.loginLinkText}>
+                {t('Already registered? Log In', 'ಈಗಾಗಲೇ ನೋಂದಾಯಿಸಲಾಗಿದೆಯೇ? ಲಾಗಿನ್')}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: COLORS.paper,
-  },
-  keyboard: {
-    flex: 1,
-  },
-  scroll: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.ink,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  sub: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  formCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  toggleText: {
-    color: COLORS.crimson,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.ink,
-    marginBottom: 6,
-  },
-  locationHeaderRow: {
+  root: { flex: 1, backgroundColor: COLORS.paper },
+  keyboard: { flex: 1 },
+  scroll: { padding: 16, paddingBottom: 36 },
+  header: { alignItems: 'center', marginBottom: 14 },
+  title: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 8 },
+  noticeBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  autoLocBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: COLORS.brandTint,
-    borderRadius: RADIUS.sm,
-  },
-  autoLocText: {
-    color: COLORS.crimson,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  locBadge: {
-    backgroundColor: COLORS.sand,
-    padding: 8,
-    borderRadius: RADIUS.sm,
-    marginBottom: 10,
-  },
-  locBadgeText: {
-    fontSize: 12,
-    color: COLORS.emerald,
-    fontWeight: '600',
-  },
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
-  catPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.full,
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.paper,
-  },
-  catPillActive: {
-    borderColor: COLORS.crimson,
-    backgroundColor: COLORS.brandTint,
-  },
-  catPillText: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
-    fontWeight: '500',
-  },
-  catPillTextActive: {
-    color: COLORS.crimson,
-    fontWeight: '700',
-  },
-  uploadSection: {
-    backgroundColor: COLORS.paper,
+    borderColor: '#FDE68A',
     borderRadius: RADIUS.md,
     padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  uploadSectionHeader: {
+  noticeText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 17,
+  },
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.xl,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+  },
+  sectionHeader: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.brand,
+    marginTop: 8,
+    marginBottom: 12,
+    letterSpacing: 0.2,
+  },
+  fieldLabel: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.ink,
     marginBottom: 8,
   },
-  uploadRow: {
+  categoryGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  previewThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: COLORS.line,
-  },
-  emptyThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: COLORS.sand,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyThumbText: {
-    fontSize: 24,
-  },
-  docIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: COLORS.sand,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  docIconText: {
-    fontSize: 24,
-  },
-  uploadMeta: {
-    flex: 1,
-  },
-  uploadFileName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.ink,
-  },
-  uploadFormat: {
-    fontSize: 11,
-    color: COLORS.inkMuted,
-    marginBottom: 4,
-  },
-  uploadActionsRow: {
-    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
+    marginBottom: 14,
   },
-  chooseBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.sm,
+  catChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
   },
-  chooseBtnText: {
-    fontSize: 11,
+  catChipActive: {
+    backgroundColor: COLORS.brandTint,
+    borderColor: COLORS.brand,
+  },
+  catText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.ink,
+    color: COLORS.mute,
   },
-  removeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.crimson,
+  catTextActive: {
+    color: COLORS.brand,
+    fontWeight: '800',
   },
-  removeBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.crimson,
-  },
-  termsRow: {
+  gpsBtn: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginVertical: 6,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.paper,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    justifyContent: 'center',
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  gpsBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.brand,
+  },
+  locationStatus: {
+    fontSize: 11,
+    color: COLORS.ok,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginVertical: 10,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: COLORS.line,
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
     marginTop: 2,
-    backgroundColor: COLORS.white,
   },
   checkboxActive: {
-    borderColor: COLORS.crimson,
-    backgroundColor: COLORS.crimson,
+    backgroundColor: COLORS.brand,
+    borderColor: COLORS.brand,
   },
-  checkMark: {
-    color: COLORS.white,
+  checkboxLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
-  },
-  termsText: {
+    color: COLORS.ink,
     flex: 1,
-    fontSize: 12,
-    color: COLORS.inkMuted,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   termsLink: {
-    color: COLORS.crimson,
-    fontWeight: '700',
+    color: COLORS.brand,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
   },
   submitBtn: {
     marginTop: 14,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  footerText: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
+    marginBottom: 12,
   },
   loginLink: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  loginLinkText: {
     fontSize: 13,
-    color: COLORS.crimson,
     fontWeight: '700',
+    color: COLORS.brand,
   },
   successScroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
     padding: 24,
+    justifyContent: 'center',
+    flexGrow: 1,
   },
   successBox: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
     padding: 24,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
   },
-  successEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+  clockCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   successTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     color: COLORS.ink,
-    marginTop: 12,
+    marginTop: 14,
+    marginBottom: 8,
     textAlign: 'center',
   },
   successSub: {
     fontSize: 13,
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
     textAlign: 'center',
-    marginVertical: 12,
     lineHeight: 19,
+    marginBottom: 20,
   },
   successBtn: {
-    marginTop: 12,
+    marginTop: 8,
   },
 });

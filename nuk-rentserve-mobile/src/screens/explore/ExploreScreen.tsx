@@ -8,9 +8,16 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Home,
+  Wrench,
+  Search,
+  X,
+  Filter,
+} from 'lucide-react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 import { PropertyCard, PropertyCardItem } from '../../components/rentals/PropertyCard';
 import { ProviderCard, ProviderCardItem } from '../../components/services/ProviderCard';
@@ -33,6 +40,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
 }) => {
   const { t } = useLocalization();
   const { isSaved, toggleSaved } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [segment, setSegment] = useState<'rentals' | 'services'>(initialSegment);
   const [query, setQuery] = useState('');
@@ -124,35 +132,45 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   });
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Top Segmented Switcher */}
-      <View style={styles.topSegmentContainer}>
+    <View style={styles.container}>
+      {/* Top Segmented Switcher with Inset Clearance */}
+      <View style={[styles.topSegmentContainer, { paddingTop: Math.max(insets.top, 10) }]}>
         <View style={styles.segmentBar}>
           <TouchableOpacity
             style={[styles.segmentBtn, segment === 'rentals' && styles.segmentBtnActive]}
             onPress={() => setSegment('rentals')}
+            activeOpacity={0.8}
           >
+            <Home
+              size={16}
+              color={segment === 'rentals' ? COLORS.white : COLORS.mute}
+            />
             <Text
               style={[
                 styles.segmentText,
                 segment === 'rentals' && styles.segmentTextActive,
               ]}
             >
-              🏡 {t('rentals', 'ಬಾಡಿಗೆ ಮನೆಗಳು')}
+              {t('rentals', 'ಬಾಡಿಗೆ ಮನೆಗಳು')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.segmentBtn, segment === 'services' && styles.segmentBtnActive]}
             onPress={() => setSegment('services')}
+            activeOpacity={0.8}
           >
+            <Wrench
+              size={16}
+              color={segment === 'services' ? COLORS.white : COLORS.mute}
+            />
             <Text
               style={[
                 styles.segmentText,
                 segment === 'services' && styles.segmentTextActive,
               ]}
             >
-              🔧 {t('localServices', 'ಸ್ಥಳೀಯ ಸೇವೆಗಳು')}
+              {t('localServices', 'ಸ್ಥಳೀಯ ಸೇವೆಗಳು')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -161,7 +179,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       {/* Search Input Box */}
       <View style={styles.searchBoxWrapper}>
         <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Search size={16} color={COLORS.mute} />
           <TextInput
             style={styles.searchInput}
             placeholder={
@@ -169,13 +187,13 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 ? t('searchRentals', 'ಹುಡುಕಿ: 2 BHK, PG, ವಿದ್ಯಾಗಿರಿ...')
                 : t('searchServices', 'ಹುಡುಕಿ: ಎಲೆಕ್ಟ್ರಿಷಿಯನ್, ಪ್ಲಂಬರ್...')
             }
-            placeholderTextColor={COLORS.inkMuted}
+            placeholderTextColor={COLORS.mute}
             value={query}
             onChangeText={setQuery}
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
-              <Text style={styles.clearBtn}>✕</Text>
+            <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={16} color={COLORS.mute} />
             </TouchableOpacity>
           )}
         </View>
@@ -232,75 +250,80 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       <ScrollView contentContainerStyle={styles.scrollList}>
         {loading ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={COLORS.crimson} />
-            <Text style={{ marginTop: 12, color: COLORS.inkMuted }}>
+            <ActivityIndicator size="large" color={COLORS.brand} />
+            <Text style={{ marginTop: 12, color: COLORS.mute }}>
               Loading verified listings from database…
             </Text>
           </View>
         ) : segment === 'rentals' ? (
-          filteredProperties.length > 0 ? (
-            filteredProperties.map((p) => {
-              const pid = p.id || p._id || '';
-              return (
-                <PropertyCard
-                  key={pid}
-                  item={p}
-                  onPress={() => onSelectProperty(pid)}
-                  isSaved={isSaved(pid)}
-                  onToggleSaved={() => toggleSaved(pid)}
-                />
-              );
-            })
-          ) : (
+          filteredProperties.length === 0 ? (
             <EmptyState
-              icon={<Text style={{ fontSize: 32 }}>🏡</Text>}
-              title="No rental listings available"
-              description="New rental properties and PGs will appear here as owners publish them."
-              actionLabel="Reset Search"
+              title="No rental listings found"
+              description={
+                query
+                  ? `No properties matching "${query}". Try another search term.`
+                  : 'No verified rental properties available in this category yet.'
+              }
+              actionLabel="Clear Filter"
               onAction={() => {
                 setQuery('');
                 setPropertyTypeFilter('All');
               }}
             />
+          ) : (
+            filteredProperties.map((prop) => {
+              const pId = prop.id || (prop as any)._id || '';
+              return (
+                <PropertyCard
+                  key={pId}
+                  item={prop}
+                  onPress={() => onSelectProperty(pId)}
+                  isSaved={isSaved(pId)}
+                  onToggleSaved={() => toggleSaved(pId)}
+                />
+              );
+            })
           )
-        ) : filteredProviders.length > 0 ? (
-          filteredProviders.map((s) => {
-            const sid = s.id || (s as any)._id || '';
-            return (
-              <ProviderCard
-                key={sid}
-                item={s}
-                onPress={() => onSelectProvider(sid)}
-                onBook={() => onSelectProvider(sid)}
-              />
-            );
-          })
-        ) : (
+        ) : filteredProviders.length === 0 ? (
           <EmptyState
-            icon={<Text style={{ fontSize: 32 }}>🔧</Text>}
-            title="No providers available"
-            description="Verified local trade specialists will appear here after approval."
-            actionLabel="Reset Filter"
+            title="No service providers found"
+            description={
+              query
+                ? `No service providers matching "${query}". Try searching for Electrician, Plumber, etc.`
+                : 'No verified service providers available in this category yet.'
+            }
+            actionLabel="Clear Filter"
             onAction={() => {
               setQuery('');
               setServiceCategoryFilter('All');
             }}
           />
+        ) : (
+          filteredProviders.map((prov) => {
+            const pvId = prov.id || (prov as any)._id || '';
+            return (
+              <ProviderCard
+                key={pvId}
+                item={prov}
+                onPress={() => onSelectProvider(pvId)}
+                onBook={() => onSelectProvider(pvId)}
+              />
+            );
+          })
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
   topSegmentContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 8,
     backgroundColor: COLORS.white,
   },
   segmentBar: {
@@ -308,20 +331,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.paper,
     borderRadius: RADIUS.full,
     padding: 4,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   segmentBtn: {
     flex: 1,
+    flexDirection: 'row',
+    gap: 8,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: RADIUS.full,
   },
   segmentBtnActive: {
-    backgroundColor: COLORS.crimson,
+    backgroundColor: COLORS.brand,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
   },
   segmentTextActive: {
     color: COLORS.white,
@@ -340,20 +368,14 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: 12,
     height: 44,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: COLORS.ink,
-  },
-  clearBtn: {
-    fontSize: 14,
-    color: COLORS.inkMuted,
-    padding: 4,
   },
   chipsRow: {
     backgroundColor: COLORS.white,
@@ -375,19 +397,19 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   filterChipActive: {
-    backgroundColor: COLORS.crimsonTint,
-    borderColor: COLORS.crimson,
+    backgroundColor: COLORS.brandTint,
+    borderColor: COLORS.brand,
   },
   chipText: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
   },
   chipTextActive: {
-    color: COLORS.crimson,
+    color: COLORS.brand,
   },
   scrollList: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 60,
   },
 });

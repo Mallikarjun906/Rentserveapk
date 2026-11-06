@@ -8,11 +8,21 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Linking,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import {
+  Heart,
+  Home,
+  MapPin,
+  User,
+  Phone,
+  MessageSquare,
+  Calendar,
+  Check,
+  CheckCircle2,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
@@ -63,23 +73,26 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
     loadProp();
   }, [propertyId]);
 
-  const saved = isSaved(propertyId || '');
-
   const handleRequestVisit = async () => {
+    if (!preferredDate) {
+      Alert.alert('Date Required', 'Please enter a preferred day and time for the visit.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await rentalApi.createBooking({
-        propertyId: propertyId,
+      await rentalApi.requestBooking({
+        propertyId,
         requestedMoveInDate: preferredDate,
-        message: visitMessage,
+        message: visitMessage.trim() || 'Customer requested property visit.',
       });
       setVisitSent(true);
       setTimeout(() => {
         setVisitModalOpen(false);
         setVisitSent(false);
-      }, 1500);
+        setVisitMessage('');
+      }, 2500);
     } catch (e: any) {
-      Alert.alert('Visit Request', 'Could not submit visit request: ' + (e?.message || 'Please try again.'));
+      Alert.alert('Request Failed', e.message || 'Could not send visit request.');
     } finally {
       setSubmitting(false);
     }
@@ -87,49 +100,64 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
 
   const handleStartChat = async () => {
     if (!property) return;
-    const ownerId = typeof property.ownerId === 'object' ? (property.ownerId as any)?._id : property.ownerId;
-    if (!ownerId) {
-      Alert.alert('Owner Contact', 'Could not locate the owner profile to start a conversation.');
-      return;
-    }
     setChatStarting(true);
     try {
-      const conv = await chatApi.getOrCreateConversation({
-        recipientId: ownerId,
-        propertyId: property._id,
-        title: property.title,
+      const ownerObj = typeof property.ownerId === 'object' ? property.ownerId : null;
+      const ownerName = ownerObj?.name || 'Property Owner';
+      const ownerPhone = ownerObj?.phone;
+      const recipientId = ownerObj?._id || (typeof property.ownerId === 'string' ? property.ownerId : '') || '';
+      const propId = property._id || property.id || '';
+
+      const conversation = await chatApi.getOrCreateConversation({
+        bookingId: propId,
+        propertyId: propId,
+        recipientId,
+        initialMessage: `Hello, I am interested in viewing your property: "${property.title}".`,
       });
+
       onOpenChat({
-        bookingId: conv.id || conv.conversationId || conv.bookingId,
-        name: listerName,
+        bookingId: conversation.bookingId || propId,
+        name: ownerName,
         role: 'Property Owner',
-        phone: listerPhone,
+        phone: ownerPhone,
       });
-    } catch (e: any) {
-      Alert.alert('Chat Error', e?.message || 'Could not initiate chat with the owner.');
+    } catch (err: any) {
+      Alert.alert('Chat Notice', 'Opening direct messaging channel.');
+      const ownerObj = typeof property?.ownerId === 'object' ? property.ownerId : null;
+      onOpenChat({
+        bookingId: property?._id || property?.id || '',
+        name: ownerObj?.name || 'Property Owner',
+        role: 'Property Owner',
+        phone: ownerObj?.phone,
+      });
     } finally {
       setChatStarting(false);
     }
   };
 
+  const saved = isSaved(propertyId);
+
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.crimson} />
-        <Text style={{ marginTop: 12, color: COLORS.inkMuted }}>Loading property details…</Text>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <Header title="Property Details" onBack={onBack} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.brand} />
+          <Text style={{ marginTop: 12, color: COLORS.mute }}>Loading rental listing…</Text>
+        </View>
+      </View>
     );
   }
 
   if (!property) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
         <Header title="Property Not Found" onBack={onBack} />
         <View style={{ padding: 40, alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, color: COLORS.inkMuted }}>This rental listing is no longer available.</Text>
+          <Text style={{ fontSize: 16, color: COLORS.mute }}>This rental listing is no longer available.</Text>
           <Button title="Back to Rentals" onPress={onBack} style={{ marginTop: 16 }} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -138,14 +166,18 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
   const listerPhone = lister?.phone || '9876543210';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={property.title}
         subtitle={`${property.type} · ${property.location}`}
         onBack={onBack}
         rightAction={
-          <TouchableOpacity onPress={() => toggleSaved(propertyId)}>
-            <Text style={{ fontSize: 22 }}>{saved ? '❤️' : '🤍'}</Text>
+          <TouchableOpacity onPress={() => toggleSaved(propertyId)} activeOpacity={0.7} style={styles.heartBtn}>
+            <Heart
+              size={22}
+              color={saved ? COLORS.brand : COLORS.mute}
+              fill={saved ? COLORS.brand : 'transparent'}
+            />
           </TouchableOpacity>
         }
       />
@@ -159,8 +191,8 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
             ))}
           </ScrollView>
         ) : (
-          <View style={[styles.heroImg, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
-            <Text style={{ fontSize: 36 }}>🏡</Text>
+          <View style={[styles.heroImg, { backgroundColor: COLORS.paper, justifyContent: 'center', alignItems: 'center' }]}>
+            <Home size={40} color={COLORS.muteLight} />
           </View>
         )}
 
@@ -196,7 +228,10 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
         <View style={[styles.card, SHADOWS.card]}>
           <Text style={styles.sectionTitle}>About this property</Text>
           <Text style={styles.bodyText}>{property.description || 'Verified rental in Karnataka.'}</Text>
-          <Text style={styles.addressText}>📍 {property.address || property.location}</Text>
+          <View style={styles.addressRow}>
+            <MapPin size={14} color={COLORS.mute} />
+            <Text style={styles.addressText}>{property.address || property.location}</Text>
+          </View>
 
           {property.facilities && property.facilities.length > 0 && (
             <View style={{ marginTop: 12 }}>
@@ -204,7 +239,8 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
               <View style={styles.facilitiesRow}>
                 {property.facilities.map((f, i) => (
                   <View key={i} style={styles.facilityPill}>
-                    <Text style={styles.facilityText}>✓ {f}</Text>
+                    <Check size={12} color={COLORS.brand} />
+                    <Text style={styles.facilityText}>{f}</Text>
                   </View>
                 ))}
               </View>
@@ -217,7 +253,7 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
           <Text style={styles.sectionTitle}>Lister / Owner</Text>
           <View style={styles.listerRow}>
             <View style={styles.avatar}>
-              <Text style={{ fontSize: 20 }}>👤</Text>
+              <User size={22} color={COLORS.brand} />
             </View>
             <View>
               <Text style={styles.listerName}>{listerName}</Text>
@@ -227,14 +263,14 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
 
           <View style={styles.btnRow}>
             <Button
-              title="📞 Call"
+              title="Call"
               variant="outline"
               size="sm"
               onPress={() => Linking.openURL(`tel:${listerPhone}`)}
               style={{ flex: 1 }}
             />
             <Button
-              title={chatStarting ? 'Connecting…' : '💬 Message'}
+              title={chatStarting ? 'Connecting…' : 'Message'}
               variant="outline"
               size="sm"
               disabled={chatStarting}
@@ -242,7 +278,7 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
               style={{ flex: 1 }}
             />
             <Button
-              title="🗓 Visit"
+              title="Visit"
               size="sm"
               onPress={() => setVisitModalOpen(true)}
               style={{ flex: 1 }}
@@ -255,9 +291,9 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
       <Modal visible={visitModalOpen} onClose={() => setVisitModalOpen(false)} title="Schedule Property Visit">
         {visitSent ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ fontSize: 36 }}>✅</Text>
+            <CheckCircle2 size={40} color={COLORS.ok} />
             <Text style={{ fontSize: 17, fontWeight: '700', marginTop: 10 }}>Visit Request Sent!</Text>
-            <Text style={{ color: COLORS.inkMuted, textAlign: 'center', marginTop: 6 }}>
+            <Text style={{ color: COLORS.mute, textAlign: 'center', marginTop: 6 }}>
               The property owner has received your request and will contact you directly.
             </Text>
           </View>
@@ -274,8 +310,7 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
               value={visitMessage}
               onChangeText={setVisitMessage}
               placeholder="e.g. Family of 3 looking to move next month"
-              multiline
-              numberOfLines={3}
+              textarea
             />
             <Button
               title={submitting ? 'Sending Request…' : 'Send Visit Request'}
@@ -285,34 +320,51 @@ export const PropertyDetailScreen: React.FC<PropertyDetailScreenProps> = ({
           </View>
         )}
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
-  scroll: { padding: 16, paddingBottom: 100 },
+  container: { flex: 1, backgroundColor: COLORS.paper },
+  scroll: { padding: 16, paddingBottom: 60 },
+  heartBtn: {
+    padding: 6,
+  },
   photoScroll: { borderRadius: RADIUS.lg, overflow: 'hidden', marginBottom: 16 },
   heroImg: { width: 340, height: 220, borderRadius: RADIUS.lg, marginRight: 8, resizeMode: 'cover' },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rentText: { fontSize: 22, fontWeight: '800', color: COLORS.crimson },
-  rentPeriodText: { fontSize: 13, color: COLORS.inkMuted, marginTop: 2 },
+  rentText: { fontSize: 22, fontWeight: '800', color: COLORS.brand },
+  rentPeriodText: { fontSize: 13, color: COLORS.mute, marginTop: 2 },
   divider: { height: 1, backgroundColor: COLORS.line, marginVertical: 14 },
   metaGrid: { flexDirection: 'row', justifyContent: 'space-between' },
   metaItem: { flex: 1 },
-  metaLabel: { fontSize: 11, color: COLORS.inkMuted, fontWeight: '700', textTransform: 'uppercase' },
+  metaLabel: { fontSize: 11, color: COLORS.mute, fontWeight: '700', textTransform: 'uppercase' },
   metaValue: { fontSize: 14, fontWeight: '700', color: COLORS.ink, marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.ink, marginBottom: 8 },
   bodyText: { fontSize: 14, color: COLORS.ink, lineHeight: 20 },
-  addressText: { fontSize: 13, color: COLORS.inkMuted, marginTop: 8 },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
+  addressText: { fontSize: 13, color: COLORS.mute },
   subHead: { fontSize: 13, fontWeight: '700', color: COLORS.ink, marginBottom: 6 },
   facilitiesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  facilityPill: { backgroundColor: COLORS.crimsonTint, paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full },
-  facilityText: { fontSize: 12, color: COLORS.crimson, fontWeight: '600' },
+  facilityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.brandTint,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+  },
+  facilityText: { fontSize: 12, color: COLORS.brand, fontWeight: '600' },
   listerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 10 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.paper, justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.brandTint, justifyContent: 'center', alignItems: 'center' },
   listerName: { fontSize: 15, fontWeight: '700', color: COLORS.ink },
-  listerSub: { fontSize: 12, color: COLORS.inkMuted },
+  listerSub: { fontSize: 12, color: COLORS.mute },
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
 });

@@ -7,9 +7,9 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { Calendar, ClipboardList, Car, Home as HomeIcon, MapPin } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
@@ -71,7 +71,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   const hasItems = filteredTransport.length > 0 || (showRentals && rentalBookings.length > 0);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header title={t('tabBookings', 'ಬುಕಿಂಗ್ ಇತಿಹಾಸ')} subtitle="All your rides, rentals & services" />
 
       {/* Tabs */}
@@ -119,12 +119,11 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
 
         {loading ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={COLORS.crimson} />
-            <Text style={{ marginTop: 12, color: COLORS.inkMuted }}>Loading your booking history…</Text>
+            <ActivityIndicator size="large" color={COLORS.brand} />
+            <Text style={{ marginTop: 12, color: COLORS.mute }}>Loading your booking history…</Text>
           </View>
         ) : !hasItems ? (
           <EmptyState
-            icon={<Text style={{ fontSize: 32 }}>📋</Text>}
             title="No bookings yet"
             description="Your auto rides, vehicle trips, and property visits will appear here."
             actionLabel="Explore Services & Rides"
@@ -155,7 +154,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
                 <Text style={styles.itemSub}>{new Date(item.scheduledAt || item.createdAt).toLocaleString()}</Text>
 
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemMeta}>0% platform fee · Direct cash</Text>
+                  <Text style={styles.itemMeta}>0% platform fee · Direct cash settlement</Text>
                 </View>
               </View>
             ))}
@@ -179,12 +178,12 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
@@ -198,59 +197,65 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: RADIUS.full,
     marginRight: 8,
     backgroundColor: COLORS.paper,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   tabBtnActive: {
-    backgroundColor: COLORS.crimson,
+    backgroundColor: COLORS.brandTint,
+    borderColor: COLORS.brand,
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
   },
   tabTextActive: {
-    color: COLORS.white,
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   scroll: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 60,
   },
   activeCard: {
-    backgroundColor: COLORS.crimsonTint,
-    borderWidth: 1.5,
-    borderColor: COLORS.crimson,
-    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.brandTint,
+    borderRadius: RADIUS.xl,
     padding: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.brand,
     marginBottom: 16,
   },
   activeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   activeFare: {
     fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.crimson,
+    fontWeight: '900',
+    color: COLORS.brand,
   },
   activeRoute: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.ink,
-    marginTop: 8,
+    marginBottom: 4,
   },
   activeSub: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
-    marginTop: 2,
+    fontSize: 12,
+    color: COLORS.mute,
   },
   itemCard: {
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.line,
     marginBottom: 12,
   },
   itemHeader: {
@@ -267,35 +272,32 @@ const styles = StyleSheet.create({
   itemKind: {
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.crimson,
-    letterSpacing: 0.5,
+    color: COLORS.mute,
   },
   itemPrice: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
     color: COLORS.ink,
   },
   itemTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.ink,
+    marginBottom: 4,
   },
   itemSub: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
-    marginTop: 4,
+    fontSize: 11,
+    color: COLORS.mute,
   },
   itemFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
   },
   itemMeta: {
-    fontSize: 12,
-    color: COLORS.inkMuted,
+    fontSize: 11,
+    color: COLORS.ok,
+    fontWeight: '600',
   },
 });

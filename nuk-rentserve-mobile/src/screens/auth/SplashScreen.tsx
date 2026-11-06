@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/theme';
 import { Logo } from '../../components/common/Logo';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -12,6 +13,7 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -21,12 +23,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   }, [onFinish]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.brand} />
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.brand} translucent />
       
       {/* Centered Brand Shield */}
       <View style={styles.centerBox}>
-        <Logo size={76} mono />
+        <Logo size={88} mono />
         <Text style={styles.title}>NUK RentServe</Text>
         <Text style={styles.tagline}>
           {t('appTagline', 'ಕರ್ನಾಟಕದ ಬಾಡಿಗೆ, ಸೇವೆಗಳು ಮತ್ತು ಪ್ರಯಾಣ')}
@@ -34,7 +36,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       </View>
 
       {/* Regional Cultural Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { bottom: Math.max(insets.bottom + 16, 24) }]}>
         <Text style={styles.footerText}>
           Made for Bagalkot & Karnataka · ಸುರಕ್ಷಿತ ಮತ್ತು ಸ್ಥಳೀಯ
         </Text>
@@ -70,7 +72,9 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 30,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
   },
   footerText: {
     fontSize: 12,

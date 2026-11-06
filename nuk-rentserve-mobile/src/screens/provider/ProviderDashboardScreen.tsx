@@ -7,13 +7,28 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   RefreshControl,
   Linking,
 } from 'react-native';
 import * as Location from 'expo-location';
+import {
+  MapPin,
+  ShieldCheck,
+  FileText,
+  Eye,
+  User,
+  Calendar,
+  Phone,
+  Wrench,
+  MessageSquare,
+  Navigation,
+  RotateCw,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
@@ -26,7 +41,7 @@ import { DocumentViewerModal, DocumentItem } from '../../components/common/Docum
 import { CONFIG } from '../../constants/config';
 
 interface ProviderDashboardScreenProps {
-  onBack: () => void;
+  onBack?: () => void;
   onOpenChat: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
 }
 
@@ -64,20 +79,12 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
         providerApi.getMyServices(),
       ]);
 
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value);
-      }
-      if (reqRes.status === 'fulfilled') {
-        setRequests(reqRes.value.filter((r) => r.status === 'pending'));
-      }
-      if (accRes.status === 'fulfilled') {
-        setAcceptedBookings(accRes.value.filter((b) => b.status === 'accepted' || b.status === 'completed'));
-      }
-      if (servRes.status === 'fulfilled') {
-        setServices(servRes.value);
-      }
-    } catch {
-      // Handled silently
+      if (profRes.status === 'fulfilled') setProfile(profRes.value);
+      if (reqRes.status === 'fulfilled') setRequests(reqRes.value);
+      if (accRes.status === 'fulfilled') setAcceptedBookings(accRes.value);
+      if (servRes.status === 'fulfilled') setServices(servRes.value);
+    } catch (e: any) {
+      if (!silent) Alert.alert('Network Sync Error', 'Could not sync provider profile.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -86,11 +93,10 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
 
   useEffect(() => {
     loadData();
-    // 5-second polling for incoming customer requests
-    const timer = setInterval(() => {
+    const interval = setInterval(() => {
       loadData(true);
-    }, 5000);
-    return () => clearInterval(timer);
+    }, 15000);
+    return () => clearInterval(interval);
   }, [loadData]);
 
   const onRefresh = () => {
@@ -98,35 +104,29 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
     loadData();
   };
 
-  // Automatic Location Detection & Refresh
   const handleRefreshLocation = async () => {
     setLocUpdating(true);
     setLocNotice('');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setLocNotice('GPS permission denied. Using registered location.');
+        Alert.alert('Permission Needed', 'Enable GPS location so customers nearby can find your services.');
         return;
       }
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      await providerApi.updateLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
       });
-      if (position?.coords) {
-        await providerApi.updateLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setLocNotice(`Location updated: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
-        setTimeout(() => setLocNotice(''), 4000);
-      }
+      setLocNotice(`GPS location updated (${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)})`);
+      setTimeout(() => setLocNotice(''), 4000);
     } catch (e: any) {
-      setLocNotice(e.message || 'Location update failed.');
+      Alert.alert('GPS Error', e.message || 'Could not fetch current device position.');
     } finally {
       setLocUpdating(false);
     }
   };
 
-  // Accept or Reject Request
   const handleRespond = async (bookingId: string, decision: 'accepted' | 'rejected') => {
     setActionId(bookingId);
     try {
@@ -148,6 +148,7 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
   const openDocumentPreview = (docType: string, title: string, isPdf = false) => {
     const list: DocumentItem[] = [
       {
+        id: `provider-${docType}`,
         docType,
         title,
         url: `${CONFIG.API_BASE_URL}/documents/mine/${docType}?token=${token}`,
@@ -164,17 +165,17 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
   const statusTone = appStatus === 'approved' || appStatus === 'verified' ? 'ok' : appStatus === 'rejected' ? 'bad' : 'sun';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('providerDashboard', 'ಸೇವಾ ಪೂರೈಕೆದಾರರ ಕಾರ್ಯಕ್ಷೇತ್ರ')}
         subtitle={profile?.displayName || user?.name || 'Professional Service'}
         onBack={onBack}
         rightAction={
-          <TouchableOpacity onPress={handleRefreshLocation} style={styles.locIconBtn} disabled={locUpdating}>
+          <TouchableOpacity onPress={handleRefreshLocation} style={styles.locIconBtn} disabled={locUpdating} activeOpacity={0.8}>
             {locUpdating ? (
-              <ActivityIndicator size="small" color={COLORS.crimson} />
+              <ActivityIndicator size="small" color={COLORS.brand} />
             ) : (
-              <Text style={styles.locIconText}>📍</Text>
+              <MapPin size={18} color={COLORS.brand} />
             )}
           </TouchableOpacity>
         }
@@ -182,7 +183,7 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.crimson} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
       >
         {/* Verification Status Banner */}
         <View style={[styles.statusCard, SHADOWS.card]}>
@@ -209,29 +210,39 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
           </Text>
 
           {/* Quick Location Notice */}
-          {locNotice ? <Text style={styles.locNoticeText}>✓ {locNotice}</Text> : null}
+          {locNotice ? (
+            <View style={styles.locNoticeRow}>
+              <CheckCircle2 size={13} color={COLORS.ok} />
+              <Text style={styles.locNoticeText}>{locNotice}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Verification Documents Row */}
         <View style={[styles.card, SHADOWS.card]}>
-          <Text style={styles.cardSectionTitle}>📑 Registered Identity & Credentials</Text>
+          <View style={styles.docHeaderRow}>
+            <ShieldCheck size={18} color={COLORS.brand} />
+            <Text style={styles.cardSectionTitle}>Registered Identity & Credentials</Text>
+          </View>
           <View style={styles.docRowList}>
             <TouchableOpacity
               style={styles.docChip}
               onPress={() => openDocumentPreview('aadhaarDocument', 'Identity Proof (Govt ID)', false)}
+              activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>🪪</Text>
+              <FileText size={16} color={COLORS.brand} />
               <Text style={styles.docChipText}>Govt ID / Aadhaar</Text>
-              <Text style={styles.docChipEye}>👁️</Text>
+              <Eye size={14} color={COLORS.mute} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.docChip}
               onPress={() => openDocumentPreview('addressProofDocument', 'Address Proof Document', false)}
+              activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>🏠</Text>
+              <FileText size={16} color="#2563EB" />
               <Text style={styles.docChipText}>Address Proof</Text>
-              <Text style={styles.docChipEye}>👁️</Text>
+              <Eye size={14} color={COLORS.mute} />
             </TouchableOpacity>
           </View>
         </View>
@@ -241,6 +252,7 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'incoming' && styles.tabBtnActive]}
             onPress={() => setActiveTab('incoming')}
+            activeOpacity={0.8}
           >
             <Text style={[styles.tabText, activeTab === 'incoming' && styles.tabTextActive]}>
               Incoming ({requests.length})
@@ -250,6 +262,7 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'accepted' && styles.tabBtnActive]}
             onPress={() => setActiveTab('accepted')}
+            activeOpacity={0.8}
           >
             <Text style={[styles.tabText, activeTab === 'accepted' && styles.tabTextActive]}>
               Active Jobs ({acceptedBookings.length})
@@ -259,6 +272,7 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'services' && styles.tabBtnActive]}
             onPress={() => setActiveTab('services')}
+            activeOpacity={0.8}
           >
             <Text style={[styles.tabText, activeTab === 'services' && styles.tabTextActive]}>
               Trade Info
@@ -271,8 +285,9 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
           <View>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Customer Service Requests</Text>
-              <TouchableOpacity onPress={() => loadData(true)}>
-                <Text style={styles.refreshText}>⟳ Refresh</Text>
+              <TouchableOpacity onPress={() => loadData(true)} style={styles.refreshRow}>
+                <RotateCw size={12} color={COLORS.brand} />
+                <Text style={styles.refreshText}>Refresh</Text>
               </TouchableOpacity>
             </View>
 
@@ -293,12 +308,14 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
                     </Text>
                   </View>
 
-                  <Text style={styles.reqCustomerName}>
-                    👤 {req.customerId?.name || 'Customer'}
-                  </Text>
-                  <Text style={styles.reqLocation}>
-                    📍 {req.location || 'Bagalkot, Karnataka'}
-                  </Text>
+                  <View style={styles.infoLine}>
+                    <User size={14} color={COLORS.ink} />
+                    <Text style={styles.reqCustomerName}>{req.customerId?.name || 'Customer'}</Text>
+                  </View>
+                  <View style={styles.infoLine}>
+                    <MapPin size={14} color={COLORS.brand} />
+                    <Text style={styles.reqLocation}>{req.location || 'Bagalkot, Karnataka'}</Text>
+                  </View>
 
                   {req.details || req.message ? (
                     <View style={styles.reqMsgBox}>
@@ -307,14 +324,17 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
                   ) : null}
 
                   {req.scheduledDate ? (
-                    <Text style={styles.reqDate}>
-                      🗓️ Scheduled: {new Date(req.scheduledDate).toLocaleDateString()}
-                    </Text>
+                    <View style={styles.infoLine}>
+                      <Calendar size={13} color={COLORS.mute} />
+                      <Text style={styles.reqDate}>
+                        Scheduled: {new Date(req.scheduledDate).toLocaleDateString()}
+                      </Text>
+                    </View>
                   ) : null}
 
                   <View style={styles.reqActionRow}>
                     <Button
-                      title={actionId === req._id ? 'Accepting…' : '✓ Accept Request'}
+                      title={actionId === req._id ? 'Accepting…' : 'Accept Request'}
                       onPress={() => handleRespond(req._id, 'accepted')}
                       variant="primary"
                       size="sm"
@@ -358,19 +378,29 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
                     </Text>
                   </View>
 
-                  <Text style={styles.reqCustomerName}>
-                    👤 {b.customerId?.name || 'Customer'}
-                  </Text>
+                  <View style={styles.infoLine}>
+                    <User size={14} color={COLORS.ink} />
+                    <Text style={styles.reqCustomerName}>{b.customerId?.name || 'Customer'}</Text>
+                  </View>
+
                   {b.customerId?.phone ? (
                     <TouchableOpacity
                       onPress={() => Linking.openURL(`tel:${b.customerId?.phone}`)}
                       style={styles.phoneLink}
                     >
-                      <Text style={styles.phoneLinkText}>📞 {b.customerId?.phone}</Text>
+                      <Phone size={13} color={COLORS.brand} />
+                      <Text style={styles.phoneLinkText}>{b.customerId?.phone}</Text>
                     </TouchableOpacity>
                   ) : null}
-                  <Text style={styles.reqLocation}>📍 {b.location || 'Bagalkot'}</Text>
-                  <Text style={styles.acceptedCategory}>🛠️ {b.category || 'Service'}</Text>
+
+                  <View style={styles.infoLine}>
+                    <MapPin size={14} color={COLORS.mute} />
+                    <Text style={styles.reqLocation}>{b.location || 'Bagalkot'}</Text>
+                  </View>
+                  <View style={styles.infoLine}>
+                    <Wrench size={14} color={COLORS.mute} />
+                    <Text style={styles.acceptedCategory}>{b.category || 'Service'}</Text>
+                  </View>
 
                   {/* Direct In-App Chat Action */}
                   <TouchableOpacity
@@ -383,8 +413,9 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
                         phone: b.customerId?.phone,
                       })
                     }
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.chatActionIcon}>💬</Text>
+                    <MessageSquare size={16} color={COLORS.white} />
                     <Text style={styles.chatActionText}>Open Direct Chat</Text>
                   </TouchableOpacity>
                 </View>
@@ -396,7 +427,10 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
         {/* TAB 3: TRADE & PROFILE INFO */}
         {activeTab === 'services' && (
           <View style={[styles.card, SHADOWS.card]}>
-            <Text style={styles.cardSectionTitle}>🛠️ Trade & Business Details</Text>
+            <View style={styles.docHeaderRow}>
+              <Wrench size={18} color={COLORS.brand} />
+              <Text style={styles.cardSectionTitle}>Trade & Business Details</Text>
+            </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Trade Category:</Text>
               <Text style={styles.infoVal}>{profile?.category || 'General Service'}</Text>
@@ -425,8 +459,9 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
               </View>
             ) : null}
 
-            <TouchableOpacity style={styles.locationRefreshBtn} onPress={handleRefreshLocation}>
-              <Text style={styles.locationRefreshText}>⌖ Refresh My GPS Location for Dispatch</Text>
+            <TouchableOpacity style={styles.locationRefreshBtn} onPress={handleRefreshLocation} activeOpacity={0.8}>
+              <Navigation size={14} color={COLORS.white} />
+              <Text style={styles.locationRefreshText}>Refresh My GPS Location for Dispatch</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -439,18 +474,18 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
         currentIndex={previewIndex}
         onClose={() => setDocModalOpen(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
   scroll: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 60,
   },
   locIconBtn: {
     width: 36,
@@ -462,113 +497,114 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.line,
   },
-  locIconText: {
-    fontSize: 18,
-  },
   statusCard: {
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
+    marginBottom: 14,
   },
   statusTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
   statusLabel: {
-    fontSize: 12,
-    color: COLORS.inkMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.mute,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   statusTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: COLORS.ink,
+    marginTop: 2,
   },
   statusSub: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
+    fontSize: 12,
+    color: COLORS.mute,
     lineHeight: 18,
   },
-  locNoticeText: {
+  locNoticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 8,
-    fontSize: 12,
-    color: COLORS.emerald,
-    fontWeight: '600',
+  },
+  locNoticeText: {
+    fontSize: 11,
+    color: COLORS.ok,
+    fontWeight: '700',
   },
   card: {
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: 16,
-    marginBottom: 14,
     borderWidth: 1,
     borderColor: COLORS.line,
+    marginBottom: 14,
+  },
+  docHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
   },
   cardSectionTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.ink,
-    marginBottom: 12,
   },
   docRowList: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   docChip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.paper,
-    paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.line,
-  },
-  docChipIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    gap: 8,
   },
   docChipText: {
-    flex: 1,
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.ink,
-  },
-  docChipEye: {
-    fontSize: 14,
+    flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.paper,
+    borderRadius: RADIUS.full,
     padding: 4,
-    marginBottom: 14,
     borderWidth: 1,
     borderColor: COLORS.line,
+    marginBottom: 14,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 9,
     alignItems: 'center',
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
   },
   tabBtnActive: {
-    backgroundColor: COLORS.crimson,
+    backgroundColor: COLORS.brand,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.inkMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.mute,
   },
   tabTextActive: {
     color: COLORS.white,
-    fontWeight: '800',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -581,18 +617,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.ink,
   },
+  refreshRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   refreshText: {
-    fontSize: 13,
-    color: COLORS.crimson,
+    fontSize: 12,
     fontWeight: '700',
+    color: COLORS.brand,
   },
   requestCard: {
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.line,
+    marginBottom: 12,
   },
   reqTopRow: {
     flexDirection: 'row',
@@ -601,88 +642,89 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   reqTime: {
-    fontSize: 12,
-    color: COLORS.inkMuted,
+    fontSize: 11,
+    color: COLORS.mute,
   },
-  reqCustomerName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink,
+  infoLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 4,
   },
+  reqCustomerName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
   reqLocation: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
-    marginBottom: 6,
+    fontSize: 12,
+    color: COLORS.mute,
   },
   reqMsgBox: {
-    backgroundColor: COLORS.sand,
-    padding: 10,
+    backgroundColor: COLORS.paper,
     borderRadius: RADIUS.md,
-    marginVertical: 6,
+    padding: 10,
+    marginVertical: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.brand,
   },
   reqMsgText: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.ink,
     fontStyle: 'italic',
   },
   reqDate: {
-    fontSize: 12,
-    color: COLORS.crimson,
-    fontWeight: '600',
-    marginBottom: 10,
+    fontSize: 11,
+    color: COLORS.mute,
   },
   reqActionRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
+    gap: 8,
+    marginTop: 10,
   },
   actionBtnAccept: {
-    flex: 2,
+    flex: 1,
   },
   actionBtnDecline: {
     flex: 1,
   },
   acceptedCard: {
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.line,
+    marginBottom: 12,
   },
   phoneLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginVertical: 4,
   },
   phoneLinkText: {
-    fontSize: 14,
-    color: COLORS.crimson,
+    fontSize: 12,
+    color: COLORS.brand,
     fontWeight: '700',
   },
   acceptedCategory: {
-    fontSize: 13,
-    color: COLORS.ink,
-    fontWeight: '600',
-    marginBottom: 12,
+    fontSize: 12,
+    color: COLORS.mute,
   },
   chatActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.brandTint,
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.crimson,
     gap: 8,
-  },
-  chatActionIcon: {
-    fontSize: 16,
+    backgroundColor: COLORS.brand,
+    borderRadius: RADIUS.lg,
+    paddingVertical: 10,
+    marginTop: 12,
   },
   chatActionText: {
-    color: COLORS.crimson,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
+    color: COLORS.white,
   },
   infoRow: {
     flexDirection: 'row',
@@ -692,8 +734,8 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.line,
   },
   infoKey: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
+    fontSize: 12,
+    color: COLORS.mute,
   },
   infoVal: {
     fontSize: 13,
@@ -707,28 +749,30 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   bioLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: COLORS.ink,
+    color: COLORS.mute,
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
   bioText: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
+    fontSize: 12,
+    color: COLORS.ink,
     lineHeight: 18,
   },
   locationRefreshBtn: {
-    marginTop: 16,
-    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.crimson,
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: COLORS.brand,
     borderRadius: RADIUS.md,
+    paddingVertical: 12,
+    marginTop: 16,
   },
   locationRefreshText: {
-    color: COLORS.crimson,
-    fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.white,
   },
 });

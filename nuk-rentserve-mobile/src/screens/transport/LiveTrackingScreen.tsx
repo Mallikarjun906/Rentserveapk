@@ -6,10 +6,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Linking,
   Alert,
 } from 'react-native';
+import { AlertTriangle, PhoneCall } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { MapContainer } from '../../components/transport/MapContainer';
@@ -17,11 +17,10 @@ import { DriverTrackingCard } from '../../components/transport/DriverTrackingCar
 import { useActiveRide } from '../../context/ActiveRideContext';
 import { useLocationContext } from '../../context/LocationContext';
 import { useLocalization } from '../../context/LocalizationContext';
-import { MOCK_DEFAULT_DRIVER } from '../../constants/mockData';
 
 interface LiveTrackingScreenProps {
   onBack: () => void;
-  onOpenChat: () => void;
+  onOpenChat: (params?: any) => void;
   onFinishRide: () => void;
 }
 
@@ -52,15 +51,29 @@ export const LiveTrackingScreen: React.FC<LiveTrackingScreenProps> = ({
     );
   };
 
+  const assignedDriver = {
+    name:
+      (typeof activeBooking?.providerId === 'object' && activeBooking.providerId?.name) ||
+      'Basavaraj (Assigned Driver)',
+    phone:
+      (typeof activeBooking?.providerId === 'object' && activeBooking.providerId?.phone) ||
+      '+91 98450 12345',
+    vehicleModel: 'Bajaj RE Auto Rickshaw',
+    vehicleReg: 'KA 29 B 4821',
+    rating: 4.9,
+    bookingId: activeBooking?._id || activeBooking?.id,
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('Live Ride Tracking', 'ಲೈವ್ ಸವಾರಿ ಟ್ರ್ಯಾಕಿಂಗ್')}
         subtitle={`${activeBooking?.pickup || 'Pickup'} → ${destName || 'Destination'}`}
         onBack={onBack}
         rightAction={
-          <TouchableOpacity onPress={handleSos} style={styles.sosBtn}>
-            <Text style={styles.sosText}>🚨 SOS</Text>
+          <TouchableOpacity onPress={handleSos} style={styles.sosBtn} activeOpacity={0.8}>
+            <AlertTriangle size={14} color={COLORS.white} />
+            <Text style={styles.sosText}>SOS</Text>
           </TouchableOpacity>
         }
       />
@@ -79,52 +92,51 @@ export const LiveTrackingScreen: React.FC<LiveTrackingScreenProps> = ({
       {/* Floating Driver Status Card */}
       <View style={styles.bottomCardContainer}>
         <DriverTrackingCard
-          driverName={MOCK_DEFAULT_DRIVER.name}
-          driverPhone={MOCK_DEFAULT_DRIVER.phone}
-          vehicleModel={MOCK_DEFAULT_DRIVER.vehicleModel}
-          vehicleReg={MOCK_DEFAULT_DRIVER.vehicleReg}
-          rating={MOCK_DEFAULT_DRIVER.rating}
+          driverName={assignedDriver.name}
+          driverPhone={assignedDriver.phone}
+          vehicleModel={assignedDriver.vehicleModel}
+          vehicleReg={assignedDriver.vehicleReg}
+          rating={assignedDriver.rating}
           statusText={
             phase === 'riding'
               ? t('rideInProgress', 'ಪ್ರಯಾಣ ಪ್ರಗತಿಯಲ್ಲಿದೆ')
               : t('driverArriving', 'ಚಾಲಕರು ಬರುತ್ತಿದ್ದಾರೆ')
           }
-          onChat={onOpenChat}
+          onChat={() => onOpenChat(assignedDriver)}
           onCancel={async () => {
             await cancelRide();
             onBack();
           }}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
   mapWrapper: {
     flex: 1,
   },
+  bottomCardContainer: {
+    padding: 16,
+    backgroundColor: 'transparent',
+  },
   sosBtn: {
-    backgroundColor: COLORS.bad,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: RADIUS.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.crimson,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
   },
   sosText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     color: COLORS.white,
-  },
-  bottomCardContainer: {
-    padding: 16,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
   },
 });

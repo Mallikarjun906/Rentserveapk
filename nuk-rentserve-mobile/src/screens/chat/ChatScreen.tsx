@@ -8,12 +8,20 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Phone,
+  Send,
+  MessageSquare,
+  AlertCircle,
+  Check,
+  CheckCheck,
+} from 'lucide-react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -37,6 +45,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 }) => {
   const { t } = useLocalization();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -58,70 +67,66 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     } catch (e: any) {
       if (!isSilent) setError(e.message || 'Could not load messages.');
     } finally {
-      if (!isSilent) setLoading(false);
+      setLoading(false);
     }
   }, [bookingId]);
 
   useEffect(() => {
     loadMessages();
-    if (!bookingId) return;
-    // 3-second real-time polling fallback
     const interval = setInterval(() => {
       loadMessages(true);
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [loadMessages, bookingId]);
+  }, [loadMessages]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
   }, [messages.length]);
 
-  const handleSend = async (textToSend?: string) => {
-    const text = (textToSend || input).trim();
-    if (!text || sending) return;
-
-    if (!bookingId) {
-      setError('Cannot send message: no active conversation or booking thread ID was found.');
-      return;
-    }
+  const handleSend = async (customText?: string) => {
+    const textToSend = (customText || input).trim();
+    if (!textToSend || !bookingId || sending) return;
 
     setSending(true);
     try {
-      const saved = await chatApi.sendMessage(bookingId, text);
-      setMessages((prev) => [...prev, saved]);
+      const sentMsg = await chatApi.sendMessage(bookingId, textToSend);
+      setMessages((prev) => [...prev, sentMsg]);
       setInput('');
-      setError('');
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (e: any) {
-      setError(e.message || 'Message delivery failed. Please retry.');
+      setError(e.message || 'Failed to send message.');
     } finally {
       setSending(false);
     }
   };
 
   const cannedReplies = [
-    t('I am at the location', 'ನಾನು ಸ್ಥಳದಲ್ಲಿದ್ದೇನೆ'),
-    t('Reaching in 2 minutes', '2 ನಿಮಿಷದಲ್ಲಿ ಬರುತ್ತಿದ್ದೇನೆ'),
-    t('Please call me', 'ದಯವಿಟ್ಟು ಕರೆ ಮಾಡಿ'),
-    t('Cash / UPI payment ready', 'ಪಾವತಿ ಸಿದ್ಧವಿದೆ'),
+    t('cannedOnMyWay', 'I am on my way.'),
+    t('cannedArrived', 'I have arrived at the location.'),
+    t('cannedCallMe', 'Please call me when free.'),
+    t('cannedThankYou', 'Thank you!'),
   ];
 
-  const formatMessageTime = (isoString?: string) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatMessageTime = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const isMyMessage = (m: ChatMessage) => {
-    const senderId = m.senderId?._id || m.senderId?.id || m.senderId;
+    const senderId = typeof m.senderId === 'object' ? m.senderId?._id : m.senderId;
     return String(senderId) === String(user?.id || user?._id);
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={recipientName}
         subtitle={recipientRole}
@@ -132,8 +137,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onPress={() => Linking.openURL(`tel:${recipientPhone}`)}
               style={styles.callBtn}
               accessibilityLabel={`Call ${recipientName}`}
+              activeOpacity={0.8}
             >
-              <Text style={styles.callIcon}>📞</Text>
+              <Phone size={16} color={COLORS.brand} />
             </TouchableOpacity>
           ) : undefined
         }
@@ -146,7 +152,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       >
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <AlertCircle size={16} color={COLORS.bad} />
+            <Text style={styles.errorText}>{error}</Text>
             {bookingId ? (
               <TouchableOpacity onPress={() => loadMessages()} style={styles.retryBtn}>
                 <Text style={styles.retryBtnText}>Retry</Text>
@@ -157,7 +164,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
         {loading && messages.length === 0 ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={COLORS.crimson} />
+            <ActivityIndicator size="large" color={COLORS.brand} />
             <Text style={styles.loadingText}>Loading conversation history…</Text>
           </View>
         ) : (
@@ -168,7 +175,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           >
             {messages.length === 0 ? (
               <View style={styles.emptyChatBox}>
-                <Text style={styles.emptyChatIcon}>💬</Text>
+                <MessageSquare size={36} color={COLORS.muteLight} />
                 <Text style={styles.emptyChatTitle}>Start Your Conversation</Text>
                 <Text style={styles.emptyChatSub}>
                   Messages sent here are private and persistent between you and {recipientName}.
@@ -202,14 +209,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       >
                         {m.message}
                       </Text>
-                      <Text
-                        style={[
-                          styles.timeText,
-                          isMe ? styles.myTime : styles.otherTime,
-                        ]}
-                      >
-                        {formatMessageTime(m.createdAt)} {isMe ? (m.readAt ? '✓✓' : '✓') : ''}
-                      </Text>
+                      <View style={styles.metaRow}>
+                        <Text
+                          style={[
+                            styles.timeText,
+                            isMe ? styles.myTime : styles.otherTime,
+                          ]}
+                        >
+                          {formatMessageTime(m.createdAt)}
+                        </Text>
+                        {isMe && (
+                          m.readAt ? (
+                            <CheckCheck size={12} color="rgba(255,255,255,0.85)" />
+                          ) : (
+                            <Check size={12} color="rgba(255,255,255,0.7)" />
+                          )
+                        )}
+                      </View>
                     </View>
                   </View>
                 );
@@ -231,6 +247,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 style={styles.cannedChip}
                 onPress={() => handleSend(reply)}
                 disabled={sending}
+                activeOpacity={0.8}
               >
                 <Text style={styles.cannedText}>{reply}</Text>
               </TouchableOpacity>
@@ -238,12 +255,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* Bottom Input Row */}
-        <View style={styles.inputBar}>
+        {/* Bottom Input Row with Safe-Area clearance */}
+        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           <TextInput
             style={styles.input}
             placeholder={t('Type a message...', 'ಸಂದೇಶ ಬರೆಯಿರಿ...')}
-            placeholderTextColor={COLORS.muteLight}
+            placeholderTextColor={COLORS.mute}
             value={input}
             onChangeText={setInput}
             onSubmitEditing={() => handleSend()}
@@ -253,21 +270,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}
             onPress={() => handleSend()}
             disabled={!input.trim() || sending}
+            activeOpacity={0.8}
           >
             {sending ? (
               <ActivityIndicator size="small" color={COLORS.white} />
             ) : (
-              <Text style={styles.sendText}>➤</Text>
+              <Send size={16} color={COLORS.white} />
             )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
@@ -282,60 +300,68 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
     fontSize: 14,
   },
   errorBox: {
-    padding: 16,
-    backgroundColor: COLORS.white,
-    margin: 16,
-    borderRadius: RADIUS.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: COLORS.white,
+    margin: 12,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   errorText: {
-    color: COLORS.crimson,
-    fontSize: 14,
-    marginBottom: 8,
+    color: COLORS.bad,
+    fontSize: 13,
+    flex: 1,
   },
   retryBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     backgroundColor: COLORS.brandTint,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: RADIUS.sm,
   },
   retryBtnText: {
-    color: COLORS.crimson,
-    fontWeight: '700',
     fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.brand,
+  },
+  callBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.brandTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messagesScroll: {
     padding: 16,
-    flexGrow: 1,
+    paddingBottom: 10,
   },
   emptyChatBox: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 60,
-  },
-  emptyChatIcon: {
-    fontSize: 40,
-    marginBottom: 10,
   },
   emptyChatTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.ink,
-    marginBottom: 4,
+    marginTop: 12,
   },
   emptyChatSub: {
-    fontSize: 13,
-    color: COLORS.inkMuted,
+    fontSize: 12,
+    color: COLORS.mute,
     textAlign: 'center',
-    maxWidth: 280,
+    marginTop: 4,
+    paddingHorizontal: 30,
   },
   bubbleContainer: {
-    marginBottom: 12,
+    marginBottom: 10,
     flexDirection: 'row',
   },
   myContainer: {
@@ -345,25 +371,25 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   bubble: {
-    maxWidth: '78%',
+    maxWidth: '80%',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: RADIUS.lg,
   },
   myBubble: {
-    backgroundColor: COLORS.crimson,
+    backgroundColor: COLORS.brand,
     borderBottomRightRadius: 2,
   },
   otherBubble: {
     backgroundColor: COLORS.white,
+    borderBottomLeftRadius: 2,
     borderWidth: 1,
     borderColor: COLORS.line,
-    borderBottomLeftRadius: 2,
   },
   senderName: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.crimson,
+    color: COLORS.brand,
     marginBottom: 2,
   },
   bubbleText: {
@@ -376,47 +402,51 @@ const styles = StyleSheet.create({
   otherText: {
     color: COLORS.ink,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 4,
+  },
   timeText: {
     fontSize: 10,
-    marginTop: 4,
-    alignSelf: 'flex-end',
   },
   myTime: {
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: 'rgba(255,255,255,0.75)',
   },
   otherTime: {
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
   },
   cannedContainer: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
     backgroundColor: COLORS.white,
     paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.line,
   },
   cannedScroll: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     gap: 8,
   },
   cannedChip: {
-    backgroundColor: COLORS.brandTint,
+    backgroundColor: COLORS.paper,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: COLORS.crimson,
-    marginRight: 6,
+    borderColor: COLORS.line,
   },
   cannedText: {
-    color: COLORS.crimson,
     fontSize: 12,
+    color: COLORS.ink,
     fontWeight: '600',
   },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
     backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
     gap: 8,
@@ -424,37 +454,23 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: COLORS.paper,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: RADIUS.full,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     fontSize: 14,
     color: COLORS.ink,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.crimson,
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.brand,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   sendBtnDisabled: {
-    backgroundColor: COLORS.line,
-  },
-  sendText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  callBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.brandTint,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  callIcon: {
-    fontSize: 16,
+    backgroundColor: COLORS.muteLight,
   },
 });

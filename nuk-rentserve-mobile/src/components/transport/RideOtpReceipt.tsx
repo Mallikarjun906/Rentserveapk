@@ -8,6 +8,7 @@ import {
   TextInput,
   StyleSheet,
 } from 'react-native';
+import { CheckCircle2, Check, Star } from 'lucide-react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 import { formatINR } from '../../utils/formatters';
 import { Button } from '../common/Button';
@@ -48,7 +49,7 @@ export const RideOtpReceipt: React.FC<RideOtpReceiptProps> = ({
     <View style={styles.container}>
       {/* Checkmark Header */}
       <View style={styles.iconCircle}>
-        <Text style={styles.iconText}>✓</Text>
+        <CheckCircle2 size={36} color={COLORS.ok} />
       </View>
       <Text style={styles.title}>
         {t('rideCompleted', 'ಪ್ರಯಾಣ ಪೂರ್ಣಗೊಂಡಿದೆ')}
@@ -78,7 +79,7 @@ export const RideOtpReceipt: React.FC<RideOtpReceiptProps> = ({
         activeOpacity={0.8}
       >
         <View style={[styles.checkbox, paidCash && styles.checkboxActive]}>
-          {paidCash && <Text style={styles.checkMark}>✓</Text>}
+          {paidCash && <Check size={14} color={COLORS.white} strokeWidth={3} />}
         </View>
         <Text style={styles.checkText}>
           {t(
@@ -100,36 +101,39 @@ export const RideOtpReceipt: React.FC<RideOtpReceiptProps> = ({
             key={star}
             onPress={() => setRating(star)}
             style={styles.starBtn}
+            accessibilityLabel={`Rate ${star} stars`}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.starIcon, rating >= star && styles.starActive]}>
-              ★
-            </Text>
+            <Star
+              size={24}
+              color={star <= rating ? '#F59E0B' : COLORS.muteLight}
+              fill={star <= rating ? '#F59E0B' : 'transparent'}
+            />
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Feedback Comment Input */}
+      {/* Optional Feedback Input */}
       <TextInput
         style={styles.commentInput}
         placeholder={t(
-          'Leave a polite review (optional)...',
-          'ಅಭಿಪ್ರಾಯ ಬರೆಯಿರಿ (ಐಚ್ಛಿಕ)...'
+          'Feedback for driver (optional)',
+          'ಚಾಲಕರ ಬಗ್ಗೆ ಅಭಿಪ್ರಾಯ (ಐಚ್ಛಿಕ)'
         )}
-        placeholderTextColor={COLORS.muteLight}
+        placeholderTextColor={COLORS.mute}
         value={comment}
         onChangeText={setComment}
         multiline
         numberOfLines={2}
       />
 
-      {/* Submit Button */}
       <Button
-        title={t('done', 'ಮುಗಿಯಿತು')}
+        title={t('Done & Close', 'ಪೂರ್ಣಗೊಳಿಸಿ')}
         onPress={handleSubmit}
         variant="primary"
         size="lg"
         fullWidth
-        style={styles.submitBtn}
+        style={styles.doneBtn}
       />
     </View>
   );
@@ -149,19 +153,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
   },
-  iconText: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: COLORS.ok,
-  },
   title: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '900',
     color: COLORS.ink,
-    textAlign: 'center',
   },
   sub: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.mute,
     marginTop: 2,
     marginBottom: 16,
@@ -172,46 +170,46 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     padding: 16,
     alignItems: 'center',
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.line,
+    marginBottom: 14,
   },
   fareLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: COLORS.mute,
+    textTransform: 'uppercase',
   },
   fareValue: {
     fontSize: 32,
     fontWeight: '900',
-    color: COLORS.ink,
+    color: COLORS.brand,
     marginVertical: 4,
   },
   fareNotice: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.mute,
     textAlign: 'center',
-    lineHeight: 16,
   },
   checkRow: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.white,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    backgroundColor: COLORS.white,
-    marginBottom: 12,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    marginBottom: 10,
   },
   checkRowActive: {
     borderColor: COLORS.ok,
     backgroundColor: COLORS.okTint,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 4,
     borderWidth: 2,
     borderColor: COLORS.muteLight,
     alignItems: 'center',
@@ -222,59 +220,45 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.ok,
     borderColor: COLORS.ok,
   },
-  checkMark: {
-    color: COLORS.white,
-    fontWeight: '900',
-    fontSize: 14,
-  },
   checkText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.ink,
-    lineHeight: 18,
   },
   error: {
-    fontSize: 12,
-    color: COLORS.bad,
+    fontSize: 11,
+    color: COLORS.crimson,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   rateTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: COLORS.ink,
-    marginTop: 4,
+    marginTop: 8,
     marginBottom: 8,
   },
   starsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 14,
   },
   starBtn: {
     padding: 4,
   },
-  starIcon: {
-    fontSize: 32,
-    color: '#D6D6D6',
-  },
-  starActive: {
-    color: '#F59E0B',
-  },
   commentInput: {
     width: '100%',
-    minHeight: 56,
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     padding: 10,
     fontSize: 13,
     color: COLORS.ink,
-    textAlignVertical: 'top',
     marginBottom: 16,
   },
-  submitBtn: {
+  doneBtn: {
     marginTop: 4,
   },
 });

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Linking,
 } from 'react-native';
+import { MapPin, Star, Phone, MessageSquare, X } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Badge } from '../common/Badge';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -45,16 +46,17 @@ export const DriverTrackingCard: React.FC<DriverTrackingCardProps> = ({
     <View style={[styles.card, SHADOWS.pop]}>
       {/* Status Pill */}
       <View style={styles.statusRow}>
-        <Badge tone="ok" dot>
-          {statusText}
-        </Badge>
-        <Text style={styles.etaText}>📍 Live GPS Active</Text>
+        <Badge tone="ok" dot label={statusText} />
+        <View style={styles.etaRow}>
+          <MapPin size={11} color={COLORS.ok} />
+          <Text style={styles.etaText}>Live GPS Active</Text>
+        </View>
       </View>
 
       {/* Driver Info Row */}
       <View style={styles.driverRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{driverName.charAt(0)}</Text>
+          <Text style={styles.avatarText}>{driverName.charAt(0).toUpperCase()}</Text>
         </View>
 
         <View style={styles.infoCol}>
@@ -62,7 +64,10 @@ export const DriverTrackingCard: React.FC<DriverTrackingCardProps> = ({
           <Text style={styles.vehicle}>
             {vehicleModel} · <Text style={styles.reg}>{vehicleReg}</Text>
           </Text>
-          <Text style={styles.rating}>★ {rating.toFixed(1)} rating</Text>
+          <View style={styles.ratingRow}>
+            <Star size={12} color="#F59E0B" fill="#F59E0B" />
+            <Text style={styles.rating}>{rating.toFixed(1)} rating</Text>
+          </View>
         </View>
 
         {/* Call Driver Button */}
@@ -71,8 +76,9 @@ export const DriverTrackingCard: React.FC<DriverTrackingCardProps> = ({
             style={styles.callBtn}
             onPress={handleCall}
             accessibilityLabel={`Call ${driverName}`}
+            activeOpacity={0.8}
           >
-            <Text style={styles.callIcon}>📞</Text>
+            <Phone size={18} color={COLORS.brand} />
           </TouchableOpacity>
         )}
       </View>
@@ -80,16 +86,19 @@ export const DriverTrackingCard: React.FC<DriverTrackingCardProps> = ({
       {/* Action Buttons */}
       <View style={styles.actionsRow}>
         {onChat && (
-          <TouchableOpacity style={styles.actionBtn} onPress={onChat}>
-            <Text style={styles.actionBtnText}>💬 {t('chat', 'ಚಾಟ್')}</Text>
+          <TouchableOpacity style={styles.actionBtn} onPress={onChat} activeOpacity={0.8}>
+            <MessageSquare size={14} color={COLORS.ink} />
+            <Text style={styles.actionBtnText}>{t('chat', 'ಚಾಟ್')}</Text>
           </TouchableOpacity>
         )}
         {onCancel && (
           <TouchableOpacity
             style={[styles.actionBtn, styles.cancelBtn]}
             onPress={onCancel}
+            activeOpacity={0.8}
           >
-            <Text style={styles.cancelBtnText}>✕ {t('cancel', 'ರದ್ದು')}</Text>
+            <X size={14} color={COLORS.crimson} />
+            <Text style={styles.cancelBtnText}>{t('cancel', 'ರದ್ದು')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -107,12 +116,17 @@ const styles = StyleSheet.create({
   },
   statusRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
+  etaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   etaText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.ok,
   },
@@ -131,20 +145,20 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarText: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     color: COLORS.brand,
   },
   infoCol: {
     flex: 1,
   },
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.ink,
   },
   vehicle: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.mute,
     marginTop: 2,
   },
@@ -152,52 +166,57 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.ink,
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 3,
+  },
   rating: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#D97706',
-    marginTop: 2,
+    color: COLORS.ink,
   },
   callBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.ok,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.brandTint,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  callIcon: {
-    fontSize: 18,
+    marginLeft: 8,
   },
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
-    paddingTop: 12,
   },
   actionBtn: {
     flex: 1,
-    height: 40,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.paper,
-    borderWidth: 1,
-    borderColor: COLORS.line,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: COLORS.paper,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   actionBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.ink,
   },
   cancelBtn: {
-    backgroundColor: COLORS.badTint,
-    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
   cancelBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.bad,
+    color: COLORS.crimson,
   },
 });

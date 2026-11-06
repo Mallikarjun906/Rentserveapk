@@ -6,7 +6,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
 import { COLORS } from '../../constants/theme';
@@ -68,7 +67,7 @@ export const SavedListingsScreen: React.FC<SavedListingsScreenProps> = ({
   const savedListings = allProperties.filter((p) => isSaved(p.id || ''));
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('Saved Properties', 'ಉಳಿಸಿದ ಆಸ್ತಿಗಳು')}
         subtitle={`${savedListings.length} saved houses, rooms & PGs`}
@@ -78,8 +77,8 @@ export const SavedListingsScreen: React.FC<SavedListingsScreenProps> = ({
       <ScrollView contentContainerStyle={styles.scroll}>
         {loading ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={COLORS.crimson} />
-            <Text style={{ marginTop: 12, color: COLORS.inkMuted }}>Loading your saved properties…</Text>
+            <ActivityIndicator size="large" color={COLORS.brand} />
+            <Text style={{ marginTop: 12, color: COLORS.mute }}>Loading your saved properties…</Text>
           </View>
         ) : savedListings.length === 0 ? (
           <EmptyState
@@ -103,12 +102,12 @@ export const SavedListingsScreen: React.FC<SavedListingsScreenProps> = ({
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },

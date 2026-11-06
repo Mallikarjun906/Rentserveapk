@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { Star, MapPin, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Badge } from '../common/Badge';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -51,50 +52,56 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
       <View style={styles.topRow}>
         {/* Avatar */}
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+          <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
         </View>
 
         {/* Info */}
         <View style={styles.infoCol}>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{item.name}</Text>
-            <Badge tone="ok" label="✓ Verified" />
+            <Badge tone="ok" label="Verified" />
           </View>
           <Text style={styles.trade}>{item.trade}</Text>
-          <Text style={styles.area}>
-            📍 {item.area}{item.km ? ` · ${item.km} km` : ''}
-          </Text>
+          <View style={styles.areaRow}>
+            <MapPin size={11} color={COLORS.mute} />
+            <Text style={styles.area}>
+              {item.area}{item.km ? ` · ${item.km} km` : ''}
+            </Text>
+          </View>
         </View>
       </View>
 
       {/* Ratings & Completed Jobs */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.ratingText}>★ {item.rating.toFixed(1)}</Text>
-          <Text style={styles.statSub}>({item.reviews} {t('reviews', 'ವಿಮರ್ಶೆಗಳು')})</Text>
+          <Star size={13} color="#F59E0B" fill="#F59E0B" />
+          <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+          <Text style={styles.statSub}>({item.reviews || 1} {t('reviews', 'ವಿಮರ್ಶೆಗಳು')})</Text>
         </View>
-        {item.jobs && (
+        {item.jobs ? (
           <View style={styles.statItem}>
             <Text style={styles.jobsText}>{item.jobs}+</Text>
             <Text style={styles.statSub}>{t('jobs completed', 'ಕೆಲಸಗಳು')}</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       {/* Price & Book Row */}
       <View style={styles.bottomRow}>
         <View>
           <Text style={styles.priceLabel}>{t('servicePrice', 'ಅಂದಾಜು ಶುಲ್ಕ')}</Text>
-          <Text style={styles.priceValue}>{item.price}</Text>
+          <Text style={styles.priceValue}>{item.rate || item.price || '₹350'}</Text>
         </View>
 
         <TouchableOpacity
           style={styles.bookBtn}
           onPress={onBook || onPress}
+          activeOpacity={0.8}
         >
           <Text style={styles.bookBtnText}>
-            {t('bookService', 'ಬುಕ್ ಮಾಡಿ')} →
+            {t('bookService', 'ಬುಕ್ ಮಾಡಿ')}
           </Text>
+          <ArrowRight size={13} color={COLORS.white} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -125,8 +132,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarText: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     color: COLORS.brand,
   },
   infoCol: {
@@ -134,34 +141,38 @@ const styles = StyleSheet.create({
   },
   nameRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   name: {
     fontSize: 15,
     fontWeight: '800',
     color: COLORS.ink,
-    flex: 1,
-    marginRight: 6,
   },
   trade: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.brand,
-    marginTop: 1,
+  },
+  areaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
   },
   area: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.mute,
-    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 16,
-    backgroundColor: COLORS.paper,
-    borderRadius: RADIUS.md,
-    padding: 8,
-    marginBottom: 10,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: COLORS.line,
+    marginVertical: 4,
   },
   statItem: {
     flexDirection: 'row',
@@ -169,14 +180,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-  jobsText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: COLORS.ink,
+  },
+  jobsText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.brand,
   },
   statSub: {
     fontSize: 11,
@@ -184,30 +195,34 @@ const styles = StyleSheet.create({
   },
   bottomRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    paddingTop: 10,
+    alignItems: 'center',
+    marginTop: 8,
   },
   priceLabel: {
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '700',
     color: COLORS.mute,
+    textTransform: 'uppercase',
   },
   priceValue: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '900',
     color: COLORS.ink,
+    marginTop: 1,
   },
   bookBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: COLORS.brand,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: RADIUS.md,
   },
   bookBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: COLORS.white,
   },
 });

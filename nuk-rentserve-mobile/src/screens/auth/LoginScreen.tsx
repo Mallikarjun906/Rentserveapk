@@ -1,4 +1,4 @@
-// User Login Screen with Continue with Google & Links to Role Registrations
+// User Login Screen with Continue with Google & Modern Role Selection Cards
 
 import React, { useState } from 'react';
 import {
@@ -6,13 +6,23 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import {
+  User,
+  Car,
+  Wrench,
+  GraduationCap,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  LogIn,
+} from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
@@ -40,7 +50,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onForgotPassword,
   onSuccess,
 }) => {
-  const { login, loginWithGoogle } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   const { t } = useLocalization();
 
   const [identifier, setIdentifier] = useState('');
@@ -66,7 +77,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       await login(identifier.trim(), password);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check credentials.');
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -94,7 +105,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
 
     try {
-      // In web or production environment with GSI/OAuth token
       const gThis = typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
       if (Platform.OS === 'web' && gThis?.google?.accounts?.id) {
         gThis.google.accounts.id.prompt(async (notification: any) => {
@@ -103,7 +113,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           }
         });
       } else {
-        // Native mobile prompt or credential placeholder
         Alert.alert(
           'Google OAuth',
           'Connecting to Google Identity Services with Client ID: ' + googleClientId.slice(0, 16) + '…'
@@ -117,25 +126,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Top Brand Header */}
           <View style={styles.header}>
-            <Logo size={52} />
+            <Logo size={56} />
+            <Text style={styles.brandTitle}>NUK RentServe</Text>
             <Text style={styles.title}>{t('loginTitle', 'ಸ್ವಾಗತ')}</Text>
             <Text style={styles.sub}>
-              {t('loginSub', 'ಮೊಬೈಲ್ ಅಥವಾ ಇಮೇಲ್ ಮೂಲಕ ಲಾಗಿನ್ ಆಗಿ')}
+              {t('loginSub', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್ ಮೂಲಕ ಲಾಗಿನ್ ಆಗಿ')}
             </Text>
           </View>
 
           {/* Error Banner */}
           {error ? <ErrorBanner message={error} onRetry={handleLogin} /> : null}
 
-          {/* Form Card */}
+          {/* Main Form Card */}
           <View style={[styles.formCard, SHADOWS.card]}>
             <Input
               label={t('Mobile Number or Email', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್')}
@@ -153,8 +167,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={COLORS.mute} />
+                  ) : (
+                    <Eye size={20} color={COLORS.mute} />
+                  )}
                 </TouchableOpacity>
               }
             />
@@ -172,6 +193,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               size="lg"
               fullWidth
               loading={loading}
+              icon={<LogIn size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
               style={styles.submitBtn}
             />
 
@@ -182,7 +204,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <View style={styles.dividerLine} />
             </View>
 
-            {/* CONTINUE WITH GOOGLE (Replaces removed OTP option) */}
+            {/* CONTINUE WITH GOOGLE */}
             <TouchableOpacity
               style={[styles.googleBtn, SHADOWS.card]}
               onPress={handleGoogleLogin}
@@ -216,8 +238,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <TouchableOpacity
                 style={styles.regTile}
                 onPress={onRegisterCustomer}
+                activeOpacity={0.7}
               >
-                <Text style={styles.regTileIcon}>👤</Text>
+                <View style={[styles.regTileIconBox, { backgroundColor: '#FEE2E2' }]}>
+                  <User size={20} color={COLORS.brand} />
+                </View>
                 <Text style={styles.regTileTitle}>{t('Customer', 'ಗ್ರಾಹಕ')}</Text>
                 <Text style={styles.regTileSub}>Rentals & rides</Text>
               </TouchableOpacity>
@@ -225,8 +250,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <TouchableOpacity
                 style={styles.regTile}
                 onPress={onRegisterDriver}
+                activeOpacity={0.7}
               >
-                <Text style={styles.regTileIcon}>🛞</Text>
+                <View style={[styles.regTileIconBox, { backgroundColor: '#FEF3C7' }]}>
+                  <Car size={20} color={COLORS.warn} />
+                </View>
                 <Text style={styles.regTileTitle}>{t('Driver', 'ಚಾಲಕ')}</Text>
                 <Text style={styles.regTileSub}>Auto / Car / Van</Text>
               </TouchableOpacity>
@@ -234,39 +262,53 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <TouchableOpacity
                 style={styles.regTile}
                 onPress={onRegisterProvider}
+                activeOpacity={0.7}
               >
-                <Text style={styles.regTileIcon}>🔧</Text>
+                <View style={[styles.regTileIconBox, { backgroundColor: '#E0F2FE' }]}>
+                  <Wrench size={20} color={COLORS.info} />
+                </View>
                 <Text style={styles.regTileTitle}>{t('Provider', 'ಸೇವೆ')}</Text>
-                <Text style={styles.regTileSub}>Plumber / Electrician</Text>
+                <Text style={styles.regTileSub}>Technician</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.regTile}
                 onPress={onRegisterStudent}
+                activeOpacity={0.7}
               >
-                <Text style={styles.regTileIcon}>🎓</Text>
+                <View style={[styles.regTileIconBox, { backgroundColor: '#E5F4EC' }]}>
+                  <GraduationCap size={20} color={COLORS.ok} />
+                </View>
                 <Text style={styles.regTileTitle}>{t('Student', 'ವಿದ್ಯಾರ್ಥಿ')}</Text>
-                <Text style={styles.regTileSub}>Rental concierge</Text>
+                <Text style={styles.regTileSub}>Partner</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Secure Admin Portal Link */}
-          <TouchableOpacity onPress={onAdminLogin} style={styles.adminLinkRow}>
-            <Text style={styles.adminLinkText}>🛡️ {t('Administrator Console Login', 'ನಿರ್ವಾಹಕರ ಪೋರ್ಟಲ್')}</Text>
+          {/* Administrator Portal Link */}
+          <TouchableOpacity
+            onPress={onAdminLogin}
+            style={styles.adminLinkRow}
+            activeOpacity={0.7}
+          >
+            <ShieldCheck size={16} color={COLORS.mute} style={{ marginRight: 6 }} />
+            <Text style={styles.adminLinkText}>
+              {t('Administrator Console Login', 'ನಿರ್ವಾಹಕರ ಪೋರ್ಟಲ್')}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
+  root: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
-  scroll: { padding: 20, justifyContent: 'center', flexGrow: 1, paddingBottom: 40 },
-  header: { alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: '900', color: COLORS.ink, marginTop: 12 },
+  scroll: { padding: 20, justifyContent: 'center', flexGrow: 1, paddingBottom: 32 },
+  header: { alignItems: 'center', marginBottom: 18 },
+  brandTitle: { fontSize: 13, fontWeight: '800', color: COLORS.brand, marginTop: 8, letterSpacing: 0.5 },
+  title: { fontSize: 24, fontWeight: '900', color: COLORS.ink, marginTop: 4 },
   sub: { fontSize: 13, color: COLORS.mute, marginTop: 4, textAlign: 'center' },
   formCard: {
     backgroundColor: COLORS.white,
@@ -276,7 +318,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.line,
     marginBottom: 16,
   },
-  toggleText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 14 },
   forgotText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
   submitBtn: { marginBottom: 12 },
@@ -327,7 +368,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   googleBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#1F2937',
   },
@@ -343,17 +384,33 @@ const styles = StyleSheet.create({
   regGrid: { flexDirection: 'row', gap: 8 },
   regTile: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    backgroundColor: COLORS.paper,
     alignItems: 'center',
+    backgroundColor: COLORS.paper,
   },
-  regTileIcon: { fontSize: 22, marginBottom: 4 },
-  regTileTitle: { fontSize: 12, fontWeight: '800', color: COLORS.ink },
-  regTileSub: { fontSize: 9, color: COLORS.mute, marginTop: 2, textAlign: 'center' },
-  adminLinkRow: { alignItems: 'center', paddingVertical: 10 },
-  adminLinkText: { fontSize: 13, fontWeight: '700', color: COLORS.mute },
+  regTileIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  regTileTitle: { fontSize: 11, fontWeight: '800', color: COLORS.ink },
+  regTileSub: { fontSize: 9, color: COLORS.mute, marginTop: 1, textAlign: 'center' },
+  adminLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  adminLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.mute,
+  },
 });

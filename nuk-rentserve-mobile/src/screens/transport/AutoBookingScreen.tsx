@@ -8,8 +8,19 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import {
+  MapPin,
+  Flag,
+  Navigation,
+  Car,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  Banknote,
+  Search,
+  Sparkles,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { MapContainer } from '../../components/transport/MapContainer';
@@ -18,10 +29,18 @@ import { DriverTrackingCard } from '../../components/transport/DriverTrackingCar
 import { RideOtpReceipt } from '../../components/transport/RideOtpReceipt';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
-import { MOCK_DESTINATIONS, MOCK_DEFAULT_DRIVER } from '../../constants/mockData';
 import { useLocalization } from '../../context/LocalizationContext';
 import { useActiveRide } from '../../context/ActiveRideContext';
 import { useLocationContext } from '../../context/LocationContext';
+
+const BAGALKOT_HUBS = [
+  { name: 'Bagalkot New Bus Stand, Sector 10', km: 2.5 },
+  { name: 'BVVS Engineering Campus, Vidyagiri', km: 3.8 },
+  { name: 'District Hospital, Navanagar', km: 4.2 },
+  { name: 'Bagalkot Railway Station, Old Town', km: 6.0 },
+  { name: 'Basaveshwara Circle, Navanagar', km: 1.8 },
+  { name: 'Muchakhandi Dam Road Junction', km: 7.5 },
+];
 
 interface AutoBookingScreenProps {
   onBack: () => void;
@@ -37,6 +56,7 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
   const {
     phase,
     setPhase,
+    activeBooking,
     pickupName,
     setPickupName,
     destName,
@@ -68,19 +88,32 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
 
   const handleStartRide = async () => {
     await startSearch();
-    // Simulate realistic driver acceptance for prototype / offline responsiveness
-    setTimeout(() => {
-      setPhase('accepted');
-    }, 3000);
   };
 
-  const handleRideCompletion = (data: { paidInCash: boolean; rating: number; comment: string }) => {
+  const handleRideCompletion = () => {
     resetRide();
     onBack();
   };
 
+  const assignedDriver = {
+    name:
+      (typeof activeBooking?.providerId === 'object' && activeBooking.providerId?.name) ||
+      'Basavaraj (Assigned Auto Driver)',
+    phone:
+      (typeof activeBooking?.providerId === 'object' && activeBooking.providerId?.phone) ||
+      '+91 98450 12345',
+    vehicleModel: 'Bajaj RE Auto Rickshaw',
+    vehicleReg: 'KA 29 B 4821',
+    rating: 4.9,
+    bookingId: activeBooking?._id || activeBooking?.id,
+  };
+
+  const filteredHubs = searchQuery.trim()
+    ? BAGALKOT_HUBS.filter((h) => h.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : BAGALKOT_HUBS;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('bookAuto', 'ಆಟೋ ಬುಕಿಂಗ್')}
         subtitle="Instant ride with fair bargaining"
@@ -106,12 +139,13 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
                 {t('pickupLocation', 'ಪಿಕಪ್ ಸ್ಥಳ')}
               </Text>
               <View style={styles.inputRow}>
-                <Text style={styles.pinIcon}>📍</Text>
+                <MapPin size={18} color={COLORS.brand} />
                 <TextInput
                   style={styles.textInput}
                   value={pickupName}
                   onChangeText={setPickupName}
                   placeholder="Enter pickup point"
+                  placeholderTextColor={COLORS.mute}
                 />
               </View>
             </View>
@@ -122,12 +156,16 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
                 {t('destination', 'ತಲುಪಬೇಕಾದ ಸ್ಥಳ')}
               </Text>
               <View style={styles.inputRow}>
-                <Text style={styles.flagIcon}>🏁</Text>
+                <Flag size={18} color="#059669" />
                 <TextInput
                   style={styles.textInput}
                   value={searchQuery || destName}
-                  onChangeText={setSearchQuery}
+                  onChangeText={(val) => {
+                    setSearchQuery(val);
+                    setDestName(val);
+                  }}
                   placeholder={t('whereTo', 'ನೀವು ಎಲ್ಲಿಗೆ ಹೋಗಬೇಕು?')}
+                  placeholderTextColor={COLORS.mute}
                 />
               </View>
             </View>
@@ -137,20 +175,23 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
               {t('Popular Destinations in Bagalkot', 'ಬಾಗಲಕೋಟೆಯ ಪ್ರಮುಖ ಸ್ಥಳಗಳು')}
             </Text>
             <View style={styles.destList}>
-              {MOCK_DESTINATIONS.map((d) => (
+              {filteredHubs.map((d) => (
                 <TouchableOpacity
                   key={d.name}
                   style={[styles.destItem, SHADOWS.card]}
                   onPress={() => handleSelectDestination(d)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.destLeft}>
-                    <Text style={styles.destEmoji}>🚏</Text>
-                    <View>
-                      <Text style={styles.destName}>{d.name}</Text>
+                    <View style={styles.destIconBox}>
+                      <Car size={16} color={COLORS.brand} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.destName} numberOfLines={1}>{d.name}</Text>
                       <Text style={styles.destKm}>{d.km} km away</Text>
                     </View>
                   </View>
-                  <Text style={styles.selectArrow}>→</Text>
+                  <ArrowRight size={16} color={COLORS.mute} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -161,7 +202,7 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
         {phase === 'options' && (
           <View style={[styles.card, SHADOWS.card]}>
             <View style={styles.routeHeader}>
-              <Text style={styles.routeText}>
+              <Text style={styles.routeText} numberOfLines={2}>
                 {pickupName} → <Text style={styles.bold}>{destName}</Text>
               </Text>
               <TouchableOpacity onPress={() => setPhase('idle')}>
@@ -182,7 +223,7 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
         {phase === 'searching' && (
           <View style={[styles.card, styles.centerCard, SHADOWS.card]}>
             <View style={styles.radarCircle}>
-              <Text style={styles.radarEmoji}>🛺</Text>
+              <Car size={36} color={COLORS.brand} />
             </View>
             <Text style={styles.searchingTitle}>
               {t('findingDriver', 'ಹತ್ತಿರದ ಆಟೋ ಚಾಲಕರನ್ನು ಹುಡುಕಲಾಗುತ್ತಿದೆ...')}
@@ -205,38 +246,19 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
         {['accepted', 'arriving', 'riding'].includes(phase) && (
           <View>
             <DriverTrackingCard
-              driverName={MOCK_DEFAULT_DRIVER.name}
-              driverPhone={MOCK_DEFAULT_DRIVER.phone}
-              vehicleModel={MOCK_DEFAULT_DRIVER.vehicleModel}
-              vehicleReg={MOCK_DEFAULT_DRIVER.vehicleReg}
-              rating={MOCK_DEFAULT_DRIVER.rating}
+              driverName={assignedDriver.name}
+              driverPhone={assignedDriver.phone}
+              vehicleModel={assignedDriver.vehicleModel}
+              vehicleReg={assignedDriver.vehicleReg}
+              rating={assignedDriver.rating}
               statusText={
                 phase === 'riding'
                   ? t('rideInProgress', 'ಪ್ರಯಾಣ ಪ್ರಗತಿಯಲ್ಲಿದೆ')
                   : t('driverArriving', 'ಚಾಲಕರು ಬರುತ್ತಿದ್ದಾರೆ')
               }
-              onChat={() => onOpenChat(MOCK_DEFAULT_DRIVER)}
+              onChat={() => onOpenChat(assignedDriver)}
               onCancel={() => setCancelModalOpen(true)}
             />
-
-            {/* Quick Trip Simulator Controls for Testing */}
-            <View style={styles.simControls}>
-              <Text style={styles.simLabel}>Demo Simulation Switcher:</Text>
-              <View style={styles.simRow}>
-                <TouchableOpacity
-                  style={styles.simBtn}
-                  onPress={() => setPhase('riding')}
-                >
-                  <Text style={styles.simBtnText}>Start Ride</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.simBtn, styles.simBtnFinish]}
-                  onPress={() => setPhase('completed')}
-                >
-                  <Text style={styles.simBtnText}>Complete Ride</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
           </View>
         )}
 
@@ -245,7 +267,7 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
           <View style={[styles.card, SHADOWS.pop]}>
             <RideOtpReceipt
               fare={offeredFare}
-              driverName={MOCK_DEFAULT_DRIVER.name}
+              driverName={assignedDriver.name}
               onComplete={handleRideCompletion}
             />
           </View>
@@ -259,39 +281,37 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
         visible={cancelModalOpen}
         onClose={() => setCancelModalOpen(false)}
         title={t('Cancel Ride?', 'ಸವಾರಿ ರದ್ದುಮಾಡಬೇಕೆ?')}
-        footer={
-          <>
-            <Button
-              title={t('No, Keep Ride', 'ಇಲ್ಲ')}
-              onPress={() => setCancelModalOpen(false)}
-              variant="outline"
-              size="sm"
-            />
-            <Button
-              title={t('Yes, Cancel', 'ಹೌದು, ರದ್ದು')}
-              onPress={async () => {
-                setCancelModalOpen(false);
-                await cancelRide();
-              }}
-              variant="danger"
-              size="sm"
-            />
-          </>
-        }
       >
-        <Text style={styles.cancelModalText}>
+        <Text style={styles.cancelText}>
           {t(
-            'Frequent cancellations after driver acceptance may lower your rating.',
-            'ಚಾಲಕರು ಒಪ್ಪಿಕೊಂಡ ನಂತರ ರದ್ದುಮಾಡುವುದರಿಂದ ರೇಟಿಂಗ್ ಕಡಿಮೆಯಾಗಬಹುದು.'
+            'Are you sure you want to cancel this booking? Frequent cancellations affect driver matching.',
+            'ಖಚಿತವಾಗಿ ಈ ಬುಕಿಂಗ್ ರದ್ದುಮಾಡಲು ಬಯಸುವಿರಾ? ಪದೇ ಪದೇ ರದ್ದುಮಾಡಿದರೆ ಸೇವೆಗೆ ತೊಂದರೆಯಾಗಬಹುದು.'
           )}
         </Text>
+        <View style={styles.modalBtns}>
+          <Button
+            title={t('Keep Ride', 'ಮುಂದುವರಿಸಿ')}
+            onPress={() => setCancelModalOpen(false)}
+            variant="outline"
+            style={{ flex: 1 }}
+          />
+          <Button
+            title={t('Yes, Cancel', 'ಹೌದು, ರದ್ದುಮಾಡಿ')}
+            onPress={async () => {
+              setCancelModalOpen(false);
+              await cancelRide();
+            }}
+            variant="primary"
+            style={{ flex: 1 }}
+          />
+        </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
@@ -300,49 +320,41 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   panel: {
-    gap: 12,
+    marginTop: 8,
   },
   inputCard: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg,
     padding: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
+    marginBottom: 10,
   },
   fieldLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.mute,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  pinIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  flagIcon: {
-    fontSize: 18,
-    marginRight: 8,
+    gap: 10,
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
     color: COLORS.ink,
-    paddingVertical: 0,
+    fontWeight: '600',
+    paddingVertical: 2,
   },
   subHeading: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.mute,
-    marginTop: 8,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: COLORS.ink,
+    marginTop: 14,
+    marginBottom: 10,
   },
   destList: {
     gap: 8,
@@ -352,135 +364,106 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
     padding: 14,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.line,
   },
   destLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: 8,
   },
-  destEmoji: {
-    fontSize: 22,
-    marginRight: 12,
+  destIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.brandTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   destName: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: COLORS.ink,
   },
   destKm: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.mute,
-    marginTop: 1,
-  },
-  selectArrow: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.brand,
+    marginTop: 2,
   },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
     padding: 18,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
+    marginTop: 10,
   },
   routeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 12,
+    marginBottom: 14,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.line,
-    marginBottom: 12,
   },
   routeText: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.ink,
     flex: 1,
-    marginRight: 8,
   },
   bold: {
     fontWeight: '800',
-    color: COLORS.brand,
   },
   changeRouteText: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.brand,
+    marginLeft: 8,
   },
   centerCard: {
     alignItems: 'center',
     paddingVertical: 32,
   },
   radarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.sunTint,
-    borderWidth: 3,
-    borderColor: COLORS.sun,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: COLORS.brandTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-  },
-  radarEmoji: {
-    fontSize: 36,
+    borderWidth: 2,
+    borderColor: '#FECDD3',
   },
   searchingTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.ink,
     textAlign: 'center',
-    marginBottom: 6,
   },
   searchingSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.mute,
-    textAlign: 'center',
+    marginTop: 6,
     marginBottom: 20,
+    textAlign: 'center',
   },
   cancelBtn: {
     minWidth: 140,
   },
-  simControls: {
-    backgroundColor: COLORS.paper,
-    borderRadius: RADIUS.md,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    marginTop: 14,
-  },
-  simLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.mute,
-    marginBottom: 8,
-  },
-  simRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  simBtn: {
-    flex: 1,
-    backgroundColor: COLORS.ink,
-    paddingVertical: 8,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
-  },
-  simBtnFinish: {
-    backgroundColor: COLORS.ok,
-  },
-  simBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  cancelModalText: {
+  cancelText: {
     fontSize: 14,
     color: COLORS.ink,
     lineHeight: 20,
+    marginBottom: 18,
+  },
+  modalBtns: {
+    flexDirection: 'row',
+    gap: 10,
   },
 });

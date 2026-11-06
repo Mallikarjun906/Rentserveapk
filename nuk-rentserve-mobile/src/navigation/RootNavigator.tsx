@@ -1,4 +1,4 @@
-// Central Navigation Controller with Stack, Bottom Navigation Bar & Strict RBAC Route Guards
+// Central Navigation Controller with Stack, Role-Based Bottom Navigation Bar & Strict RBAC Route Guards
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -6,13 +6,22 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
   Alert,
   BackHandler,
 } from 'react-native';
-import { COLORS, RADIUS } from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Home,
+  Search,
+  Calendar,
+  MessageSquare,
+  User,
+  LayoutDashboard,
+  Car,
+} from 'lucide-react-native';
+import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
 import { useLocalization } from '../context/LocalizationContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -44,8 +53,12 @@ import { ProviderProfileScreen } from '../screens/services/ProviderProfileScreen
 import { ChatScreen } from '../screens/chat/ChatScreen';
 
 import { DriverDashboardScreen } from '../screens/driver/DriverDashboardScreen';
+import { DriverMyProfileScreen } from '../screens/driver/DriverMyProfileScreen';
 import { DriverOnboardingScreen } from '../screens/driver/DriverOnboardingScreen';
+
 import { ProviderDashboardScreen } from '../screens/provider/ProviderDashboardScreen';
+import { ProviderMyProfileScreen } from '../screens/provider/ProviderMyProfileScreen';
+
 import { OwnerDashboardScreen } from '../screens/owner/OwnerDashboardScreen';
 import { StudentDashboardScreen } from '../screens/student/StudentDashboardScreen';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
@@ -78,8 +91,10 @@ export type ScreenName =
   | 'provider'
   | 'chat'
   | 'driver-dashboard'
+  | 'driver-profile'
   | 'driver-onboarding'
   | 'provider-dashboard'
+  | 'provider-profile'
   | 'owner-dashboard'
   | 'student-dashboard'
   | 'admin-dashboard'
@@ -95,9 +110,10 @@ interface NavState {
 export const RootNavigator: React.FC = () => {
   const { t } = useLocalization();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [stack, setStack] = useState<NavState[]>([{ name: 'splash' }]);
-  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'bookings' | 'messages' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<ScreenName>('home');
 
   const current = stack[stack.length - 1];
 
@@ -110,17 +126,17 @@ export const RootNavigator: React.FC = () => {
       );
       return;
     }
-    if (name === 'driver-dashboard' && user?.role !== 'driver' && user?.role !== 'admin') {
+    if ((name === 'driver-dashboard' || name === 'driver-profile') && user?.role !== 'driver' && user?.role !== 'admin') {
       Alert.alert(
         t('Access Denied', 'ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ'),
-        t('Only registered drivers can access the driver dashboard.', 'ಕೇವಲ ಚಾಲಕರು ಮಾತ್ರ ಪ್ರವೇಶಿಸಬಹುದು.')
+        t('Only registered drivers can access the driver workspace.', 'ಕೇವಲ ಚಾಲಕರು ಮಾತ್ರ ಪ್ರವೇಶಿಸಬಹುದು.')
       );
       return;
     }
-    if (name === 'provider-dashboard' && user?.role !== 'provider' && user?.role !== 'admin') {
+    if ((name === 'provider-dashboard' || name === 'provider-profile') && user?.role !== 'provider' && user?.role !== 'admin') {
       Alert.alert(
         t('Access Denied', 'ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ'),
-        t('Only registered service providers can access the provider dashboard.', 'ಕೇವಲ ನೋಂದಾಯಿತ ಸೇವಾ ಪೂರೈಕೆದಾರರು ಮಾತ್ರ ಪ್ರವೇಶಿಸಬಹುದು.')
+        t('Only registered service providers can access the provider workspace.', 'ಕೇವಲ ನೋಂದಾಯಿತ ಸೇವಾ ಪೂರೈಕೆದಾರರು ಮಾತ್ರ ಪ್ರವೇಶಿಸಬಹುದು.')
       );
       return;
     }
@@ -149,10 +165,11 @@ export const RootNavigator: React.FC = () => {
   };
 
   const reset = (name: ScreenName, params?: any) => {
+    setActiveTab(name);
     setStack([{ name, params }]);
   };
 
-  const switchTab = (tab: 'home' | 'explore' | 'bookings' | 'messages' | 'profile') => {
+  const switchTab = (tab: ScreenName) => {
     setActiveTab(tab);
     reset(tab);
   };
@@ -191,7 +208,13 @@ export const RootNavigator: React.FC = () => {
     }
   }, []);
 
-  const isTabScreen = ['home', 'explore', 'bookings', 'messages', 'profile'].includes(current.name);
+  // Determine which bottom navigation bar to display based on user role
+  const isProvider = user?.role === 'provider';
+  const isDriver = user?.role === 'driver';
+
+  const showCustomerTabs = !isProvider && !isDriver && ['home', 'explore', 'bookings', 'messages', 'profile'].includes(current.name);
+  const showProviderTabs = isProvider && ['provider-dashboard', 'provider-profile'].includes(current.name);
+  const showDriverTabs = isDriver && ['driver-dashboard', 'driver-profile'].includes(current.name);
 
   // Render active screen
   const renderScreen = () => {
@@ -293,7 +316,7 @@ export const RootNavigator: React.FC = () => {
       case 'forgot':
         return <ForgotPasswordScreen onBack={back} />;
 
-      // 5 Main Tabs
+      // Customer Tabs (5 destinations)
       case 'home':
         return (
           <HomeScreen
@@ -370,7 +393,7 @@ export const RootNavigator: React.FC = () => {
           <ScheduledTripScreen
             initialKind={current.params?.kind || 'car'}
             onBack={back}
-            onSuccess={(ref) => {
+            onSuccess={() => {
               switchTab('bookings');
             }}
           />
@@ -430,11 +453,20 @@ export const RootNavigator: React.FC = () => {
             onBack={back}
           />
         );
+
+      // Driver Role Pages (2 main destinations + subviews)
       case 'driver-dashboard':
         return (
           <DriverDashboardScreen
             onBack={back}
             onNavigateOnboarding={() => go('driver-onboarding')}
+          />
+        );
+      case 'driver-profile':
+        return (
+          <DriverMyProfileScreen
+            onBack={back}
+            onLogout={() => reset('login')}
           />
         );
       case 'driver-onboarding':
@@ -444,6 +476,8 @@ export const RootNavigator: React.FC = () => {
             onSuccess={() => reset('driver-dashboard')}
           />
         );
+
+      // Provider Role Pages (2 main destinations + subviews)
       case 'provider-dashboard':
         return (
           <ProviderDashboardScreen
@@ -451,6 +485,15 @@ export const RootNavigator: React.FC = () => {
             onOpenChat={(params) => go('chat', params)}
           />
         );
+      case 'provider-profile':
+        return (
+          <ProviderMyProfileScreen
+            onBack={back}
+            onLogout={() => reset('login')}
+          />
+        );
+
+      // Additional Roles
       case 'owner-dashboard':
         return <OwnerDashboardScreen onBack={back} />;
       case 'student-dashboard':
@@ -495,20 +538,25 @@ export const RootNavigator: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <View style={styles.screenContainer}>{renderScreen()}</View>
 
-      {/* Bottom Navigation Bar */}
-      {isTabScreen && (
-        <View style={styles.bottomNav}>
+      {/* Customer 5-Tab Navigation Bar */}
+      {showCustomerTabs && (
+        <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
           <TouchableOpacity
             style={styles.navTab}
             onPress={() => switchTab('home')}
             accessibilityRole="tab"
+            activeOpacity={0.7}
           >
             <View style={[styles.iconBubble, activeTab === 'home' && styles.iconBubbleActive]}>
-              <Text style={styles.tabEmoji}>🏠</Text>
+              <Home
+                size={20}
+                color={activeTab === 'home' ? COLORS.brand : COLORS.mute}
+                strokeWidth={activeTab === 'home' ? 2.4 : 1.8}
+              />
             </View>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabLabelActive]}>
               {t('tabHome', 'ಮುಖಪುಟ')}
@@ -519,9 +567,14 @@ export const RootNavigator: React.FC = () => {
             style={styles.navTab}
             onPress={() => switchTab('explore')}
             accessibilityRole="tab"
+            activeOpacity={0.7}
           >
             <View style={[styles.iconBubble, activeTab === 'explore' && styles.iconBubbleActive]}>
-              <Text style={styles.tabEmoji}>🔍</Text>
+              <Search
+                size={20}
+                color={activeTab === 'explore' ? COLORS.brand : COLORS.mute}
+                strokeWidth={activeTab === 'explore' ? 2.4 : 1.8}
+              />
             </View>
             <Text style={[styles.tabLabel, activeTab === 'explore' && styles.tabLabelActive]}>
               {t('tabExplore', 'ಶೋಧಿಸಿ')}
@@ -532,9 +585,14 @@ export const RootNavigator: React.FC = () => {
             style={styles.navTab}
             onPress={() => switchTab('bookings')}
             accessibilityRole="tab"
+            activeOpacity={0.7}
           >
             <View style={[styles.iconBubble, activeTab === 'bookings' && styles.iconBubbleActive]}>
-              <Text style={styles.tabEmoji}>📅</Text>
+              <Calendar
+                size={20}
+                color={activeTab === 'bookings' ? COLORS.brand : COLORS.mute}
+                strokeWidth={activeTab === 'bookings' ? 2.4 : 1.8}
+              />
             </View>
             <Text style={[styles.tabLabel, activeTab === 'bookings' && styles.tabLabelActive]}>
               {t('tabBookings', 'ಬುಕಿಂಗ್')}
@@ -545,9 +603,14 @@ export const RootNavigator: React.FC = () => {
             style={styles.navTab}
             onPress={() => switchTab('messages')}
             accessibilityRole="tab"
+            activeOpacity={0.7}
           >
             <View style={[styles.iconBubble, activeTab === 'messages' && styles.iconBubbleActive]}>
-              <Text style={styles.tabEmoji}>💬</Text>
+              <MessageSquare
+                size={20}
+                color={activeTab === 'messages' ? COLORS.brand : COLORS.mute}
+                strokeWidth={activeTab === 'messages' ? 2.4 : 1.8}
+              />
             </View>
             <Text style={[styles.tabLabel, activeTab === 'messages' && styles.tabLabelActive]}>
               {t('tabChat', 'ಸಂದೇಶ')}
@@ -558,9 +621,14 @@ export const RootNavigator: React.FC = () => {
             style={styles.navTab}
             onPress={() => switchTab('profile')}
             accessibilityRole="tab"
+            activeOpacity={0.7}
           >
             <View style={[styles.iconBubble, activeTab === 'profile' && styles.iconBubbleActive]}>
-              <Text style={styles.tabEmoji}>👤</Text>
+              <User
+                size={20}
+                color={activeTab === 'profile' ? COLORS.brand : COLORS.mute}
+                strokeWidth={activeTab === 'profile' ? 2.4 : 1.8}
+              />
             </View>
             <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>
               {t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
@@ -568,12 +636,94 @@ export const RootNavigator: React.FC = () => {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+
+      {/* Provider 2-Tab Navigation Bar */}
+      {showProviderTabs && (
+        <View style={[styles.bottomNav, styles.roleNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('provider-dashboard')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'provider-dashboard' && styles.iconBubbleActive]}>
+              <LayoutDashboard
+                size={20}
+                color={current.name === 'provider-dashboard' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'provider-dashboard' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'provider-dashboard' && styles.tabLabelActive]}>
+              {t('tabDashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('provider-profile')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'provider-profile' && styles.iconBubbleActive]}>
+              <User
+                size={20}
+                color={current.name === 'provider-profile' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'provider-profile' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'provider-profile' && styles.tabLabelActive]}>
+              {t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Driver 2-Tab Navigation Bar */}
+      {showDriverTabs && (
+        <View style={[styles.bottomNav, styles.roleNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('driver-dashboard')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'driver-dashboard' && styles.iconBubbleActive]}>
+              <Car
+                size={20}
+                color={current.name === 'driver-dashboard' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'driver-dashboard' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'driver-dashboard' && styles.tabLabelActive]}>
+              {t('tabTrips', 'ಟ್ರಿಪ್ಸ್')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('driver-profile')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'driver-profile' && styles.iconBubbleActive]}>
+              <User
+                size={20}
+                color={current.name === 'driver-profile' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'driver-profile' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'driver-profile' && styles.tabLabelActive]}>
+              {t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  root: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
@@ -583,20 +733,25 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
-    borderTopWidth: 1.5,
+    borderTopWidth: 1,
     borderColor: COLORS.line,
-    paddingVertical: 8,
+    paddingTop: 6,
     paddingHorizontal: 8,
+  },
+  roleNav: {
+    justifyContent: 'space-around',
+    paddingHorizontal: 32,
   },
   navTab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 2,
   },
   iconBubble: {
     width: 36,
-    height: 36,
-    borderRadius: RADIUS.full,
+    height: 32,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -604,16 +759,13 @@ const styles = StyleSheet.create({
   iconBubbleActive: {
     backgroundColor: COLORS.brandTint,
   },
-  tabEmoji: {
-    fontSize: 18,
-  },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: COLORS.mute,
   },
   tabLabelActive: {
     color: COLORS.brand,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

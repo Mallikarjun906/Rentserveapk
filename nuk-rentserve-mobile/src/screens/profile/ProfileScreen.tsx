@@ -7,9 +7,29 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import {
+  User,
+  Phone,
+  MapPin,
+  Shield,
+  ShieldCheck,
+  AlertTriangle,
+  Clock,
+  Wrench,
+  Car,
+  Home,
+  GraduationCap,
+  Heart,
+  HelpCircle,
+  FileText,
+  Globe,
+  LogOut,
+  ChevronRight,
+  Eye,
+  Image as ImageIcon,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
@@ -48,7 +68,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const { user, role, logout } = useAuth();
   const { language, setLanguage, t } = useLocalization();
 
-  const [resubmitting, setResubmitting] = useState(false);
   const [myApp, setMyApp] = useState<any | null>(null);
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [previewDocs, setPreviewDocs] = useState<DocumentItem[]>([]);
@@ -83,8 +102,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setDocModalOpen(true);
   };
 
-  const userName = user?.name || 'Basavaraj Patil';
-  const userPhone = user?.phone || '+91 98450 12345';
+  const userName = user?.name || 'NUK Member';
+  const userPhone = user?.phone || 'Not provided';
   const userLocation = user?.location || 'Bagalkot';
   const userRole = user?.role || 'customer';
   const approvalStatus = user?.approvalStatus || 'approved';
@@ -95,29 +114,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     onLogout();
   };
 
-  const handleResubmitMock = async () => {
-    setResubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('document', {
-        uri: 'file://mock/resubmitted.jpg',
-        name: 'resubmitted-document.jpg',
-        type: 'image/jpeg',
-      } as any);
-      await authApi.resubmitDocuments(formData);
-      Alert.alert(
-        'Documents Resubmitted',
-        'Your replacement documents have been submitted to the administrator for review.'
-      );
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Resubmission failed.');
-    } finally {
-      setResubmitting(false);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
         subtitle="Account, Verified Role & Settings"
@@ -128,12 +126,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <View style={[styles.userCard, SHADOWS.card]}>
           <View style={styles.userTop}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
+              <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.userCol}>
               <Text style={styles.name}>{userName}</Text>
               <Text style={styles.phone}>{userPhone}</Text>
-              <Text style={styles.city}>📍 {userLocation}, Karnataka</Text>
+              <View style={styles.cityRow}>
+                <MapPin size={12} color={COLORS.mute} />
+                <Text style={styles.city}>{userLocation}, Karnataka</Text>
+              </View>
             </View>
           </View>
 
@@ -159,16 +160,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Rejection / Resubmission Notice */}
         {approvalStatus === 'rejected' && (
           <View style={[styles.rejectionNotice, SHADOWS.card]}>
-            <Text style={styles.rejectionTitle}>⚠️ Application Action Required</Text>
+            <View style={styles.noticeHeader}>
+              <AlertTriangle size={16} color={COLORS.bad} />
+              <Text style={styles.rejectionTitle}>Application Action Required</Text>
+            </View>
             <Text style={styles.rejectionText}>
               Your documents were rejected: {rejectionReason || 'Please review guidelines and resubmit valid credentials.'}
             </Text>
             <Button
-              title="Resubmit Replacement Documents"
-              onPress={handleResubmitMock}
+              title="Resubmit in Driver/Provider Workspace"
+              onPress={userRole === 'driver' ? onNavigateDriverOnboarding : () => {}}
               variant="primary"
               size="sm"
-              loading={resubmitting}
               style={{ marginTop: 10 }}
             />
           </View>
@@ -177,7 +180,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Pending Approval Notice */}
         {approvalStatus === 'pending' && userRole !== 'customer' && (
           <View style={[styles.pendingNotice, SHADOWS.card]}>
-            <Text style={styles.pendingTitle}>⏳ Verification Under Review</Text>
+            <View style={styles.noticeHeader}>
+              <Clock size={16} color="#D97706" />
+              <Text style={styles.pendingTitle}>Verification Under Review</Text>
+            </View>
             <Text style={styles.pendingText}>
               Your registration documents are currently being reviewed by an administrator. Services and trip dispatch will be activated upon approval.
             </Text>
@@ -186,11 +192,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         {/* My Verification Documents (In-Screen Preview) */}
         <View style={[styles.docPreviewCard, SHADOWS.card]}>
-          <Text style={styles.docPreviewCardTitle}>
-            📑 {t('My Verification Documents', 'ನನ್ನ ಪರಿಶೀಲನಾ ದಾಖಲೆಗಳು')}
-          </Text>
+          <View style={styles.docCardHeader}>
+            <ShieldCheck size={18} color={COLORS.brand} />
+            <Text style={styles.docPreviewCardTitle}>
+              {t('My Verification Documents', 'ನನ್ನ ಪರಿಶೀಲನಾ ದಾಖಲೆಗಳು')}
+            </Text>
+          </View>
           <Text style={styles.docPreviewCardSub}>
-            Documents are stored in encrypted private storage. Tap below to preview in-screen:
+            Documents are stored in encrypted private storage. Tap below to preview:
           </Text>
 
           <View style={styles.docPreviewList}>
@@ -200,31 +209,37 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.docRowLeft}>
-                <Text style={styles.docRowIcon}>🖼️</Text>
-                <View>
+                <ImageIcon size={18} color="#2563EB" />
+                <View style={{ marginLeft: 10 }}>
                   <Text style={styles.docRowTitle}>Aadhaar / Govt ID</Text>
                   <Text style={styles.docRowSubtitle}>Masked identity verification copy</Text>
                 </View>
               </View>
-              <Text style={styles.previewActionPill}>👁️ Preview</Text>
+              <View style={styles.previewActionPill}>
+                <Eye size={12} color={COLORS.brand} />
+                <Text style={styles.previewActionText}>Preview</Text>
+              </View>
             </TouchableOpacity>
 
             {(userRole === 'driver' || myApp?.hasDrivingLicence) && (
               <TouchableOpacity
                 style={[styles.docRowItem, styles.docRowItemPdf]}
                 onPress={() =>
-                  openMyDocument('drivingLicenceDocument', 'My Driving Licence (DL)', true)
+                  openMyDocument('drivingLicenceDocument', 'My Driving Licence (DL)', false)
                 }
                 activeOpacity={0.7}
               >
                 <View style={styles.docRowLeft}>
-                  <Text style={styles.docRowIcon}>📄</Text>
-                  <View>
+                  <FileText size={18} color={COLORS.brand} />
+                  <View style={{ marginLeft: 10 }}>
                     <Text style={styles.docRowTitle}>Driving Licence (DL)</Text>
-                    <Text style={styles.docRowSubtitle}>Multi-page commercial licence PDF</Text>
+                    <Text style={styles.docRowSubtitle}>Commercial transport licence</Text>
                   </View>
                 </View>
-                <Text style={styles.previewActionPill}>👁️ Preview</Text>
+                <View style={styles.previewActionPill}>
+                  <Eye size={12} color={COLORS.brand} />
+                  <Text style={styles.previewActionText}>Preview</Text>
+                </View>
               </TouchableOpacity>
             )}
 
@@ -237,13 +252,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 activeOpacity={0.7}
               >
                 <View style={styles.docRowLeft}>
-                  <Text style={styles.docRowIcon}>🖼️</Text>
-                  <View>
+                  <ImageIcon size={18} color="#059669" />
+                  <View style={{ marginLeft: 10 }}>
                     <Text style={styles.docRowTitle}>Vehicle RC Document</Text>
                     <Text style={styles.docRowSubtitle}>Karnataka Transport Department RC</Text>
                   </View>
                 </View>
-                <Text style={styles.previewActionPill}>👁️ Preview</Text>
+                <View style={styles.previewActionPill}>
+                  <Eye size={12} color={COLORS.brand} />
+                  <Text style={styles.previewActionText}>Preview</Text>
+                </View>
               </TouchableOpacity>
             )}
 
@@ -256,13 +274,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 activeOpacity={0.7}
               >
                 <View style={styles.docRowLeft}>
-                  <Text style={styles.docRowIcon}>🎓</Text>
-                  <View>
+                  <GraduationCap size={18} color={COLORS.brand} />
+                  <View style={{ marginLeft: 10 }}>
                     <Text style={styles.docRowTitle}>Student ID Card</Text>
                     <Text style={styles.docRowSubtitle}>Verified college student card</Text>
                   </View>
                 </View>
-                <Text style={styles.previewActionPill}>👁️ Preview</Text>
+                <View style={styles.previewActionPill}>
+                  <Eye size={12} color={COLORS.brand} />
+                  <Text style={styles.previewActionText}>Preview</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -281,8 +302,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.85}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuEmoji}>🛠️</Text>
-              <View>
+              <View style={[styles.menuIconCircle, { backgroundColor: '#E0E7FF' }]}>
+                <Wrench size={20} color="#4F46E5" />
+              </View>
+              <View style={styles.menuTextCol}>
                 <Text style={styles.menuTitle}>
                   {t('providerDashboard', 'ಸೇವಾ ಪೂರೈಕೆದಾರರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
                 </Text>
@@ -291,7 +314,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               </View>
             </View>
-            <Text style={styles.chevron}>→</Text>
+            <ChevronRight size={18} color={COLORS.mute} />
           </TouchableOpacity>
         )}
 
@@ -303,8 +326,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.85}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuEmoji}>🛞</Text>
-              <View>
+              <View style={[styles.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                <Car size={20} color={COLORS.brand} />
+              </View>
+              <View style={styles.menuTextCol}>
                 <Text style={styles.menuTitle}>
                   {t('driverDashboard', 'ಚಾಲಕರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
                 </Text>
@@ -313,11 +338,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               </View>
             </View>
-            <Text style={styles.chevron}>→</Text>
+            <ChevronRight size={18} color={COLORS.mute} />
           </TouchableOpacity>
         )}
 
-        {/* 2. Property Owner Portal (Owner only) */}
+        {/* 3. Property Owner Portal (Owner only) */}
         {userRole === 'owner' && (
           <TouchableOpacity
             style={[styles.menuItem, SHADOWS.card]}
@@ -325,8 +350,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.85}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuEmoji}>🏡</Text>
-              <View>
+              <View style={[styles.menuIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                <Home size={20} color="#D97706" />
+              </View>
+              <View style={styles.menuTextCol}>
                 <Text style={styles.menuTitle}>
                   {t('ownerDashboard', 'ಆಸ್ತಿ ಮಾಲೀಕರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
                 </Text>
@@ -335,11 +362,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               </View>
             </View>
-            <Text style={styles.chevron}>→</Text>
+            <ChevronRight size={18} color={COLORS.mute} />
           </TouchableOpacity>
         )}
 
-        {/* 3. Student Rental Partner Hub (Student only) */}
+        {/* 4. Student Rental Partner Hub (Student only) */}
         {userRole === 'student' && (
           <TouchableOpacity
             style={[styles.menuItem, SHADOWS.card]}
@@ -347,8 +374,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.85}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuEmoji}>🎓</Text>
-              <View>
+              <View style={[styles.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                <GraduationCap size={20} color={COLORS.brand} />
+              </View>
+              <View style={styles.menuTextCol}>
                 <Text style={styles.menuTitle}>
                   {t('studentDashboard', 'ವಿದ್ಯಾರ್ಥಿ ಪಾಲುದಾರ ಹಬ್')}
                 </Text>
@@ -357,11 +386,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               </View>
             </View>
-            <Text style={styles.chevron}>→</Text>
+            <ChevronRight size={18} color={COLORS.mute} />
           </TouchableOpacity>
         )}
 
-        {/* 4. Administrator Console (Admin only) */}
+        {/* 5. Administrator Console (Admin only) */}
         {userRole === 'admin' && (
           <TouchableOpacity
             style={[styles.menuItem, SHADOWS.card]}
@@ -369,8 +398,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.85}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuEmoji}>🛡️</Text>
-              <View>
+              <View style={[styles.menuIconCircle, { backgroundColor: '#1E293B' }]}>
+                <Shield size={20} color={COLORS.sun} />
+              </View>
+              <View style={styles.menuTextCol}>
                 <Text style={styles.menuTitle}>
                   {t('adminDashboard', 'ನಿರ್ವಾಹಕರ ಕಂಟ್ರೋಲ್ ಪ್ಯಾನೆಲ್')}
                 </Text>
@@ -379,7 +410,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               </View>
             </View>
-            <Text style={styles.chevron}>→</Text>
+            <ChevronRight size={18} color={COLORS.mute} />
           </TouchableOpacity>
         )}
 
@@ -387,8 +418,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {userRole === 'customer' && (
           <View style={[styles.menuItem, SHADOWS.card]}>
             <View style={styles.menuLeft}>
-              <Text style={styles.menuEmoji}>👤</Text>
-              <View>
+              <View style={[styles.menuIconCircle, { backgroundColor: COLORS.brandTint }]}>
+                <User size={20} color={COLORS.brand} />
+              </View>
+              <View style={styles.menuTextCol}>
                 <Text style={styles.menuTitle}>Customer Profile</Text>
                 <Text style={styles.menuSub}>
                   Full access to book rides, rentals & local services
@@ -406,8 +439,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Language Toggle Row */}
         <View style={[styles.menuItem, SHADOWS.card]}>
           <View style={styles.menuLeft}>
-            <Text style={styles.menuEmoji}>🌐</Text>
-            <View>
+            <View style={[styles.menuIconCircle, { backgroundColor: '#F3F4F6' }]}>
+              <Globe size={20} color={COLORS.ink} />
+            </View>
+            <View style={styles.menuTextCol}>
               <Text style={styles.menuTitle}>{t('Language', 'ಭಾಷೆ')}</Text>
               <Text style={styles.menuSub}>
                 {language === 'kn' ? 'ಕನ್ನಡ (Kannada)' : 'English'}
@@ -428,24 +463,32 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <TouchableOpacity
           style={[styles.menuItem, SHADOWS.card]}
           onPress={onNavigateSaved}
+          activeOpacity={0.85}
         >
           <View style={styles.menuLeft}>
-            <Text style={styles.menuEmoji}>❤️</Text>
-            <Text style={styles.menuTitle}>
-              {t('Saved Properties', 'ಉಳಿಸಿದ ಆಸ್ತಿಗಳು')}
-            </Text>
+            <View style={[styles.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
+              <Heart size={20} color={COLORS.brand} />
+            </View>
+            <View style={styles.menuTextCol}>
+              <Text style={styles.menuTitle}>
+                {t('Saved Properties', 'ಉಳಿಸಿದ ಆಸ್ತಿಗಳು')}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.chevron}>→</Text>
+          <ChevronRight size={18} color={COLORS.mute} />
         </TouchableOpacity>
 
         {/* Support Tickets */}
         <TouchableOpacity
           style={[styles.menuItem, SHADOWS.card]}
           onPress={onNavigateSupport}
+          activeOpacity={0.85}
         >
           <View style={styles.menuLeft}>
-            <Text style={styles.menuEmoji}>🎧</Text>
-            <View>
+            <View style={[styles.menuIconCircle, { backgroundColor: '#E0E7FF' }]}>
+              <HelpCircle size={20} color="#4F46E5" />
+            </View>
+            <View style={styles.menuTextCol}>
               <Text style={styles.menuTitle}>
                 {t('Help & Support', 'ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ')}
               </Text>
@@ -454,21 +497,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </Text>
             </View>
           </View>
-          <Text style={styles.chevron}>→</Text>
+          <ChevronRight size={18} color={COLORS.mute} />
         </TouchableOpacity>
 
         {/* Terms & Conditions */}
         <TouchableOpacity
           style={[styles.menuItem, SHADOWS.card]}
           onPress={() => onNavigateTerms(role)}
+          activeOpacity={0.85}
         >
           <View style={styles.menuLeft}>
-            <Text style={styles.menuEmoji}>📋</Text>
-            <Text style={styles.menuTitle}>
-              {t('Terms & Legal', 'ನಿಯಮಗಳು ಮತ್ತು ಕಾನೂನು')}
-            </Text>
+            <View style={[styles.menuIconCircle, { backgroundColor: '#F3F4F6' }]}>
+              <FileText size={20} color={COLORS.ink} />
+            </View>
+            <View style={styles.menuTextCol}>
+              <Text style={styles.menuTitle}>
+                {t('Terms & Legal', 'ನಿಯಮಗಳು ಮತ್ತು ಕಾನೂನು')}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.chevron}>→</Text>
+          <ChevronRight size={18} color={COLORS.mute} />
         </TouchableOpacity>
 
         {/* Logout Button */}
@@ -491,12 +539,79 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         onSelectIndex={setPreviewIndex}
         canReview={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
+  container: { flex: 1, backgroundColor: COLORS.paper },
+  scroll: { padding: 16, paddingBottom: 60 },
+  userCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.xl,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    marginBottom: 16,
+  },
+  userTop: { flexDirection: 'row', alignItems: 'center' },
+  avatar: {
+    width: 54,
+    height: 54,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  avatarText: { fontSize: 22, fontWeight: '900', color: COLORS.white },
+  userCol: { flex: 1 },
+  name: { fontSize: 18, fontWeight: '900', color: COLORS.ink },
+  phone: { fontSize: 13, color: COLORS.mute, marginTop: 2 },
+  cityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  city: { fontSize: 12, color: COLORS.mute },
+  roleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderColor: COLORS.line,
+  },
+  roleLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  roleLabel: { fontSize: 13, fontWeight: '700', color: COLORS.ink },
+  rejectionNotice: {
+    backgroundColor: COLORS.badTint,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.bad,
+    marginBottom: 16,
+  },
+  noticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  rejectionTitle: { fontSize: 13, fontWeight: '800', color: COLORS.bad },
+  rejectionText: { fontSize: 12, color: COLORS.ink, marginTop: 4, lineHeight: 18 },
+  pendingNotice: {
+    backgroundColor: COLORS.sunTint,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.sun,
+    marginBottom: 16,
+  },
+  pendingTitle: { fontSize: 13, fontWeight: '800', color: '#D97706' },
+  pendingText: { fontSize: 12, color: COLORS.ink, marginTop: 4, lineHeight: 18 },
   docPreviewCard: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
@@ -505,11 +620,16 @@ const styles = StyleSheet.create({
     borderColor: COLORS.line,
     marginBottom: 16,
   },
+  docCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   docPreviewCardTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.ink,
-    marginBottom: 4,
   },
   docPreviewCardSub: {
     fontSize: 12,
@@ -540,10 +660,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  docRowIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
   docRowTitle: {
     fontSize: 13,
     fontWeight: '800',
@@ -555,77 +671,27 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   previewActionPill: {
-    backgroundColor: COLORS.brand,
-    color: COLORS.white,
-    fontSize: 11,
-    fontWeight: '800',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.brandTint,
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: RADIUS.full,
   },
-  scroll: { padding: 20, paddingBottom: 110 },
-  userCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.xl,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    marginBottom: 16,
+  previewActionText: {
+    color: COLORS.brand,
+    fontSize: 11,
+    fontWeight: '800',
   },
-  userTop: { flexDirection: 'row', alignItems: 'center' },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  avatarText: { fontSize: 22, fontWeight: '900', color: COLORS.white },
-  userCol: { flex: 1 },
-  name: { fontSize: 18, fontWeight: '900', color: COLORS.ink },
-  phone: { fontSize: 13, color: COLORS.mute, marginTop: 2 },
-  city: { fontSize: 12, color: COLORS.mute, marginTop: 2 },
-  roleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: COLORS.line,
-  },
-  roleLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  roleLabel: { fontSize: 13, fontWeight: '700', color: COLORS.ink },
-  rejectionNotice: {
-    backgroundColor: COLORS.badTint,
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.bad,
-    marginBottom: 16,
-  },
-  rejectionTitle: { fontSize: 13, fontWeight: '800', color: COLORS.bad },
-  rejectionText: { fontSize: 12, color: COLORS.ink, marginTop: 4, lineHeight: 18 },
-  pendingNotice: {
-    backgroundColor: COLORS.sunTint,
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.sun,
-    marginBottom: 16,
-  },
-  pendingTitle: { fontSize: 13, fontWeight: '800', color: COLORS.ink },
-  pendingText: { fontSize: 12, color: COLORS.mute, marginTop: 4, lineHeight: 18 },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.mute,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 10,
     marginLeft: 4,
   },
   menuItem: {
@@ -633,17 +699,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.white,
-    padding: 16,
+    padding: 14,
     borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
     marginBottom: 10,
   },
   menuLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
-  menuEmoji: { fontSize: 24, marginRight: 14 },
-  menuTitle: { fontSize: 15, fontWeight: '800', color: COLORS.ink },
-  menuSub: { fontSize: 12, color: COLORS.mute, marginTop: 2 },
-  chevron: { fontSize: 18, fontWeight: '700', color: COLORS.mute },
+  menuIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  menuTextCol: {
+    flex: 1,
+  },
+  menuTitle: { fontSize: 14, fontWeight: '800', color: COLORS.ink },
+  menuSub: { fontSize: 11, color: COLORS.mute, marginTop: 2 },
   langPill: {
     backgroundColor: COLORS.sunTint,
     borderWidth: 1,

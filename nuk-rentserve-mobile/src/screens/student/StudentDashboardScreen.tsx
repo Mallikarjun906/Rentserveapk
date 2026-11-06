@@ -7,14 +7,28 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Share,
 } from 'react-native';
+import {
+  GraduationCap,
+  FileText,
+  Eye,
+  Image as ImageIcon,
+  Award,
+  Share2,
+  CheckCircle2,
+  Building2,
+  Plus,
+  ArrowRight,
+  ShieldCheck,
+  MapPin,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { useLocalization } from '../../context/LocalizationContext';
+import { useAuth } from '../../context/AuthContext';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
 
@@ -28,9 +42,11 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
   onAddProperty,
 }) => {
   const { t } = useLocalization();
+  const { user } = useAuth();
 
   const [copied, setCopied] = useState(false);
-  const referralUrl = 'https://nukrentserve.in/r/ananya-p';
+  const studentSlug = user?.name ? user.name.toLowerCase().replace(/\s+/g, '-') : 'student';
+  const referralUrl = `https://nukrentserve.in/r/${studentSlug}`;
 
   // In-Screen Document Viewer State
   const [docViewerOpen, setDocViewerOpen] = useState(false);
@@ -63,11 +79,14 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
     } catch {}
   };
 
+  const studentName = user?.name || 'Student Partner';
+  const collegeName = user?.collegeName || 'BVVS Engineering College · Bagalkot';
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('studentDashboard', 'ವಿದ್ಯಾರ್ಥಿ ಪಾಲುದಾರ ಹಬ್')}
-        subtitle="Ananya Patil · BVVS Engineering College"
+        subtitle={`${studentName} · ${collegeName}`}
         onBack={onBack}
         rightAction={
           <Button
@@ -84,27 +103,28 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
         <View style={[styles.card, SHADOWS.card]}>
           <View style={styles.studentHeader}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>🎓</Text>
+              <GraduationCap size={28} color={COLORS.brand} />
             </View>
             <View style={styles.studentInfo}>
               <View style={styles.titleRow}>
-                <Text style={styles.studentName}>Ananya Patil</Text>
-                <Badge tone="ok" label="Verified Student" />
+                <Text style={styles.studentName}>{studentName}</Text>
+                <Badge tone="ok" label="Verified Partner" />
               </View>
-              <Text style={styles.collegeName}>
-                BVVS Engineering College · Bagalkot
-              </Text>
+              <Text style={styles.collegeName}>{collegeName}</Text>
             </View>
           </View>
         </View>
 
         {/* Student Verification Documents & Credentials Card */}
         <View style={[styles.card, SHADOWS.card]}>
-          <Text style={styles.cardTitle}>
-            📑 {t('Student Verification Documents', 'ವಿದ್ಯಾರ್ಥಿ ಪರಿಶೀಲನಾ ದಾಖಲೆಗಳು')}
-          </Text>
+          <View style={styles.cardHeaderRow}>
+            <ShieldCheck size={18} color={COLORS.brand} />
+            <Text style={styles.cardTitle}>
+              {t('Student Verification Documents', 'ವಿದ್ಯಾರ್ಥಿ ಪರಿಶೀಲನಾ ದಾಖಲೆಗಳು')}
+            </Text>
+          </View>
           <Text style={styles.referralSub}>
-            Private college credentials verified by administration. Tap to preview in screen:
+            Private college credentials verified by administration. Tap to preview:
           </Text>
 
           <View style={{ gap: 8 }}>
@@ -116,13 +136,16 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.docRowLeft}>
-                <Text style={styles.docRowIcon}>🎓</Text>
-                <View>
+                <FileText size={20} color={COLORS.brand} />
+                <View style={{ marginLeft: 10 }}>
                   <Text style={styles.docRowTitle}>College Student ID Card</Text>
-                  <Text style={styles.docRowSubtitle}>BVVS College ID Card - 2BA21CS045</Text>
+                  <Text style={styles.docRowSubtitle}>Official institutional identity card</Text>
                 </View>
               </View>
-              <Text style={styles.previewActionPill}>👁️ Preview</Text>
+              <View style={styles.previewActionPill}>
+                <Eye size={12} color={COLORS.white} />
+                <Text style={styles.previewActionText}>Preview</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -133,22 +156,28 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.docRowLeft}>
-                <Text style={styles.docRowIcon}>🖼️</Text>
-                <View>
+                <ImageIcon size={20} color="#2563EB" />
+                <View style={{ marginLeft: 10 }}>
                   <Text style={styles.docRowTitle}>Govt ID / Aadhaar</Text>
                   <Text style={styles.docRowSubtitle}>Masked national identity copy</Text>
                 </View>
               </View>
-              <Text style={styles.previewActionPill}>👁️ Preview</Text>
+              <View style={styles.previewActionPill}>
+                <Eye size={12} color={COLORS.white} />
+                <Text style={styles.previewActionText}>Preview</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Transparent Commission Policy Banner */}
         <View style={[styles.policyBanner, SHADOWS.card]}>
-          <Text style={styles.policyHeading}>
-            🤝 {t('100% Student Commission Policy', 'ನೇರ ವಿದ್ಯಾರ್ಥಿ ಕಮಿಷನ್ ನೀತಿ')}
-          </Text>
+          <View style={styles.policyHeaderRow}>
+            <Award size={18} color={COLORS.brand} />
+            <Text style={styles.policyHeading}>
+              {t('100% Student Commission Policy', 'ನೇರ ವಿದ್ಯಾರ್ಥಿ ಕಮಿಷನ್ ನೀತಿ')}
+            </Text>
+          </View>
           <Text style={styles.policyBody}>
             {t(
               'Owner and renter pay commission directly to you. NUK RentServe retains ₹0 platform fee from rental deals.',
@@ -177,7 +206,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
             <Text style={styles.statLabel}>
               {t('expectedCommission', 'ನಿರೀಕ್ಷಿತ ಕಮಿಷನ್')}
             </Text>
-            <Text style={styles.statAmountExpected}>₹14,500</Text>
+            <Text style={styles.statAmountExpected}>₹0</Text>
             <Text style={styles.statSub}>Awaiting tenant possession</Text>
           </View>
 
@@ -185,7 +214,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
             <Text style={styles.statLabel}>
               {t('receivedCommission', 'ಪಡೆದ ಕಮಿಷನ್')}
             </Text>
-            <Text style={styles.statAmountReceived}>₹21,000</Text>
+            <Text style={styles.statAmountReceived}>₹0</Text>
             <Text style={styles.statSub}>Directly collected</Text>
           </View>
         </View>
@@ -200,65 +229,50 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
           </Text>
 
           <View style={styles.referralBox}>
-            <Text style={styles.referralLinkText}>{referralUrl}</Text>
-            <TouchableOpacity onPress={handleShare} style={styles.copyBtn}>
+            <Text style={styles.referralLinkText} numberOfLines={1}>{referralUrl}</Text>
+            <TouchableOpacity onPress={handleShare} style={styles.copyBtn} activeOpacity={0.8}>
+              <Share2 size={13} color={COLORS.white} />
               <Text style={styles.copyBtnText}>
-                {copied ? '✓ Shared' : 'Share 🔗'}
+                {copied ? 'Shared' : 'Share'}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.referralStats}>
             <View style={styles.refStat}>
-              <Text style={styles.refStatNum}>184</Text>
+              <Text style={styles.refStatNum}>0</Text>
               <Text style={styles.refStatLabel}>Clicks</Text>
             </View>
             <View style={styles.refStat}>
-              <Text style={styles.refStatNum}>23</Text>
+              <Text style={styles.refStatNum}>0</Text>
               <Text style={styles.refStatLabel}>Sign-ups</Text>
             </View>
             <View style={styles.refStat}>
-              <Text style={styles.refStatNum}>11</Text>
+              <Text style={styles.refStatNum}>0</Text>
               <Text style={styles.refStatLabel}>Enquiries</Text>
             </View>
           </View>
         </View>
 
-        {/* Student Property Listings */}
+        {/* Student Property Listings Section */}
         <Text style={styles.sectionHeading}>
-          {t('My Partner Listings', 'ನನ್ನ ಪಾಲುದಾರ ಪಟ್ಟಿಗಳು')} (3)
+          {t('My Partner Listings', 'ನನ್ನ ಪಾಲುದಾರ ಪಟ್ಟಿಗಳು')}
         </Text>
 
-        {[
-          {
-            title: 'Single room for students near BVVS',
-            loc: 'Vidyagiri, Bagalkot',
-            rent: 3200,
-            status: 'Agreement signed',
-            commission: '₹3,200',
-          },
-          {
-            title: '1 BHK with parking, Vidyanagar',
-            loc: 'Vidyanagar, Dharwad',
-            rent: 7200,
-            status: 'Visit scheduled',
-            commission: '₹3,600',
-          },
-        ].map((item, i) => (
-          <View key={i} style={[styles.listingItem, SHADOWS.card]}>
-            <View style={styles.itemTop}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Badge tone="info" label={item.status} />
-            </View>
-            <Text style={styles.itemLoc}>📍 {item.loc}</Text>
-            <View style={styles.itemBottom}>
-              <Text style={styles.itemRent}>Rent: ₹{item.rent}/mo</Text>
-              <Text style={styles.itemComm}>
-                Expected Comm: <Text style={styles.commVal}>{item.commission}</Text>
-              </Text>
-            </View>
-          </View>
-        ))}
+        <View style={[styles.card, styles.emptyListingsCard]}>
+          <Building2 size={32} color={COLORS.muteLight} />
+          <Text style={styles.emptyListingsTitle}>No partner listings yet</Text>
+          <Text style={styles.emptyListingsSub}>
+            Help property owners find student tenants and earn 100% of the brokerage directly.
+          </Text>
+          <Button
+            title="+ Add Student Listing"
+            onPress={onAddProperty}
+            variant="outline"
+            size="sm"
+            style={{ marginTop: 12 }}
+          />
+        </View>
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -272,53 +286,14 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
         onSelectIndex={setPreviewIndex}
         canReview={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
-  },
-  docRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.paper,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 10,
-  },
-  docRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  docRowIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  docRowTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  docRowSubtitle: {
-    fontSize: 11,
-    color: COLORS.mute,
-    marginTop: 1,
-  },
-  previewActionPill: {
-    backgroundColor: COLORS.brand,
-    color: COLORS.white,
-    fontSize: 11,
-    fontWeight: '800',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: RADIUS.full,
   },
   scroll: {
     padding: 16,
@@ -345,9 +320,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
-  avatarText: {
-    fontSize: 24,
-  },
   studentInfo: {
     flex: 1,
   },
@@ -355,6 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 4,
   },
   studentName: {
     fontSize: 16,
@@ -364,61 +337,123 @@ const styles = StyleSheet.create({
   collegeName: {
     fontSize: 12,
     color: COLORS.mute,
-    marginTop: 2,
+    fontWeight: '500',
   },
-  policyBanner: {
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
+  referralSub: {
+    fontSize: 12,
+    color: COLORS.mute,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  docRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: COLORS.paper,
     borderWidth: 1.5,
-    borderColor: COLORS.sun,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    padding: 10,
+  },
+  docRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  docRowTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
+  docRowSubtitle: {
+    fontSize: 11,
+    color: COLORS.mute,
+    marginTop: 1,
+  },
+  previewActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.brand,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.full,
+  },
+  previewActionText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  policyBanner: {
+    backgroundColor: COLORS.brandTint,
     borderRadius: RADIUS.xl,
     padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#FECDD3',
     marginBottom: 16,
+  },
+  policyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
   },
   policyHeading: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.ink,
-    marginBottom: 6,
+    color: COLORS.brand,
   },
   policyBody: {
     fontSize: 12,
     color: COLORS.ink,
-    lineHeight: 17,
+    lineHeight: 18,
     marginBottom: 14,
   },
   policyRow: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  policyCol: {
-    flex: 1,
     backgroundColor: COLORS.white,
+    borderRadius: RADIUS.lg,
     padding: 10,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.line,
   },
+  policyCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
   policyHighlight: {
-    borderColor: COLORS.ok,
-    backgroundColor: COLORS.okTint,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.line,
   },
   policyLabel: {
-    fontSize: 10,
-    color: COLORS.mute,
+    fontSize: 9,
     fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 2,
+    color: COLORS.mute,
+    textTransform: 'uppercase',
   },
   policyValue: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: COLORS.ink,
-  },
-  policyValueZero: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
     color: COLORS.ok,
+    marginTop: 2,
+  },
+  policyValueZero: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.brand,
+    marginTop: 2,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -428,7 +463,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: 14,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -439,13 +474,13 @@ const styles = StyleSheet.create({
     color: COLORS.mute,
   },
   statAmountExpected: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#D97706',
+    color: COLORS.sun,
     marginVertical: 4,
   },
   statAmountReceived: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
     color: COLORS.ok,
     marginVertical: 4,
@@ -454,63 +489,56 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.mute,
   },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.ink,
-    marginBottom: 4,
-  },
-  referralSub: {
-    fontSize: 12,
-    color: COLORS.mute,
-    marginBottom: 12,
-  },
   referralBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: COLORS.paper,
+    borderRadius: RADIUS.md,
+    padding: 8,
     borderWidth: 1,
     borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 10,
     marginBottom: 14,
   },
   referralLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.brand,
     flex: 1,
+    fontSize: 12,
+    color: COLORS.brand,
+    fontWeight: '600',
+    paddingHorizontal: 6,
   },
   copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: COLORS.brand,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: RADIUS.sm,
   },
   copyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: COLORS.white,
   },
   referralStats: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
-    paddingTop: 10,
+    paddingTop: 12,
   },
   refStat: {
-    flex: 1,
     alignItems: 'center',
   },
   refStatNum: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '900',
     color: COLORS.ink,
   },
   refStatLabel: {
     fontSize: 11,
     color: COLORS.mute,
+    marginTop: 2,
   },
   sectionHeading: {
     fontSize: 15,
@@ -518,51 +546,22 @@ const styles = StyleSheet.create({
     color: COLORS.ink,
     marginBottom: 12,
   },
-  listingItem: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    marginBottom: 10,
-  },
-  itemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyListingsCard: {
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'center',
+    paddingVertical: 28,
   },
-  itemTitle: {
+  emptyListingsTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink,
-    flex: 1,
-    marginRight: 8,
-  },
-  itemLoc: {
-    fontSize: 12,
-    color: COLORS.mute,
-    marginBottom: 8,
-  },
-  itemBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    paddingTop: 8,
-  },
-  itemRent: {
-    fontSize: 13,
     fontWeight: '700',
     color: COLORS.ink,
+    marginTop: 10,
   },
-  itemComm: {
+  emptyListingsSub: {
     fontSize: 12,
     color: COLORS.mute,
-  },
-  commVal: {
-    fontWeight: '800',
-    color: COLORS.ok,
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });

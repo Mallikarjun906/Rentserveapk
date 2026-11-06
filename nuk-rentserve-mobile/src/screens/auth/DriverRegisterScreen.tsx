@@ -1,4 +1,4 @@
-// Driver Registration Screen (/register/driver) with Real Document Uploads & Back Navigation
+// Driver Registration Screen (/register/driver) with Real Document Uploads & Lucide Icons
 
 import React, { useState } from 'react';
 import {
@@ -6,12 +6,21 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
+import {
+  Car,
+  Truck,
+  ShieldCheck,
+  Check,
+  Clock,
+  Eye,
+  EyeOff,
+  UserPlus,
+} from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
@@ -38,6 +47,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
   onSuccess,
   onBack,
 }) => {
+  const insets = useSafeAreaInsets();
   const { login } = useAuth();
   const { t } = useLocalization();
 
@@ -53,7 +63,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
   const [regNumber, setRegNumber] = useState('');
   const [dlNumber, setDlNumber] = useState('');
 
-  // Real Upload Files (start strictly as null - never default to fake attached state)
+  // Real Upload Files
   const [profileImage, setProfileImage] = useState<UploadFile | null>(null);
   const [dlDoc, setDlDoc] = useState<UploadFile | null>(null);
   const [rcDoc, setRcDoc] = useState<UploadFile | null>(null);
@@ -123,7 +133,6 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       formData.append('terms', 'true');
       formData.append('consent', 'true');
 
-      // Attach only verified selected files
       if (profileImage) {
         formData.append('profileImage', {
           uri: profileImage.uri,
@@ -157,8 +166,6 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       }
 
       await authApi.registerDriver(formData);
-
-      // Log in session
       await login(email.trim().toLowerCase(), password);
       setSubmittedApp(true);
     } catch (err: any) {
@@ -170,11 +177,14 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 
   if (submittedApp) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.root, { paddingBottom: insets.bottom }]}>
+        <Header title={t('Application Submitted', 'ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ')} />
         <ScrollView contentContainerStyle={styles.successScroll}>
-          <View style={styles.successBox}>
-            <Text style={styles.successEmoji}>⏳</Text>
-            <Badge tone="sun" label={t('Pending Verification', 'ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ')} />
+          <View style={[styles.successBox, SHADOWS.card]}>
+            <View style={styles.clockCircle}>
+              <Clock size={40} color={COLORS.warn} />
+            </View>
+            <Badge tone="warn" label={t('Pending Verification', 'ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ')} />
             <Text style={styles.successTitle}>
               {t('Driver Application Submitted!', 'ಚಾಲಕರ ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ!')}
             </Text>
@@ -194,13 +204,12 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
             />
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Visible In-App Back Navigation */}
+    <View style={[styles.root, { paddingBottom: insets.bottom }]}>
       <Header
         title={t('Driver Registration', 'ಚಾಲಕರ ನೋಂದಣಿ')}
         subtitle={t('Auto, Car & Goods Van Driver Onboarding', 'ವಾಹನ ಚಾಲಕರ ನೋಂದಣಿ')}
@@ -213,13 +222,13 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Logo size={42} />
+            <Logo size={46} />
             <Text style={styles.title}>{t('Driver Partner Registration', 'ಚಾಲಕರ ಪಾಲುದಾರ ನೋಂದಣಿ')}</Text>
           </View>
 
           {/* Verification Notice Banner */}
           <View style={styles.noticeBanner}>
-            <Text style={styles.noticeIcon}>🛡️</Text>
+            <ShieldCheck size={18} color={COLORS.brand} style={{ marginRight: 8, marginTop: 1 }} />
             <Text style={styles.noticeText}>
               {t(
                 'Notice: All drivers must undergo administrator document verification before receiving ride bookings.',
@@ -230,7 +239,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 
           {error ? <ErrorBanner message={error} onRetry={handleRegister} /> : null}
 
-          <View style={styles.card}>
+          <View style={[styles.card, SHADOWS.card]}>
             <Text style={styles.sectionHeader}>{t('1. Personal Details', '೧. ವೈಯಕ್ತಿಕ ವಿವರಗಳು')}</Text>
 
             <Input
@@ -265,8 +274,15 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={COLORS.mute} />
+                  ) : (
+                    <Eye size={20} color={COLORS.mute} />
+                  )}
                 </TouchableOpacity>
               }
             />
@@ -284,28 +300,38 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
             <Text style={styles.inputLabel}>{t('Vehicle Category', 'ವಾಹನ ವರ್ಗ')}</Text>
             <View style={styles.vehicleTypeRow}>
               {[
-                { key: 'auto', label: '🛺 Auto Rickshaw' },
-                { key: 'car', label: '🚗 Car' },
-                { key: 'goods-van', label: '🚚 Goods Van' },
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[
-                    styles.vehiclePill,
-                    vehicleType === item.key && styles.vehiclePillActive,
-                  ]}
-                  onPress={() => setVehicleType(item.key as any)}
-                >
-                  <Text
+                { key: 'auto', label: 'Auto Rickshaw', icon: Car },
+                { key: 'car', label: 'Car', icon: Car },
+                { key: 'goods-van', label: 'Goods Van', icon: Truck },
+              ].map((item) => {
+                const IconComponent = item.icon;
+                const isActive = vehicleType === item.key;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
                     style={[
-                      styles.vehiclePillText,
-                      vehicleType === item.key && styles.vehiclePillTextActive,
+                      styles.vehiclePill,
+                      isActive && styles.vehiclePillActive,
                     ]}
+                    onPress={() => setVehicleType(item.key as any)}
+                    activeOpacity={0.7}
                   >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <IconComponent
+                      size={14}
+                      color={isActive ? COLORS.brand : COLORS.ink}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text
+                      style={[
+                        styles.vehiclePillText,
+                        isActive && styles.vehiclePillTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <Input
@@ -326,7 +352,6 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 
             <Text style={styles.sectionHeader}>{t('3. Document Uploads', '೩. ದಾಖಲೆಗಳ ಅಪ್‌ಲೋಡ್')}</Text>
 
-            {/* Real Document Uploaders */}
             <DocumentUploader
               label={t('Driver Photograph', 'ಚಾಲಕರ ಫೋಟೋ')}
               description="Front facing photo / selfie (JPG, PNG)"
@@ -361,135 +386,185 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
               uploadState={loading ? 'uploading' : addressDoc ? 'selected' : 'idle'}
             />
 
-            {/* Explicit Consent Checkbox */}
+            {/* Consent & Terms Checkboxes */}
             <TouchableOpacity
-              style={styles.termsRow}
+              style={styles.checkboxRow}
               onPress={() => setConsent(!consent)}
+              activeOpacity={0.7}
             >
               <View style={[styles.checkbox, consent && styles.checkboxActive]}>
-                {consent && <Text style={styles.checkMark}>✓</Text>}
+                {consent ? <Check size={14} color={COLORS.white} strokeWidth={3} /> : null}
               </View>
-              <Text style={styles.termsText}>
+              <Text style={styles.checkboxLabel}>
                 {t(
-                  'I provide explicit consent to NUK RentServe for verifying my driving licence and vehicle identity records.',
-                  'ನನ್ನ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಮತ್ತು ವಾಹನ ದಾಖಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸಲು ನಾನು ಒಪ್ಪಿಗೆ ನೀಡುತ್ತೇನೆ.'
+                  'I consent to official verification of my Driving Licence & Vehicle RC for public passenger and goods transport.',
+                  'ನನ್ನ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಮತ್ತು ವಾಹನ ಆರ್‌ಸಿ ಪರಿಶೀಲನೆಗೆ ನಾನು ಒಪ್ಪಿಗೆ ನೀಡುತ್ತೇನೆ.'
                 )}
               </Text>
             </TouchableOpacity>
 
-            {/* Terms checkbox */}
             <TouchableOpacity
-              style={styles.termsRow}
+              style={styles.checkboxRow}
               onPress={() => setTerms(!terms)}
+              activeOpacity={0.7}
             >
               <View style={[styles.checkbox, terms && styles.checkboxActive]}>
-                {terms && <Text style={styles.checkMark}>✓</Text>}
+                {terms ? <Check size={14} color={COLORS.white} strokeWidth={3} /> : null}
               </View>
-              <Text style={styles.termsText}>
-                {t('I agree to the', 'ನಾನು ಒಪ್ಪುತ್ತೇನೆ')}{' '}
+              <Text style={styles.checkboxLabel}>
+                {t('I accept NUK RentServe Driver Partner', 'ನಾನು ಒಪ್ಪುತ್ತೇನೆ')}{' '}
                 <Text style={styles.termsLink} onPress={onReadTerms}>
-                  {t('Driver Terms & Operating Code', 'ಚಾಲಕರ ನಿಯಮಗಳು ಮತ್ತು ನಿಬಂಧನೆಗಳು')}
+                  {t('Terms & Conditions', 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು')}
                 </Text>
               </Text>
             </TouchableOpacity>
 
             <Button
-              title={t('Submit Driver Application', 'ಅರ್ಜಿ ಸಲ್ಲಿಸಿ')}
+              title={t('Submit Driver Application', 'ಚಾಲಕರ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ')}
               onPress={handleRegister}
               variant="primary"
               size="lg"
               fullWidth
               loading={loading}
+              icon={<UserPlus size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
               style={styles.submitBtn}
             />
-          </View>
 
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>
-              {t('Already registered as a driver?', 'ಈಗಾಗಲೇ ಚಾಲಕರಾಗಿ ನೋಂದಾಯಿಸಿದ್ದೀರಾ?')}{' '}
-            </Text>
-            <TouchableOpacity onPress={onLogin}>
-              <Text style={styles.loginLink}>{t('Sign In', 'ಲಾಗಿನ್')}</Text>
+            <TouchableOpacity onPress={onLogin} style={styles.loginLink}>
+              <Text style={styles.loginLinkText}>
+                {t('Already registered? Log In', 'ಈಗಾಗಲೇ ನೋಂದಾಯಿಸಲಾಗಿದೆಯೇ? ಲಾಗಿನ್')}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
+  root: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
-  scroll: { padding: 16, flexGrow: 1, paddingBottom: 40 },
-  header: { alignItems: 'center', marginBottom: 12 },
-  title: { fontSize: 20, fontWeight: '900', color: COLORS.ink, marginTop: 8, textAlign: 'center' },
+  scroll: { padding: 16, paddingBottom: 36 },
+  header: { alignItems: 'center', marginBottom: 14 },
+  title: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 8 },
   noticeBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.sunTint,
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: COLORS.sun,
-    borderRadius: RADIUS.lg,
+    borderColor: '#FDE68A',
+    borderRadius: RADIUS.md,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  noticeIcon: { fontSize: 20, marginRight: 8 },
-  noticeText: { fontSize: 12, color: COLORS.ink, flex: 1, fontWeight: '600', lineHeight: 17 },
+  noticeText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 17,
+  },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
-    padding: 16,
+    padding: 18,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    marginBottom: 16,
   },
   sectionHeader: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: COLORS.brand,
     marginTop: 8,
     marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
-  inputLabel: { fontSize: 13, fontWeight: '700', color: COLORS.ink, marginBottom: 6 },
-  vehicleTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.ink,
+    marginBottom: 8,
+  },
+  vehicleTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
   vehiclePill: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: RADIUS.md,
+    backgroundColor: COLORS.paper,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    backgroundColor: COLORS.paper,
-    alignItems: 'center',
   },
-  vehiclePillActive: { borderColor: COLORS.brand, backgroundColor: COLORS.brandTint },
-  vehiclePillText: { fontSize: 11, fontWeight: '700', color: COLORS.ink },
-  vehiclePillTextActive: { color: COLORS.brand },
-  toggleText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, marginBottom: 12 },
+  vehiclePillActive: {
+    borderColor: COLORS.brand,
+    backgroundColor: COLORS.brandTint,
+  },
+  vehiclePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.ink,
+  },
+  vehiclePillTextActive: {
+    color: COLORS.brand,
+    fontWeight: '800',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginVertical: 10,
+  },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: COLORS.mute,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: COLORS.line,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
     marginTop: 2,
   },
-  checkboxActive: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
-  checkMark: { color: COLORS.white, fontSize: 13, fontWeight: '900' },
-  termsText: { fontSize: 12, color: COLORS.ink, flex: 1, lineHeight: 18 },
-  termsLink: { fontWeight: '700', color: COLORS.brand },
-  submitBtn: { marginTop: 8 },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  footerText: { fontSize: 14, color: COLORS.mute },
-  loginLink: { fontSize: 14, fontWeight: '800', color: COLORS.brand },
-  successScroll: { padding: 24, flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
+  checkboxActive: {
+    backgroundColor: COLORS.brand,
+    borderColor: COLORS.brand,
+  },
+  checkboxLabel: {
+    fontSize: 12,
+    color: COLORS.ink,
+    flex: 1,
+    lineHeight: 17,
+  },
+  termsLink: {
+    color: COLORS.brand,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  submitBtn: {
+    marginTop: 14,
+    marginBottom: 12,
+  },
+  loginLink: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  loginLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.brand,
+  },
+  successScroll: {
+    padding: 24,
+    justifyContent: 'center',
+    flexGrow: 1,
+  },
   successBox: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
@@ -497,10 +572,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    width: '100%',
   },
-  successEmoji: { fontSize: 52, marginBottom: 12 },
-  successTitle: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 12, textAlign: 'center' },
-  successSub: { fontSize: 13, color: COLORS.mute, marginTop: 8, textAlign: 'center', lineHeight: 20 },
-  successBtn: { marginTop: 20 },
+  clockCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: COLORS.ink,
+    marginTop: 14,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successSub: {
+    fontSize: 13,
+    color: COLORS.mute,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  successBtn: {
+    marginTop: 8,
+  },
 });

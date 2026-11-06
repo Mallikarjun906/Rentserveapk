@@ -6,12 +6,23 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Linking,
   ActivityIndicator,
   Alert,
   TouchableOpacity,
 } from 'react-native';
+import {
+  Wrench,
+  MapPin,
+  Image as ImageIcon,
+  FileText,
+  Eye,
+  Phone,
+  MessageSquare,
+  Calendar,
+  CheckCircle2,
+  ShieldCheck,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
@@ -84,30 +95,29 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
   }, [providerId]);
 
   const handleBook = async () => {
+    if (!jobDescription.trim()) {
+      Alert.alert('Details Required', 'Please briefly describe the service required.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await rentalApi.createBooking({
+      await rentalApi.requestBooking({
         serviceId: providerId,
         bookingType: 'service',
-        category: categoryName,
-        details: `${jobDescription} (Scheduled for: ${scheduledWhen})`,
-        message: `${jobDescription} (Scheduled for: ${scheduledWhen})`,
+        category: typeof service?.categoryId === 'object' ? service.categoryId.name : 'General Service',
+        providerId: (service?.providerId as any)?._id || (service?.providerId as any) || undefined,
+        scheduledDate: scheduledWhen,
+        details: jobDescription.trim(),
         location: service?.location || 'Bagalkot',
       });
-      try {
-        await serviceApi.createEnquiry({
-          listingId: providerId,
-          listingType: 'service',
-          message: `${jobDescription} (Scheduled for: ${scheduledWhen})`,
-        });
-      } catch {}
       setRequestSent(true);
       setTimeout(() => {
         setBookModalOpen(false);
         setRequestSent(false);
-      }, 1500);
+        setJobDescription('');
+      }, 2500);
     } catch (e: any) {
-      Alert.alert('Booking Request', 'Could not submit booking: ' + (e?.message || 'Please try again.'));
+      Alert.alert('Booking Error', e.message || 'Could not send booking request. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -115,7 +125,13 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
 
   const handleOpenDirectChat = async () => {
     if (!service) return;
-    const targetUserId = typeof service.providerId === 'object' && service.providerId ? (service.providerId as any)._id : String(service.providerId || '');
+    const targetUserId =
+      typeof service.providerId === 'object' && service.providerId?._id
+        ? service.providerId._id
+        : typeof service.providerId === 'string'
+        ? service.providerId
+        : null;
+
     if (!targetUserId) {
       Alert.alert('Notice', 'Provider contact information is currently unavailable.');
       return;
@@ -142,10 +158,10 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.crimson} />
-        <Text style={{ marginTop: 12, color: COLORS.inkMuted }}>Loading provider profile…</Text>
-      </SafeAreaView>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.brand} />
+        <Text style={{ marginTop: 12, color: COLORS.mute }}>Loading provider profile…</Text>
+      </View>
     );
   }
 
@@ -155,7 +171,7 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
   const priceDisplay = service?.priceRange?.min ? `₹${service.priceRange.min}` : '₹350';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={name}
         subtitle={`${categoryName} · ${service?.location || 'Bagalkot'}`}
@@ -167,12 +183,15 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
         <View style={[styles.card, SHADOWS.card]}>
           <View style={styles.topRow}>
             <View style={styles.avatar}>
-              <Text style={{ fontSize: 28 }}>🔧</Text>
+              <Wrench size={24} color={COLORS.brand} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{name}</Text>
               <Text style={styles.trade}>{categoryName}</Text>
-              <Text style={styles.area}>📍 {service?.location || 'Bagalkot, Karnataka'}</Text>
+              <View style={styles.areaRow}>
+                <MapPin size={13} color={COLORS.mute} />
+                <Text style={styles.area}>{service?.location || 'Bagalkot, Karnataka'}</Text>
+              </View>
             </View>
           </View>
 
@@ -197,8 +216,11 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
 
         {/* Verified Provider Credentials (In-Screen Document Preview) */}
         <View style={[styles.card, SHADOWS.card]}>
-          <Text style={styles.sectionTitle}>Verified Credentials & Documents</Text>
-          <Text style={[styles.bodyText, { fontSize: 13, color: COLORS.inkMuted, marginBottom: 12 }]}>
+          <View style={styles.docHeaderRow}>
+            <ShieldCheck size={18} color={COLORS.brand} />
+            <Text style={styles.sectionTitle}>Verified Credentials & Documents</Text>
+          </View>
+          <Text style={[styles.bodyText, { fontSize: 13, color: COLORS.mute, marginBottom: 12 }]}>
             Identity and trade verification documents are validated by NUK desk:
           </Text>
 
@@ -209,17 +231,20 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.docRowLeft}>
-                <Text style={{ fontSize: 20, marginRight: 10 }}>🖼️</Text>
-                <View>
+                <ImageIcon size={18} color="#2563EB" />
+                <View style={{ marginLeft: 10 }}>
                   <Text style={{ fontSize: 13, fontWeight: '800', color: COLORS.ink }}>
                     Government ID / Aadhaar
                   </Text>
-                  <Text style={{ fontSize: 11, color: COLORS.inkMuted, marginTop: 1 }}>
+                  <Text style={{ fontSize: 11, color: COLORS.mute, marginTop: 1 }}>
                     Masked verified identity copy
                   </Text>
                 </View>
               </View>
-              <Text style={styles.previewActionPill}>👁️ Preview</Text>
+              <View style={styles.previewActionPill}>
+                <Eye size={12} color={COLORS.brand} />
+                <Text style={styles.previewActionText}>Preview</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -230,14 +255,14 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
           <Text style={styles.bodyText}>Direct contact with 0% platform fee. Settle charges directly in cash.</Text>
           <View style={styles.btnRow}>
             <Button
-              title="📞 Call"
+              title="Call"
               variant="outline"
               size="sm"
               onPress={() => Linking.openURL(`tel:${phone}`)}
               style={{ flex: 1 }}
             />
             <Button
-              title={chatStarting ? 'Connecting…' : '💬 Message'}
+              title={chatStarting ? 'Connecting…' : 'Message'}
               variant="outline"
               size="sm"
               disabled={chatStarting}
@@ -245,7 +270,7 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
               style={{ flex: 1 }}
             />
             <Button
-              title="🗓 Book"
+              title="Book"
               size="sm"
               onPress={() => setBookModalOpen(true)}
               style={{ flex: 1 }}
@@ -258,9 +283,9 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
       <Modal visible={bookModalOpen} onClose={() => setBookModalOpen(false)} title="Book Service Visit">
         {requestSent ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ fontSize: 36 }}>✅</Text>
+            <CheckCircle2 size={40} color={COLORS.ok} />
             <Text style={{ fontSize: 17, fontWeight: '700', marginTop: 10 }}>Service Request Sent!</Text>
-            <Text style={{ color: COLORS.inkMuted, textAlign: 'center', marginTop: 6 }}>
+            <Text style={{ color: COLORS.mute, textAlign: 'center', marginTop: 6 }}>
               The service provider will call your registered number to confirm appointment.
             </Text>
           </View>
@@ -277,8 +302,7 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
               value={jobDescription}
               onChangeText={setJobDescription}
               placeholder="e.g. Main switchboard tripping / water leakage in bathroom"
-              multiline
-              numberOfLines={3}
+              textarea
             />
             <Button
               title={submitting ? 'Submitting…' : 'Send Service Request'}
@@ -298,12 +322,37 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
         onSelectIndex={setPreviewIndex}
         canReview={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
+  container: { flex: 1, backgroundColor: COLORS.paper },
+  scroll: { padding: 16, paddingBottom: 60 },
+  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.brandTint, justifyContent: 'center', alignItems: 'center' },
+  name: { fontSize: 18, fontWeight: '800', color: COLORS.ink },
+  trade: { fontSize: 13, color: COLORS.brand, fontWeight: '600', marginTop: 2 },
+  areaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  area: { fontSize: 12, color: COLORS.mute },
+  divider: { height: 1, backgroundColor: COLORS.line, marginVertical: 14 },
+  rateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rateLabel: { fontSize: 11, color: COLORS.mute, fontWeight: '700', textTransform: 'uppercase' },
+  rateText: { fontSize: 18, fontWeight: '900', color: COLORS.ink, marginTop: 2 },
+  docHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.ink, marginBottom: 8 },
+  bodyText: { fontSize: 14, color: COLORS.ink, lineHeight: 20 },
   docRowItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -314,33 +363,20 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: 10,
   },
-  docRowLeft: {
+  docRowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  previewActionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  previewActionPill: {
-    backgroundColor: COLORS.brand,
-    color: COLORS.white,
-    fontSize: 11,
-    fontWeight: '800',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    gap: 4,
+    backgroundColor: COLORS.brandTint,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: RADIUS.full,
   },
-  scroll: { padding: 16, paddingBottom: 90 },
-  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },
-  topRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.crimsonTint, justifyContent: 'center', alignItems: 'center' },
-  name: { fontSize: 18, fontWeight: '800', color: COLORS.ink },
-  trade: { fontSize: 14, color: COLORS.crimson, fontWeight: '700', marginTop: 2 },
-  area: { fontSize: 12, color: COLORS.inkMuted, marginTop: 4 },
-  divider: { height: 1, backgroundColor: COLORS.line, marginVertical: 14 },
-  rateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rateLabel: { fontSize: 11, color: COLORS.inkMuted, textTransform: 'uppercase', fontWeight: '700' },
-  rateText: { fontSize: 20, fontWeight: '800', color: COLORS.crimson, marginTop: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.ink, marginBottom: 8 },
-  bodyText: { fontSize: 14, color: COLORS.ink, lineHeight: 20 },
+  previewActionText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.brand,
+  },
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
 });

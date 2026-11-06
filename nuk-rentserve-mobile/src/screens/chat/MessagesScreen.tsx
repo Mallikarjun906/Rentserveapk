@@ -7,10 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { AlertCircle, MessageSquare } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -70,7 +70,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({ onOpenChat }) =>
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('tabMessages', 'ಸಂದೇಶಗಳು')}
         subtitle="Chat with your drivers, customers & providers"
@@ -78,16 +78,17 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({ onOpenChat }) =>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.crimson} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
       >
         {loading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={COLORS.crimson} />
+            <ActivityIndicator size="large" color={COLORS.brand} />
             <Text style={styles.loadingText}>Loading conversations…</Text>
           </View>
         ) : error ? (
           <View style={styles.centerBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <AlertCircle size={32} color={COLORS.bad} />
+            <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={() => loadConversations()}>
               <Text style={styles.retryBtnText}>Retry</Text>
             </TouchableOpacity>
@@ -138,60 +139,58 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({ onOpenChat }) =>
           ))
         )}
 
-        <View style={styles.privacyNote}>
-          <Text style={styles.privacyText}>
-            🔒 {t('Contact details are shared only for accepted bookings.', 'ದೃಢೀಕರಿಸಿದ ಬುಕಿಂಗ್‌ಗಳಿಗೆ ಮಾತ್ರ ಸಂಪರ್ಕ ವಿವರ ಲಭ್ಯ.')}
-          </Text>
-        </View>
+        <View style={{ height: 20 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
   scroll: {
     padding: 16,
-    paddingBottom: 100,
-    flexGrow: 1,
+    paddingBottom: 60,
   },
   centerBox: {
-    paddingVertical: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 50,
   },
   loadingText: {
     marginTop: 12,
-    color: COLORS.inkMuted,
     fontSize: 14,
+    color: COLORS.mute,
   },
   errorText: {
-    color: COLORS.crimson,
-    fontSize: 14,
-    marginBottom: 12,
+    marginTop: 10,
+    fontSize: 13,
+    color: COLORS.bad,
     textAlign: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 14,
   },
   retryBtn: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.brandTint,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.line,
+    borderColor: COLORS.brand,
   },
   retryBtnText: {
-    color: COLORS.ink,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.brand,
   },
   threadCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
     padding: 14,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.line,
     marginBottom: 10,
@@ -201,14 +200,14 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: COLORS.brandTint,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    justifyContent: 'center',
+    marginRight: 12,
   },
   avatarText: {
-    color: COLORS.crimson,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '900',
+    color: COLORS.brand,
   },
   infoCol: {
     flex: 1,
@@ -221,52 +220,40 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.ink,
   },
   time: {
-    fontSize: 12,
-    color: COLORS.inkMuted,
+    fontSize: 11,
+    color: COLORS.mute,
   },
   role: {
-    fontSize: 12,
-    color: COLORS.crimson,
+    fontSize: 11,
     fontWeight: '600',
+    color: COLORS.brand,
     marginBottom: 3,
   },
   lastMsg: {
     fontSize: 13,
-    color: COLORS.inkMuted,
+    color: COLORS.mute,
   },
   unreadMsg: {
     color: COLORS.ink,
     fontWeight: '700',
   },
   badge: {
-    backgroundColor: COLORS.crimson,
-    borderRadius: 12,
-    minWidth: 22,
-    height: 22,
-    justifyContent: 'center',
+    backgroundColor: COLORS.brand,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 6,
     marginLeft: 8,
   },
   badgeText: {
     color: COLORS.white,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  privacyNote: {
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: COLORS.sand,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-  },
-  privacyText: {
-    fontSize: 12,
-    color: COLORS.inkMuted,
-    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: '900',
   },
 });

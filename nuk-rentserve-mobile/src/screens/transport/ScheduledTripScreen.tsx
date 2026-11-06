@@ -7,9 +7,18 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import {
+  Car,
+  Truck,
+  Calendar,
+  Clock,
+  Users,
+  Info,
+  MapPin,
+  CheckCircle2,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
@@ -17,6 +26,7 @@ import { Button } from '../../components/common/Button';
 import { formatINR } from '../../utils/formatters';
 import { calculateCarTripFare, calculateGoodsVanFare } from '../../utils/fareCalculator';
 import { useLocalization } from '../../context/LocalizationContext';
+import { transportApi } from '../../api/transportApi';
 
 interface ScheduledTripScreenProps {
   initialKind?: 'car' | 'van';
@@ -71,15 +81,35 @@ export const ScheduledTripScreen: React.FC<ScheduledTripScreenProps> = ({
 
     setError('');
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      const details = isCar
+        ? `Car Trip (${carTripType}) for ${passengers} passengers. Date: ${travelDate} ${travelTime}`
+        : `Goods Van (${vanSize}) - Cargo: ${goodsType}. Notes: ${notes}. Date: ${travelDate} ${travelTime}`;
+
+      const booking = await transportApi.createBooking({
+        vehicleType: isCar ? 'car' : 'goods-van',
+        pickup: pickup.trim(),
+        destination: destination.trim(),
+        scheduledAt: new Date(Date.now() + 86400000).toISOString(),
+        details,
+      });
+
+      const ref = booking._id || booking.id || (isCar ? 'CT-' : 'GV-') + Math.floor(1000 + Math.random() * 9000);
+      Alert.alert(
+        t('Booking Requested', 'ಬುಕಿಂಗ್ ವಿನಂತಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'),
+        t('Your trip has been registered. Available drivers will review and accept.', 'ನಿಮ್ಮ ಬುಕಿಂಗ್ ನೋಂದಾಯಿಸಲಾಗಿದೆ. ಲಭ್ಯವಿರುವ ಚಾಲಕರು ಪರಿಶೀಲಿಸುತ್ತಾರೆ.'),
+        [{ text: 'OK', onPress: () => onSuccess(ref) }]
+      );
+    } catch (err: any) {
+      setError(err.message || 'Could not create booking. Please try again.');
+    } finally {
       setLoading(false);
-      const ref = (isCar ? 'CT-' : 'GV-') + Math.floor(1000 + Math.random() * 9000);
-      onSuccess(ref);
-    }, 1000);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={isCar ? t('carTripTitle', 'ಕಾರು ಪ್ರಯಾಣ ಬುಕಿಂಗ್') : t('goodsVanTitle', 'ಗೂಡ್ಸ್ ವ್ಯಾನ್ ಬುಕಿಂಗ್')}
         subtitle="Schedule ahead with confirmed package fare"
@@ -91,18 +121,22 @@ export const ScheduledTripScreen: React.FC<ScheduledTripScreenProps> = ({
         <TouchableOpacity
           style={[styles.toggleBtn, isCar && styles.toggleBtnActive]}
           onPress={() => setKind('car')}
+          activeOpacity={0.8}
         >
+          <Car size={18} color={isCar ? COLORS.white : COLORS.ink} />
           <Text style={[styles.toggleText, isCar && styles.toggleTextActive]}>
-            🚗 {t('Passenger Car', 'ಕಾರು ಪ್ರಯಾಣ')}
+            {t('Passenger Car', 'ಕಾರು ಪ್ರಯಾಣ')}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.toggleBtn, !isCar && styles.toggleBtnActive]}
           onPress={() => setKind('van')}
+          activeOpacity={0.8}
         >
+          <Truck size={18} color={!isCar ? COLORS.white : COLORS.ink} />
           <Text style={[styles.toggleText, !isCar && styles.toggleTextActive]}>
-            🚚 {t('Goods Van', 'ಗೂಡ್ಸ್ ವ್ಯಾನ್')}
+            {t('Goods Van', 'ಗೂಡ್ಸ್ ವ್ಯಾನ್')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -190,7 +224,10 @@ export const ScheduledTripScreen: React.FC<ScheduledTripScreenProps> = ({
               >
                 <Text style={styles.stepBtnText}>−</Text>
               </TouchableOpacity>
-              <Text style={styles.stepperValue}>{passengers} Passengers</Text>
+              <View style={styles.stepperValueContainer}>
+                <Users size={16} color={COLORS.brand} />
+                <Text style={styles.stepperValue}>{passengers} Passengers</Text>
+              </View>
               <TouchableOpacity
                 style={styles.stepBtn}
                 onPress={() => setPassengers(Math.min(7, passengers + 1))}
@@ -199,9 +236,12 @@ export const ScheduledTripScreen: React.FC<ScheduledTripScreenProps> = ({
               </TouchableOpacity>
             </View>
             {passengers > 4 && (
-              <Text style={styles.suvNotice}>
-                ℹ️ 5+ passengers automatically assigned an Innova / 7-seater SUV.
-              </Text>
+              <View style={styles.infoBanner}>
+                <Info size={14} color="#1D4ED8" />
+                <Text style={styles.suvNotice}>
+                  5+ passengers will automatically be assigned an Innova / 7-seater SUV.
+                </Text>
+              </View>
             )}
           </View>
         ) : (
@@ -278,12 +318,12 @@ export const ScheduledTripScreen: React.FC<ScheduledTripScreenProps> = ({
 
         <View style={{ height: 20 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
@@ -298,8 +338,11 @@ const styles = StyleSheet.create({
   },
   toggleBtn: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.paper,
     borderWidth: 1,
@@ -350,88 +393,101 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   typeChip: {
-    backgroundColor: COLORS.paper,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
   },
   typeChipActive: {
-    backgroundColor: COLORS.sun,
-    borderColor: COLORS.sunDeep,
+    backgroundColor: COLORS.brandTint,
+    borderColor: COLORS.brand,
   },
   typeChipText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: COLORS.ink,
   },
   typeChipTextActive: {
-    color: COLORS.ink,
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.paper,
-    padding: 12,
-    borderRadius: RADIUS.md,
+    padding: 8,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.line,
   },
   stepBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   stepBtnText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: COLORS.ink,
   },
+  stepperValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   stepperValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: COLORS.ink,
   },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    borderRadius: RADIUS.md,
+    padding: 10,
+    marginTop: 10,
+  },
   suvNotice: {
-    fontSize: 12,
-    color: COLORS.info,
-    fontWeight: '600',
-    marginTop: 8,
+    fontSize: 11,
+    color: '#1D4ED8',
+    flex: 1,
   },
   fareCard: {
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.sun,
-    alignItems: 'center',
+    backgroundColor: COLORS.brandTint,
+    borderColor: COLORS.brand,
+    borderWidth: 1.5,
   },
   fareHeaderTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.mute,
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.brand,
+    textTransform: 'uppercase',
   },
   fareAmount: {
     fontSize: 32,
     fontWeight: '900',
-    color: COLORS.brand,
-    marginVertical: 6,
+    color: COLORS.ink,
+    marginVertical: 4,
   },
   fareNotice: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.mute,
-    textAlign: 'center',
     marginBottom: 16,
   },
   errorText: {
+    color: COLORS.crimson,
     fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.bad,
+    fontWeight: '600',
     marginBottom: 10,
   },
 });

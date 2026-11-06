@@ -7,10 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Linking,
   Alert,
 } from 'react-native';
+import { AlertTriangle, CheckCircle2, Phone } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
@@ -51,7 +51,7 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('Help & Dispute Resolution', 'ಸಹಾಯ ಮತ್ತು ದೂರು')}
         subtitle="We respond within 2 working days"
@@ -61,7 +61,7 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Emergency Alert Box */}
         <View style={styles.emergencyBanner}>
-          <Text style={styles.emergencyIcon}>🚨</Text>
+          <AlertTriangle size={20} color={COLORS.crimson} />
           <View style={styles.emergencyCol}>
             <Text style={styles.emergencyTitle}>Immediate Safety Emergency?</Text>
             <Text style={styles.emergencySub}>
@@ -71,14 +71,16 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
           <TouchableOpacity
             style={styles.call112Btn}
             onPress={() => Linking.openURL('tel:112')}
+            activeOpacity={0.8}
           >
+            <Phone size={12} color={COLORS.white} />
             <Text style={styles.call112Text}>Call 112</Text>
           </TouchableOpacity>
         </View>
 
         {submitted ? (
           <View style={[styles.card, styles.successCard, SHADOWS.card]}>
-            <Text style={styles.successEmoji}>✓</Text>
+            <CheckCircle2 size={40} color={COLORS.ok} />
             <Text style={styles.successTitle}>Support Ticket Created</Text>
             <Text style={styles.ticketNumber}>Ticket #{ticketId}</Text>
             <Text style={styles.successMessage}>
@@ -145,56 +147,55 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
 
         <View style={{ height: 20 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
   scroll: {
     padding: 16,
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   emergencyBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.badTint,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
     borderRadius: RADIUS.lg,
     padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
     marginBottom: 16,
-  },
-  emergencyIcon: {
-    fontSize: 26,
-    marginRight: 10,
+    gap: 10,
   },
   emergencyCol: {
     flex: 1,
   },
   emergencyTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: COLORS.badDeep,
+    color: COLORS.crimson,
   },
   emergencySub: {
-    fontSize: 12,
-    color: COLORS.bad,
+    fontSize: 11,
+    color: COLORS.mute,
     marginTop: 2,
   },
   call112Btn: {
-    backgroundColor: COLORS.bad,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.crimson,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: RADIUS.sm,
-    marginLeft: 8,
+    borderRadius: RADIUS.full,
   },
   call112Text: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     color: COLORS.white,
   },
   card: {
@@ -204,10 +205,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.line,
   },
-  fieldLabel: {
-    fontSize: 13,
+  successCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  successTitle: {
+    fontSize: 18,
     fontWeight: '800',
     color: COLORS.ink,
+    marginTop: 10,
+  },
+  ticketNumber: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.brand,
+    marginTop: 4,
+  },
+  successMessage: {
+    fontSize: 13,
+    color: COLORS.mute,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 10,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  doneBtn: {
+    minWidth: 120,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.mute,
+    textTransform: 'uppercase',
     marginBottom: 10,
   },
   categoryRow: {
@@ -217,15 +247,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   catChip: {
-    backgroundColor: COLORS.paper,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
   },
   catChipActive: {
-    backgroundColor: COLORS.brand,
+    backgroundColor: COLORS.brandTint,
     borderColor: COLORS.brand,
   },
   catChipText: {
@@ -234,42 +264,10 @@ const styles = StyleSheet.create({
     color: COLORS.ink,
   },
   catChipTextActive: {
-    color: COLORS.white,
-    fontWeight: '700',
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   submitBtn: {
-    marginTop: 8,
-  },
-  successCard: {
-    alignItems: 'center',
-    paddingVertical: 28,
-  },
-  successEmoji: {
-    fontSize: 44,
-    color: COLORS.ok,
-    marginBottom: 10,
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  ticketNumber: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.brand,
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  successMessage: {
-    fontSize: 13,
-    color: COLORS.mute,
-    textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 14,
-    marginBottom: 20,
-  },
-  doneBtn: {
-    minWidth: 140,
+    marginTop: 10,
   },
 });

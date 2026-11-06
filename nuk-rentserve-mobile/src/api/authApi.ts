@@ -16,6 +16,10 @@ export interface User {
   approvalStatus?: ApprovalStatus;
   rejectionReason?: string;
   isActive?: boolean;
+  vehicleNumber?: string;
+  vehicleModel?: string;
+  collegeName?: string;
+  profileImage?: { url: string };
 }
 
 export interface AuthResponse {
@@ -146,7 +150,7 @@ export const authApi = {
   },
 
   // Update Profile
-  async updateMe(data: Partial<User>): Promise<User> {
+  async updateMe(data: Partial<User> | FormData | any): Promise<User> {
     const res: any = await apiClient.patch('/users/me', data);
     return res.data || res;
   },

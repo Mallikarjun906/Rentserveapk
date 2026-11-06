@@ -1,4 +1,4 @@
-// Administrator Secure Sign-In Screen (/admin/login)
+// Administrator Secure Sign-In Screen (/admin/login) with Lucide Icons
 
 import React, { useState } from 'react';
 import {
@@ -6,11 +6,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { ShieldCheck, Lock, Eye, EyeOff, LogIn } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
@@ -18,10 +19,7 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
-import { authApi } from '../../api/authApi';
-import { Storage } from '../../utils/storage';
 import { useAuth } from '../../context/AuthContext';
-import { useLocalization } from '../../context/LocalizationContext';
 
 interface AdminLoginScreenProps {
   onBackToApp: () => void;
@@ -32,9 +30,9 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
   onBackToApp,
   onSuccess,
 }) => {
-  const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
   const { adminLogin } = useAuth();
-  const [identifier, setIdentifier] = useState('admin@nukrentserve.com');
+  const [identifier, setIdentifier] = useState('demo.admin@nukrentserve.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,7 +62,7 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.root, { paddingBottom: insets.bottom }]}>
       <Header
         title="Admin Portal"
         subtitle="Restricted Security Access"
@@ -74,8 +72,7 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Header */}
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <View style={styles.badgeRow}>
               <Badge tone="ok" label="SECURITY CLEARANCE REQUIRED" />
@@ -89,7 +86,7 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
 
           {/* Security Alert Banner */}
           <View style={styles.securityWarning}>
-            <Text style={styles.warningIcon}>🔒</Text>
+            <Lock size={18} color="#92400E" style={{ marginRight: 8, marginTop: 1 }} />
             <Text style={styles.warningText}>
               Restricted Area: Authorized personnel only. Every sign-in attempt and action is permanently recorded in the audit log.
             </Text>
@@ -98,10 +95,10 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
           {error ? <ErrorBanner message={error} onRetry={handleAdminLogin} /> : null}
 
           {/* Form Card */}
-          <View style={[styles.formCard, SHADOWS.card]}>
+          <View style={[styles.card, SHADOWS.card]}>
             <Input
-              label="Administrator Email / Login ID"
-              placeholder="admin@nukrentserve.com"
+              label="Admin Email or Username"
+              placeholder="e.g. admin@nukrentserve.com"
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
@@ -109,71 +106,89 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
             />
 
             <Input
-              label="Master Password"
+              label="Password"
               placeholder="••••••••••••"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={COLORS.mute} />
+                  ) : (
+                    <Eye size={20} color={COLORS.mute} />
+                  )}
                 </TouchableOpacity>
               }
             />
 
             <Button
-              title="Authenticate & Open Console"
+              title="Authenticate Administrator"
               onPress={handleAdminLogin}
-              variant="primary"
+              variant="dark"
               size="lg"
               fullWidth
               loading={loading}
+              icon={<ShieldCheck size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
               style={styles.submitBtn}
             />
 
-            <Button
-              title="Return to Main Application"
-              onPress={onBackToApp}
-              variant="outline"
-              size="md"
-              fullWidth
-              style={styles.backBtn}
-            />
+            <TouchableOpacity onPress={onBackToApp} style={styles.backLink}>
+              <Text style={styles.backLinkText}>← Return to Public Application</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0F172A' },
+  root: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
-  scroll: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  header: { alignItems: 'center', marginBottom: 20 },
-  badgeRow: { marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: '900', color: COLORS.white, marginTop: 12 },
-  sub: { fontSize: 13, color: '#94A3B8', marginTop: 4, textAlign: 'center', maxWidth: 300 },
+  scroll: { padding: 18, justifyContent: 'center', flexGrow: 1, paddingBottom: 36 },
+  header: { alignItems: 'center', marginBottom: 18 },
+  badgeRow: { marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: '900', color: COLORS.ink, marginTop: 10 },
+  sub: { fontSize: 13, color: COLORS.mute, marginTop: 4, textAlign: 'center', lineHeight: 18 },
   securityWarning: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#EF4444',
-    borderRadius: RADIUS.lg,
+    borderColor: '#FDE68A',
+    borderRadius: RADIUS.md,
     padding: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  warningIcon: { fontSize: 20, marginRight: 8 },
-  warningText: { fontSize: 12, color: '#FCA5A5', flex: 1, lineHeight: 18, fontWeight: '600' },
-  formCard: {
+  warningText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 17,
+  },
+  card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
-    padding: 24,
+    padding: 20,
     borderWidth: 1.5,
     borderColor: COLORS.line,
   },
-  toggleText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
-  submitBtn: { marginTop: 12, marginBottom: 10 },
-  backBtn: { borderColor: COLORS.line },
+  submitBtn: {
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  backLink: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  backLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.mute,
+  },
 });

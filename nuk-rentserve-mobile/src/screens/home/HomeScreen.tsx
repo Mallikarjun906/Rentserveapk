@@ -1,4 +1,4 @@
-// Main Home Screen with Quick Actions, Location Bar, Banner & Highlights
+// Main Home Screen with Balanced Services, Rentals & Transport Hub, Real MongoDB Data & Lucide Icons
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -7,9 +7,24 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
+  ActivityIndicator,
+  TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  MapPin,
+  Navigation,
+  Search,
+  X,
+  Car,
+  Home as HomeIcon,
+  Wrench,
+  Truck,
+  ArrowRight,
+  ShieldCheck,
+  Clock,
+  Sparkles,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Logo } from '../../components/common/Logo';
 import { Badge } from '../../components/common/Badge';
@@ -44,6 +59,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const { language, setLanguage, t } = useLocalization();
   const { user, isSaved, toggleSaved } = useAuth();
+  const insets = useSafeAreaInsets();
   const {
     cityName,
     setCityName,
@@ -57,9 +73,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [liveProperties, setLiveProperties] = useState<PropertyCardItem[]>([]);
   const [liveProviders, setLiveProviders] = useState<ProviderCardItem[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     async function loadHomeData() {
+      setLoadingData(true);
       try {
         const [propsRes, provsRes] = await Promise.allSettled([
           rentalApi.getProperties({ limit: 4 }),
@@ -102,6 +120,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         }
       } catch (e) {
         // Handled silently
+      } finally {
+        setLoadingData(false);
       }
     }
     loadHomeData();
@@ -112,23 +132,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-
-      {/* Top Bar: City Selector & Language Toggle */}
-      <View style={styles.topBar}>
+    <View style={styles.container}>
+      {/* Top Bar with Safe-Area Clearance */}
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={styles.topBarLeft}>
           <Logo size={36} />
           <TouchableOpacity
             style={styles.citySelector}
             onPress={() => setCityPickerOpen(!cityPickerOpen)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.cityLabel}>
-              {isDefaultFallback ? `${t('defaultArea', 'ಮೂಲ ಪ್ರದೇಶ')}: ` : '📍 '}
-              {cityName}
-            </Text>
+            <View style={styles.cityLabelRow}>
+              <MapPin size={11} color={COLORS.mute} strokeWidth={2.2} />
+              <Text style={styles.cityLabel}>
+                {isDefaultFallback ? `${t('defaultArea', 'ಮೂಲ ಪ್ರದೇಶ')}` : 'GPS'}
+              </Text>
+            </View>
             <Text style={styles.cityName} numberOfLines={1}>
-              {isDefaultFallback ? `${cityName} (Default) ▼` : `${cityName} (GPS) ▼`}
+              {cityName} ▼
             </Text>
           </TouchableOpacity>
         </View>
@@ -138,13 +159,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={() => detectCurrentLocation(true)}
             style={styles.gpsDetectBtn}
             disabled={isLoadingLocation}
+            activeOpacity={0.8}
           >
-            <Text style={styles.gpsDetectText}>
-              {isLoadingLocation ? '⏳' : '⌖ GPS'}
-            </Text>
+            {isLoadingLocation ? (
+              <ActivityIndicator size="small" color={COLORS.brand} />
+            ) : (
+              <>
+                <Navigation size={13} color={COLORS.brand} strokeWidth={2.4} />
+                <Text style={styles.gpsDetectText}>GPS</Text>
+              </>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={toggleLanguage} style={styles.langToggle}>
+          <TouchableOpacity onPress={toggleLanguage} style={styles.langToggle} activeOpacity={0.8}>
             <Text style={styles.langToggleText}>
               {language === 'en' ? 'ಕನ್ನಡ' : 'English'}
             </Text>
@@ -159,8 +186,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <Text style={styles.cityDropTitle}>
               {t('Select Service Area', 'ಸೇವಾ ಪ್ರದೇಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ')}
             </Text>
-            <TouchableOpacity onPress={() => setCityPickerOpen(false)}>
-              <Text style={styles.closeDropText}>✕</Text>
+            <TouchableOpacity onPress={() => setCityPickerOpen(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={18} color={COLORS.mute} />
             </TouchableOpacity>
           </View>
 
@@ -172,7 +199,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               setCityPickerOpen(false);
             }}
           >
-            <Text style={styles.useGpsIcon}>⌖</Text>
+            <View style={styles.gpsIconCircle}>
+              <Navigation size={16} color={COLORS.brand} />
+            </View>
             <View style={styles.useGpsInfo}>
               <Text style={styles.useGpsTitle}>
                 {t('Detect My Current GPS Location', 'ನನ್ನ ಪ್ರಸ್ತುತ ಸ್ಥಳವನ್ನು ಪತ್ತೆಮಾಡಿ')}
@@ -236,12 +265,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </View>
             </View>
             <View style={styles.trackBtn}>
-              <Text style={styles.trackBtnText}>{t('track', 'ಟ್ರ್ಯಾಕ್')} →</Text>
+              <Text style={styles.trackBtnText}>{t('track', 'ಟ್ರ್ಯಾಕ್')}</Text>
+              <ArrowRight size={14} color={COLORS.brand} />
             </View>
           </TouchableOpacity>
         )}
 
-        {/* Karnataka Regional Hero Banner */}
+        {/* Search Bar Redirecting to Explore */}
+        <TouchableOpacity
+          style={[styles.searchBar, SHADOWS.card]}
+          onPress={onNavigateRentals}
+          activeOpacity={0.85}
+        >
+          <Search size={18} color={COLORS.mute} strokeWidth={2} />
+          <Text style={styles.searchPlaceholder}>
+            {language === 'kn' ? 'ಮನೆ, ಪಿಜಿ, ಎಲೆಕ್ಟ್ರಿಷಿಯನ್ ಅಥವಾ ಆಟೋ ಹುಡುಕಿ...' : 'Search rentals, local services or rides...'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Brand Banner with Karnataka Heritage Palette */}
         <View style={styles.heroBanner}>
           <View style={styles.heroLeft}>
             <Badge tone="sun" label="ಕರ್ನಾಟಕ · KARNATAKA" />
@@ -258,7 +300,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
         </View>
 
-        {/* Quick Actions (4 Hub Cards) */}
+        {/* 4 Main Service Cards */}
         <Text style={styles.sectionTitle}>
           {t('quickServices', 'ತ್ವರಿತ ಸೇವೆಗಳು')}
         </Text>
@@ -269,7 +311,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={onNavigateAuto}
             style={[styles.actionCard, styles.autoCard, SHADOWS.card]}
           >
-            <Text style={styles.actionEmoji}>🛺</Text>
+            <View style={[styles.cardIconBox, { backgroundColor: '#FEE2E2' }]}>
+              <Car size={24} color={COLORS.brand} strokeWidth={2.2} />
+            </View>
             <Text style={styles.actionTitle}>{t('bookAuto', 'ಆಟೋ ಬುಕಿಂಗ್')}</Text>
             <Text style={styles.actionSub}>₹30 {t('base fare', 'ಮೂಲ ದರ')}</Text>
           </TouchableOpacity>
@@ -280,7 +324,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={onNavigateRentals}
             style={[styles.actionCard, SHADOWS.card]}
           >
-            <Text style={styles.actionEmoji}>🏡</Text>
+            <View style={[styles.cardIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <HomeIcon size={24} color="#D97706" strokeWidth={2.2} />
+            </View>
             <Text style={styles.actionTitle}>{t('rentals', 'ಬಾಡಿಗೆ ಮನೆ/ಪಿಜಿ')}</Text>
             <Text style={styles.actionSub}>House, Room, PG</Text>
           </TouchableOpacity>
@@ -291,7 +337,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={onNavigateServices}
             style={[styles.actionCard, SHADOWS.card]}
           >
-            <Text style={styles.actionEmoji}>🔧</Text>
+            <View style={[styles.cardIconBox, { backgroundColor: '#E0E7FF' }]}>
+              <Wrench size={24} color="#4F46E5" strokeWidth={2.2} />
+            </View>
             <Text style={styles.actionTitle}>{t('localServices', 'ದೈನಂದಿನ ಸೇವೆ')}</Text>
             <Text style={styles.actionSub}>Electrician, Plumber</Text>
           </TouchableOpacity>
@@ -302,23 +350,88 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={onNavigateCarTrips}
             style={[styles.actionCard, SHADOWS.card]}
           >
-            <Text style={styles.actionEmoji}>🚐</Text>
+            <View style={[styles.cardIconBox, { backgroundColor: '#D1FAE5' }]}>
+              <Truck size={24} color="#059669" strokeWidth={2.2} />
+            </View>
             <Text style={styles.actionTitle}>{t('carTrips', 'ಕಾರು & ವ್ಯಾನ್')}</Text>
             <Text style={styles.actionSub}>Outstation / Shifting</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Transport Hub Showcase */}
+        <View style={styles.transportSection}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>
+                {language === 'kn' ? 'ಸಾರಿಗೆ ಮತ್ತು ಸರಕು ವಾಹನಗಳು' : 'Transport & Freight Hub'}
+              </Text>
+              <Text style={styles.sectionSubtitle}>
+                {language === 'kn' ? 'ಸ್ಥಳೀಯ ಆಟೋ, ದೂರದ ಪ್ರಯಾಣದ ಕಾರು & ಶಿಫ್ಟಿಂಗ್ ವ್ಯಾನ್' : 'Local autos, outstation cars & shifting goods vans'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.transportGrid}>
+            <TouchableOpacity
+              style={[styles.transportPillCard, SHADOWS.card]}
+              onPress={onNavigateAuto}
+              activeOpacity={0.85}
+            >
+              <Car size={20} color={COLORS.brand} />
+              <View style={styles.transportPillText}>
+                <Text style={styles.pillTitle}>Auto Instant</Text>
+                <Text style={styles.pillSub}>Direct GPS ride</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.transportPillCard, SHADOWS.card]}
+              onPress={onNavigateCarTrips}
+              activeOpacity={0.85}
+            >
+              <Car size={20} color="#059669" />
+              <View style={styles.transportPillText}>
+                <Text style={styles.pillTitle}>Car Outstation</Text>
+                <Text style={styles.pillSub}>Sedan / SUV trips</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.transportPillCard, SHADOWS.card]}
+              onPress={onNavigateGoodsVan}
+              activeOpacity={0.85}
+            >
+              <Truck size={20} color="#D97706" />
+              <View style={styles.transportPillText}>
+                <Text style={styles.pillTitle}>Goods Van</Text>
+                <Text style={styles.pillSub}>Household shifting</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Featured Rentals Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {t('featuredRentals', 'ಪ್ರಮುಖ ಬಾಡಿಗೆ ಆಸ್ತಿಗಳು')}
-          </Text>
-          <TouchableOpacity onPress={onNavigateRentals}>
-            <Text style={styles.viewAllText}>{t('viewAll', 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ')} →</Text>
+          <View>
+            <Text style={styles.sectionTitle}>
+              {t('featuredRentals', 'ಪ್ರಮುಖ ಬಾಡಿಗೆ ಆಸ್ತಿಗಳು')}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {language === 'kn' ? 'ಪರಿಶೀಲಿಸಿದ ಮನೆಗಳು ಮತ್ತು ಪಿಜಿಗಳು' : 'Verified houses, student rooms & shops'}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onNavigateRentals} style={styles.viewAllRow}>
+            <Text style={styles.viewAllText}>{t('viewAll', 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ')}</Text>
+            <ArrowRight size={13} color={COLORS.brand} />
           </TouchableOpacity>
         </View>
 
-        {liveProperties.length > 0 ? (
+        {loadingData ? (
+          <View style={styles.inlineLoader}>
+            <ActivityIndicator size="small" color={COLORS.brand} />
+            <Text style={styles.loadingText}>Loading listings...</Text>
+          </View>
+        ) : liveProperties.length > 0 ? (
           liveProperties.map((property) => (
             <PropertyCard
               key={property.id}
@@ -329,22 +442,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             />
           ))
         ) : (
-          <Text style={{ color: COLORS.inkMuted, marginHorizontal: 16, marginVertical: 8 }}>
-            No rental listings available right now.
-          </Text>
+          <View style={styles.emptyCard}>
+            <HomeIcon size={28} color={COLORS.muteLight} />
+            <Text style={styles.emptyTitle}>No rental listings available</Text>
+            <Text style={styles.emptySub}>New properties from Bagalkot and Hubballi are added daily.</Text>
+          </View>
         )}
 
         {/* Top Verified Service Providers */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {t('topProviders', 'ಪರಿಶೀಲಿತ ಸೇವಾ ಒದಗಿಸುವವರು')}
-          </Text>
-          <TouchableOpacity onPress={onNavigateServices}>
-            <Text style={styles.viewAllText}>{t('viewAll', 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ')} →</Text>
+          <View>
+            <Text style={styles.sectionTitle}>
+              {t('topProviders', 'ಪರಿಶೀಲಿತ ಸೇವಾ ಒದಗಿಸುವವರು')}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {language === 'kn' ? 'ವಿಶ್ವಾಸಾರ್ಹ ಎಲೆಕ್ಟ್ರಿಷಿಯನ್ ಮತ್ತು ಪ್ಲಂಬರ್' : 'Electricians, plumbers and home technicians'}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onNavigateServices} style={styles.viewAllRow}>
+            <Text style={styles.viewAllText}>{t('viewAll', 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ')}</Text>
+            <ArrowRight size={13} color={COLORS.brand} />
           </TouchableOpacity>
         </View>
 
-        {liveProviders.length > 0 ? (
+        {loadingData ? (
+          <View style={styles.inlineLoader}>
+            <ActivityIndicator size="small" color={COLORS.brand} />
+            <Text style={styles.loadingText}>Loading providers...</Text>
+          </View>
+        ) : liveProviders.length > 0 ? (
           liveProviders.map((provider) => (
             <ProviderCard
               key={provider.id}
@@ -354,19 +480,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             />
           ))
         ) : (
-          <Text style={{ color: COLORS.inkMuted, marginHorizontal: 16, marginVertical: 8 }}>
-            No verified providers available right now.
-          </Text>
+          <View style={styles.emptyCard}>
+            <Wrench size={28} color={COLORS.muteLight} />
+            <Text style={styles.emptyTitle}>No service providers available</Text>
+            <Text style={styles.emptySub}>Local verified technicians will be listed shortly.</Text>
+          </View>
         )}
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 28 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.paper,
   },
@@ -376,7 +504,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: COLORS.white,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.line,
   },
@@ -385,7 +513,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   citySelector: {
-    marginLeft: 12,
+    marginLeft: 10,
+  },
+  cityLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   cityLabel: {
     fontSize: 10,
@@ -404,11 +537,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   gpsDetectBtn: {
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.brand,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.brandTint,
+    borderWidth: 1,
+    borderColor: '#FECDD3',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: RADIUS.full,
   },
   gpsDetectText: {
@@ -417,54 +553,56 @@ const styles = StyleSheet.create({
     color: COLORS.brand,
   },
   langToggle: {
-    backgroundColor: COLORS.brandTint,
-    paddingHorizontal: 12,
+    backgroundColor: COLORS.muteLight,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
   },
   langToggleText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.brand,
+    fontWeight: '700',
+    color: COLORS.ink,
   },
   cityDropdown: {
     position: 'absolute',
-    top: 60,
+    top: 90,
     left: 16,
     right: 16,
-    zIndex: 100,
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg,
     padding: 16,
-    borderWidth: 1.5,
+    zIndex: 999,
+    borderWidth: 1,
     borderColor: COLORS.line,
   },
   cityDropdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  closeDropText: {
-    fontSize: 16,
+  cityDropTitle: {
+    fontSize: 15,
     fontWeight: '800',
-    color: COLORS.mute,
-    paddingHorizontal: 4,
+    color: COLORS.ink,
   },
   useGpsTile: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.brandTint,
-    borderWidth: 1.5,
-    borderColor: COLORS.brand,
+    padding: 12,
     borderRadius: RADIUS.md,
-    padding: 10,
-    marginBottom: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#FECDD3',
   },
-  useGpsIcon: {
-    fontSize: 20,
+  gpsIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
   },
   useGpsInfo: {
@@ -481,16 +619,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   manualAreaLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.mute,
     marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  cityDropTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink,
   },
   cityList: {
     flexDirection: 'row',
@@ -498,39 +630,39 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cityItem: {
-    backgroundColor: COLORS.paper,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: RADIUS.md,
+    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
   },
   cityItemActive: {
-    backgroundColor: COLORS.brand,
+    backgroundColor: COLORS.brandTint,
     borderColor: COLORS.brand,
   },
   cityItemText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.ink,
   },
   cityItemTextActive: {
-    color: COLORS.white,
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   scroll: {
     padding: 16,
-    paddingBottom: 100,
   },
   activeRideBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.white,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: COLORS.brand,
     borderRadius: RADIUS.lg,
-    padding: 14,
-    marginBottom: 16,
+    padding: 12,
+    marginBottom: 14,
   },
   activeRideLeft: {
     flexDirection: 'row',
@@ -545,7 +677,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   activeRideTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.ink,
   },
@@ -555,15 +687,36 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   trackBtn: {
-    backgroundColor: COLORS.brand,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.brandTint,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
   },
   trackBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: COLORS.white,
+    color: COLORS.brand,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 14,
+    gap: 10,
+  },
+  searchPlaceholder: {
+    fontSize: 13,
+    color: COLORS.mute,
+    fontWeight: '500',
+    flex: 1,
   },
   heroBanner: {
     backgroundColor: COLORS.brand,
@@ -575,67 +728,152 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   heroTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '900',
     color: COLORS.white,
-    marginTop: 8,
-    lineHeight: 26,
+    marginTop: 10,
+    lineHeight: 25,
   },
   heroSub: {
     fontSize: 12,
-    color: COLORS.sun,
     fontWeight: '600',
+    color: COLORS.sun,
     marginTop: 6,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.ink,
-    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 12,
+    alignItems: 'flex-end',
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
+  sectionSubtitle: {
+    fontSize: 11,
+    color: COLORS.mute,
+    marginTop: 2,
+  },
+  viewAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingBottom: 2,
   },
   viewAllText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.brand,
   },
   actionGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 22,
+    gap: 10,
+    marginBottom: 18,
   },
   actionCard: {
-    width: '48%',
+    flex: 1,
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg,
-    padding: 14,
+    padding: 12,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.line,
   },
   autoCard: {
-    backgroundColor: COLORS.sunTint,
-    borderColor: COLORS.sun,
+    borderColor: '#FECDD3',
+    backgroundColor: '#FFFBFB',
   },
-  actionEmoji: {
-    fontSize: 28,
+  cardIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
   actionTitle: {
-    fontSize: 15,
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.ink,
+    textAlign: 'center',
+  },
+  actionSub: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: COLORS.mute,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  transportSection: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.xl,
+    padding: 14,
+    marginBottom: 18,
+  },
+  transportGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  transportPillCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.paper,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    padding: 10,
+  },
+  transportPillText: {
+    flex: 1,
+  },
+  pillTitle: {
+    fontSize: 11,
     fontWeight: '800',
     color: COLORS.ink,
   },
-  actionSub: {
-    fontSize: 11,
+  pillSub: {
+    fontSize: 9,
     color: COLORS.mute,
-    marginTop: 2,
-    fontWeight: '600',
+  },
+  inlineLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: COLORS.mute,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.lg,
+    padding: 24,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.ink,
+    marginTop: 8,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: COLORS.mute,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

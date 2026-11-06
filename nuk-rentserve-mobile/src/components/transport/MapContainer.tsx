@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
+import { MapPin, Car, Navigation } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Coordinates, LiveLocation } from '../../api/transportApi';
 
@@ -94,8 +95,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
       {/* Destination Flag Pin */}
       {destinationLocation && (
-        <View style={[styles.destMarker, { left: destX - 16, top: destY - 32 }]}>
-          <Text style={styles.destIcon}>📍</Text>
+        <View style={[styles.destMarker, { left: destX - 14, top: destY - 28 }]}>
+          <MapPin size={28} color="#059669" fill="#059669" />
         </View>
       )}
 
@@ -107,8 +108,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
       {/* Live Driver Auto Icon */}
       {isTracking && (
-        <View style={[styles.driverMarker, { left: drvX - 20, top: drvY - 20 }, SHADOWS.pop]}>
-          <Text style={styles.driverEmoji}>🛺</Text>
+        <View style={[styles.driverMarker, { left: drvX - 18, top: drvY - 18 }, SHADOWS.pop]}>
+          <Car size={20} color={COLORS.brand} />
         </View>
       )}
 
@@ -126,8 +127,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           style={[styles.recenterBtn, SHADOWS.card]}
           onPress={onRecenter}
           accessibilityLabel="Recenter map"
+          activeOpacity={0.8}
         >
-          <Text style={styles.recenterIcon}>⌖</Text>
+          <Navigation size={16} color={COLORS.brand} />
         </TouchableOpacity>
       )}
     </View>
@@ -146,9 +148,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  destIcon: {
-    fontSize: 32,
-  },
   userMarker: {
     position: 'absolute',
     width: 24,
@@ -158,70 +157,66 @@ const styles = StyleSheet.create({
   },
   pulseRing: {
     position: 'absolute',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(215, 25, 32, 0.25)',
   },
   userDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: COLORS.gpsBlue,
-    borderWidth: 2.5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.brand,
+    borderWidth: 2,
     borderColor: COLORS.white,
   },
   driverMarker: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.sun,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.white,
     borderWidth: 2,
-    borderColor: COLORS.ink,
+    borderColor: COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  driverEmoji: {
-    fontSize: 20,
-  },
   coordsOverlay: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 10,
     left: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   livePulse: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: COLORS.ok,
-    marginRight: 6,
   },
   coordsText: {
     fontSize: 10,
     fontWeight: '700',
-    color: COLORS.mute,
+    color: COLORS.ink,
   },
   recenterBtn: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    top: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  recenterIcon: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.ink,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
 });

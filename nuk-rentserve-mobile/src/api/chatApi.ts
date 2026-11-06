@@ -61,6 +61,8 @@ export const chatApi = {
     recipientId: string;
     serviceId?: string;
     propertyId?: string;
+    bookingId?: string;
+    initialMessage?: string;
     title?: string;
   }): Promise<ConversationInitResponse> {
     const res: any = await apiClient.post('/chat/conversation', params);

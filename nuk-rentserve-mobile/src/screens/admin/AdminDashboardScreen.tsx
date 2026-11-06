@@ -7,11 +7,19 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import {
+  FileText,
+  Image as ImageIcon,
+  GraduationCap,
+  Eye,
+  Check,
+  X,
+  Search,
+} from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Badge } from '../../components/common/Badge';
@@ -241,18 +249,18 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
   const suspendedUsers = users.filter((u) => u.approvalStatus === 'suspended');
 
   const SECTIONS: Array<{ key: SectionKey; label: string; count?: number }> = [
-    { key: 'overview', label: '📊 1. Overview' },
-    { key: 'pending_providers', label: '🔧 2. Pending Providers', count: stats.pendingProviders },
-    { key: 'pending_drivers', label: '🛞 3. Pending Drivers', count: stats.pendingDrivers },
-    { key: 'pending_students', label: '🎓 4. Pending Students', count: stats.pendingStudents },
-    { key: 'approved_providers', label: '✅ 5. Approved Providers', count: stats.approvedProviders },
-    { key: 'approved_drivers', label: '🚗 6. Approved Drivers', count: stats.approvedDrivers },
-    { key: 'approved_students', label: '🎓 7. Approved Students', count: stats.approvedStudents },
-    { key: 'rejected', label: '❌ 8. Rejected Applications', count: stats.rejectedApplications },
-    { key: 'suspended', label: '⛔ 9. Suspended Accounts', count: stats.suspendedAccounts },
-    { key: 'documents', label: '🪪 10. Document Verification', count: applications.length },
-    { key: 'users', label: '👥 11. User Management', count: stats.totalUsers },
-    { key: 'audit', label: '📜 12. Audit Logs', count: auditLogs.length },
+    { key: 'overview', label: '1. Overview Desk' },
+    { key: 'pending_providers', label: '2. Pending Providers', count: stats.pendingProviders },
+    { key: 'pending_drivers', label: '3. Pending Drivers', count: stats.pendingDrivers },
+    { key: 'pending_students', label: '4. Pending Students', count: stats.pendingStudents },
+    { key: 'approved_providers', label: '5. Approved Providers', count: stats.approvedProviders },
+    { key: 'approved_drivers', label: '6. Approved Drivers', count: stats.approvedDrivers },
+    { key: 'approved_students', label: '7. Approved Students', count: stats.approvedStudents },
+    { key: 'rejected', label: '8. Rejected Applications', count: stats.rejectedApplications },
+    { key: 'suspended', label: '9. Suspended Accounts', count: stats.suspendedAccounts },
+    { key: 'documents', label: '10. Document Verification', count: applications.length },
+    { key: 'users', label: '11. User Management', count: stats.totalUsers },
+    { key: 'audit', label: '12. Audit Logs', count: auditLogs.length },
   ];
 
   const renderAppCard = (app: ApplicationRecord) => (
@@ -261,7 +269,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
         <View style={styles.cardHeaderCol}>
           <Text style={styles.appName}>{app.fullName}</Text>
           <Text style={styles.appSub}>
-            📍 {app.city} · 📞 {app.phone} · ✉️ {app.email}
+            {app.city} · {app.phone} · {app.email}
           </Text>
         </View>
         <Badge
@@ -310,10 +318,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
               onPress={() => openAppDocuments(app, 0)}
               activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>🖼️</Text>
+              <ImageIcon size={18} color="#2563EB" />
               <View style={styles.docChipInfo}>
                 <Text style={styles.docChipName}>Aadhaar ID (Masked)</Text>
-                <Text style={styles.docChipAction}>👁️ Tap to Preview in Screen</Text>
+                <Text style={styles.docChipAction}>Tap to Preview</Text>
               </View>
             </TouchableOpacity>
           ) : null}
@@ -324,10 +332,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
               onPress={() => openAppDocuments(app, app.hasAadhaar ? 1 : 0)}
               activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>📄</Text>
+              <FileText size={18} color={COLORS.brand} />
               <View style={styles.docChipInfo}>
                 <Text style={styles.docChipName}>Driving Licence (DL)</Text>
-                <Text style={styles.docChipAction}>👁️ View Multi-Page PDF</Text>
+                <Text style={styles.docChipAction}>View Document</Text>
               </View>
             </TouchableOpacity>
           ) : null}
@@ -343,10 +351,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
               }
               activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>🖼️</Text>
+              <ImageIcon size={18} color="#059669" />
               <View style={styles.docChipInfo}>
                 <Text style={styles.docChipName}>Vehicle RC Document</Text>
-                <Text style={styles.docChipAction}>👁️ Tap to Preview in Screen</Text>
+                <Text style={styles.docChipAction}>Tap to Preview</Text>
               </View>
             </TouchableOpacity>
           ) : null}
@@ -357,10 +365,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
               onPress={() => openAppDocuments(app, app.hasAadhaar ? 1 : 0)}
               activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>🎓</Text>
+              <GraduationCap size={18} color={COLORS.brand} />
               <View style={styles.docChipInfo}>
                 <Text style={styles.docChipName}>Student ID Card</Text>
-                <Text style={styles.docChipAction}>👁️ Tap to Preview in Screen</Text>
+                <Text style={styles.docChipAction}>Tap to Preview</Text>
               </View>
             </TouchableOpacity>
           ) : null}
@@ -371,10 +379,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
               onPress={() => openAppDocuments(app, 0)}
               activeOpacity={0.7}
             >
-              <Text style={styles.docChipIcon}>📄</Text>
+              <FileText size={18} color="#2563EB" />
               <View style={styles.docChipInfo}>
                 <Text style={styles.docChipName}>Address Proof</Text>
-                <Text style={styles.docChipAction}>👁️ View Document Stream</Text>
+                <Text style={styles.docChipAction}>View Document</Text>
               </View>
             </TouchableOpacity>
           ) : null}
@@ -386,7 +394,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
           activeOpacity={0.8}
         >
           <Text style={styles.previewAllBtnText}>
-            🔍 Open Full In-Screen Document Review Desk (Zoom & Multi-Page)
+            Open In-Screen Document Review Desk (Zoom & Multi-Page)
           </Text>
         </TouchableOpacity>
       </View>
@@ -406,7 +414,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
             onPress={() => handleApprove(app.id)}
             disabled={actionLoading}
           >
-            <Text style={styles.actionBtnText}>✓ Approve</Text>
+            <Text style={styles.actionBtnText}>Approve</Text>
           </TouchableOpacity>
         ) : null}
 
@@ -416,7 +424,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
             onPress={() => setSelectedApp(app)}
             disabled={actionLoading}
           >
-            <Text style={styles.rejectBtnText}>✕ Reject</Text>
+            <Text style={styles.rejectBtnText}>Reject</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -424,7 +432,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       <Header
         title={t('adminDashboard', 'ನಿರ್ವಾಹಕರ ಕಂಟ್ರೋಲ್ ಪ್ಯಾನೆಲ್')}
         subtitle="12-Section Verification & Platform Governance Desk"
@@ -719,12 +727,12 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
           }
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
+  container: { flex: 1, backgroundColor: COLORS.paper },
   docsSection: {
     backgroundColor: '#F9FAFB',
     borderRadius: RADIUS.lg,
