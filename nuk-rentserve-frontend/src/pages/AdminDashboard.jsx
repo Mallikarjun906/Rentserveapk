@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { api, readUser, unwrapItems } from '../services/api';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { api, readUser, unwrapItems, logoutSession } from '../services/api';
 
 export default function AdminDashboard() {
   const user = readUser();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -154,6 +155,13 @@ export default function AdminDashboard() {
 
   const filteredUsers = users.filter(u => userRoleFilter === 'all' || u.role === userRoleFilter);
 
+  async function handleLogout() {
+    if (window.confirm('Are you sure you want to exit the administrator console?')) {
+      await logoutSession();
+      navigate('/admin/login');
+    }
+  }
+
   return (
     <section className="wrap section admin-dashboard" style={{ maxWidth: '1200px', margin: '30px auto' }}>
       {/* Header */}
@@ -165,9 +173,18 @@ export default function AdminDashboard() {
             Live governance data from MongoDB Atlas. Verification, approval, user management and system audits.
           </p>
         </div>
-        <button className="btn btn-outline" onClick={loadAllData} disabled={loading}>
-          {loading ? 'Refreshing…' : '🔄 Refresh Data'}
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button className="btn btn-outline" onClick={loadAllData} disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh Data'}
+          </button>
+          <button
+            className="btn btn-small btn-outline"
+            onClick={handleLogout}
+            style={{ borderColor: 'var(--red)', color: 'var(--red)', fontWeight: 700 }}
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {notice && <div className="notice" role="status" style={{ marginTop: '16px' }}>{notice}</div>}
@@ -187,11 +204,11 @@ export default function AdminDashboard() {
         }}
       >
         {[
-          ['overview', '📊 Overview'],
-          ['applications', `📋 Applications (${stats?.pendingProviders || 0 + (stats?.pendingDrivers || 0) + (stats?.pendingStudents || 0)} Pending)`],
-          ['users', `👥 User Management (${stats?.totalUsers || users.length})`],
-          ['audit', '📜 Audit Logs'],
-          ['support', `🎧 Support Tickets (${supportTickets.length})`]
+          ['overview', 'Overview'],
+          ['applications', `Applications (${stats?.pendingProviders || 0 + (stats?.pendingDrivers || 0) + (stats?.pendingStudents || 0)} Pending)`],
+          ['users', `User Management (${stats?.totalUsers || users.length})`],
+          ['audit', 'Audit Logs'],
+          ['support', `Support Tickets (${supportTickets.length})`]
         ].map(([key, label]) => (
           <button
             key={key}
@@ -355,19 +372,19 @@ export default function AdminDashboard() {
                     {/* Role Specific Fields */}
                     {app.applicationType === 'driver' && (
                       <div style={{ background: '#fcfaf9', padding: '10px 14px', borderRadius: '8px', margin: '8px 0', fontSize: '13px' }}>
-                        🚗 <b>Vehicle:</b> {app.vehicleType?.toUpperCase()} ({app.vehicleRegistrationNumber || 'Reg pending'}) · <b>DL Number:</b> {app.drivingLicenceNumber || 'Not specified'}
+                        <b>Vehicle:</b> {app.vehicleType?.toUpperCase()} ({app.vehicleRegistrationNumber || 'Reg pending'}) · <b>DL Number:</b> {app.drivingLicenceNumber || 'Not specified'}
                       </div>
                     )}
 
                     {app.applicationType === 'student' && (
                       <div style={{ background: '#fcfaf9', padding: '10px 14px', borderRadius: '8px', margin: '8px 0', fontSize: '13px' }}>
-                        🎓 <b>College:</b> {app.collegeName} · <b>Student ID:</b> {app.studentIdNumber}
+                        <b>College:</b> {app.collegeName} · <b>Student ID:</b> {app.studentIdNumber}
                       </div>
                     )}
 
                     {app.applicationType === 'provider' && (
                       <div style={{ background: '#fcfaf9', padding: '10px 14px', borderRadius: '8px', margin: '8px 0', fontSize: '13px' }}>
-                        🛠️ <b>Category:</b> {app.category} · <b>Experience:</b> {app.experience} · <b>Price:</b> {app.price}
+                        <b>Category:</b> {app.category} · <b>Experience:</b> {app.experience} · <b>Price:</b> {app.price}
                         {app.description && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>{app.description}</p>}
                       </div>
                     )}
@@ -382,7 +399,7 @@ export default function AdminDashboard() {
                             className="btn btn-small btn-outline"
                             onClick={() => setDocumentModal({ title: `Aadhaar ID - ${app.fullName}`, url: `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/admin/applications/${app.id || app._id}/document/aadhaarDocument` })}
                           >
-                            📄 View Masked Aadhaar
+                            View Masked Aadhaar
                           </button>
                         )}
                         {app.drivingLicenceAvailable && (
@@ -391,7 +408,7 @@ export default function AdminDashboard() {
                             className="btn btn-small btn-outline"
                             onClick={() => setDocumentModal({ title: `Driving Licence - ${app.fullName}`, url: `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/admin/applications/${app.id || app._id}/document/drivingLicenceDocument` })}
                           >
-                            🪪 View Driving Licence
+                            View Driving Licence
                           </button>
                         )}
                         {app.studentIdCardAvailable && (
@@ -400,7 +417,7 @@ export default function AdminDashboard() {
                             className="btn btn-small btn-outline"
                             onClick={() => setDocumentModal({ title: `Student College ID - ${app.fullName}`, url: `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/admin/applications/${app.id || app._id}/document/studentIdCardDocument` })}
                           >
-                            🎓 View College ID
+                            View College ID
                           </button>
                         )}
                         {app.vehicleRcAvailable && (
@@ -409,7 +426,7 @@ export default function AdminDashboard() {
                             className="btn btn-small btn-outline"
                             onClick={() => setDocumentModal({ title: `Vehicle RC - ${app.fullName}`, url: `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/admin/applications/${app.id || app._id}/document/vehicleRcDocument` })}
                           >
-                            🚙 View Vehicle RC
+                            View Vehicle RC
                           </button>
                         )}
                       </div>
@@ -431,7 +448,7 @@ export default function AdminDashboard() {
                       onClick={() => decide(app.id || app._id, 'approve', 'Approved after administrator document review.')}
                       style={{ background: '#16713c', borderColor: '#16713c' }}
                     >
-                      {busyId === (app.id || app._id) ? 'Saving…' : '✓ Approve'}
+                      {busyId === (app.id || app._id) ? 'Saving…' : 'Approve'}
                     </button>
 
                     <button
@@ -443,7 +460,7 @@ export default function AdminDashboard() {
                       }}
                       style={{ borderColor: 'var(--red)', color: 'var(--red)' }}
                     >
-                      ✕ Reject / Request Fix
+                      Reject / Request Fix
                     </button>
 
                     <button
@@ -451,7 +468,7 @@ export default function AdminDashboard() {
                       disabled={busyId === (app.id || app._id)}
                       onClick={() => decide(app.id || app._id, 'info', 'Clarification requested on address proof.')}
                     >
-                      ℹ Request Info
+                      Request Info
                     </button>
                   </div>
                 </article>
@@ -459,7 +476,6 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="empty-state">
-              <span>📋</span>
               <h3>No applications matching filter</h3>
               <p>Applications submitted by Providers, Drivers, and Students will appear here for verification.</p>
             </div>
@@ -690,7 +706,7 @@ export default function AdminDashboard() {
                 className="btn btn-small btn-outline"
                 onClick={() => setDocumentModal(null)}
               >
-                ✕ Close
+                Close
               </button>
             </div>
             <div style={{ minHeight: '300px', display: 'grid', placeItems: 'center', background: '#f8f8f8', borderRadius: '12px', overflow: 'hidden' }}>
@@ -701,7 +717,7 @@ export default function AdminDashboard() {
               />
             </div>
             <p className="muted tiny" style={{ marginTop: '12px' }}>
-              🔒 Document delivered through authorized administrator stream. Confidential record for verification only.
+              Document delivered through authorized administrator stream. Confidential record for verification only.
             </p>
           </div>
         </div>

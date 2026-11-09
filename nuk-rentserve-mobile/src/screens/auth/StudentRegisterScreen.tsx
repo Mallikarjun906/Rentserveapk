@@ -28,6 +28,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
+import { appendFileToFormData, validateImage } from '../../utils/fileUpload';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -61,6 +62,7 @@ export const StudentRegisterScreen: React.FC<StudentRegisterScreenProps> = ({
   const [city, setCity] = useState('Bagalkot');
 
   // Real Upload Files
+  const [profileImage, setProfileImage] = useState<UploadFile | null>(null);
   const [idCardDoc, setIdCardDoc] = useState<UploadFile | null>(null);
   const [aadhaarDoc, setAadhaarDoc] = useState<UploadFile | null>(null);
 
@@ -102,6 +104,14 @@ export const StudentRegisterScreen: React.FC<StudentRegisterScreenProps> = ({
       return;
     }
 
+    if (profileImage) {
+      const imgVal = validateImage(profileImage);
+      if (!imgVal.valid) {
+        setError(imgVal.error || 'Invalid profile photo.');
+        return;
+      }
+    }
+
     if (!consent) {
       setError(t('Consent is required to verify student identity records', 'ವಿದ್ಯಾರ್ಥಿ ಐಡಿ ಪರಿಶೀಲನೆಗೆ ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಅಗತ್ಯವಿದೆ'));
       return;
@@ -127,20 +137,16 @@ export const StudentRegisterScreen: React.FC<StudentRegisterScreenProps> = ({
       formData.append('terms', 'true');
       formData.append('consent', 'true');
 
+      if (profileImage) {
+        await appendFileToFormData(formData, 'profileImage', profileImage);
+      }
+
       if (idCardDoc) {
-        formData.append('studentIdCard', {
-          uri: idCardDoc.uri,
-          name: idCardDoc.name,
-          type: idCardDoc.type,
-        } as any);
+        await appendFileToFormData(formData, 'studentIdCardDocument', idCardDoc);
       }
 
       if (aadhaarDoc) {
-        formData.append('aadhaarDocument', {
-          uri: aadhaarDoc.uri,
-          name: aadhaarDoc.name,
-          type: aadhaarDoc.type,
-        } as any);
+        await appendFileToFormData(formData, 'aadhaarDocument', aadhaarDoc);
       }
 
       await authApi.registerStudent(formData);
@@ -297,6 +303,15 @@ export const StudentRegisterScreen: React.FC<StudentRegisterScreenProps> = ({
             />
 
             <Text style={styles.sectionHeader}>{t('3. Student Verification Document', '೩. ಕಾಲೇಜು ಐಡಿ ಪರಿಶೀಲನೆ')}</Text>
+
+            <DocumentUploader
+              label={t('Student Photograph', 'ವಿದ್ಯಾರ್ಥಿ ಭಾವಚಿತ್ರ')}
+              description="Front facing photo / selfie (JPG, PNG)"
+              acceptTypes="image"
+              file={profileImage}
+              onFileSelect={setProfileImage}
+              uploadState={loading ? 'uploading' : profileImage ? 'selected' : 'idle'}
+            />
 
             <DocumentUploader
               label={t('College Student ID Card', 'ಕಾಲೇಜು ವಿದ್ಯಾರ್ಥಿ ಗುರುತಿನ ಚೀಟಿ')}

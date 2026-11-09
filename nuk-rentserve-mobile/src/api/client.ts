@@ -33,14 +33,27 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request Interceptor: Attach JWT Access Token
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    const isPublicAuthRoute =
+      config.url?.includes('/auth/register') ||
+      config.url?.includes('/auth/login') ||
+      config.url?.includes('/auth/forgot-password') ||
+      config.url?.includes('/auth/send-otp') ||
+      config.url?.includes('/auth/verify-otp');
+
     const token = await Storage.getToken();
-    if (token && config.headers) {
+    if (!isPublicAuthRoute && token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     // Allow the browser or native networking library to supply the multipart boundary for FormData
     if (config.data instanceof FormData || (config.data && typeof (config.data as any).getParts === 'function')) {
       if (config.headers) {
         delete (config.headers as any)['Content-Type'];
+        delete (config.headers as any)['content-type'];
+        if (typeof (config.headers as any).delete === 'function') {
+          (config.headers as any).delete('Content-Type');
+          (config.headers as any).delete('content-type');
+        }
       }
     }
     return config;

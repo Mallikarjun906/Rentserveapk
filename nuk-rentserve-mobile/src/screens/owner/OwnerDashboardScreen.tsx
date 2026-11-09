@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import {
   Home,
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  LogOut,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -30,6 +32,7 @@ import { formatINR } from '../../utils/formatters';
 import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { rentalApi, Property } from '../../api/rentalApi';
+import { confirmAction } from '../../utils/confirmAlert';
 
 interface OwnerProperty {
   id: string;
@@ -44,13 +47,28 @@ interface OwnerProperty {
 
 interface OwnerDashboardScreenProps {
   onBack: () => void;
+  onLogout?: () => void;
 }
 
 export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
   onBack,
+  onLogout,
 }) => {
   const { t } = useLocalization();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    confirmAction(
+      t('Logout', 'ಲಾಗ್ ಔಟ್'),
+      t('Are you sure you want to sign out?', 'ನೀವು ಖಚಿತವಾಗಿ ಲಾಗ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?'),
+      async () => {
+        await logout();
+        if (onLogout) onLogout();
+        else onBack();
+      },
+      'Sign Out'
+    );
+  };
 
   const [properties, setProperties] = useState<OwnerProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,12 +167,32 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
         subtitle="Manage your houses, rooms & tenant visits"
         onBack={onBack}
         rightAction={
-          <Button
-            title="+ Add"
-            onPress={() => setAddModalOpen(true)}
-            variant="yellow"
-            size="sm"
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Button
+              title="+ Add"
+              onPress={() => setAddModalOpen(true)}
+              variant="yellow"
+              size="sm"
+            />
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#FEE2E2',
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: RADIUS.full,
+                borderWidth: 1,
+                borderColor: '#FECACA',
+              }}
+              accessibilityLabel="Sign Out"
+            >
+              <LogOut size={13} color={COLORS.bad} />
+              <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.bad }}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
 

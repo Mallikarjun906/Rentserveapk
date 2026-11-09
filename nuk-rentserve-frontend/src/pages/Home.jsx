@@ -35,8 +35,8 @@ export default function Home() {
   const quickServices = [
     { icon: '⌂', title: 'Home services', desc: 'Everyday help at home', q: 'home' },
     { icon: '⌁', title: 'Repairs & maintenance', desc: 'Find local professionals', q: 'repair' },
-    { icon: '✳', title: 'Cleaning', desc: 'Keep your space fresh', q: 'cleaning' },
-    { icon: '⚒', title: 'Carpentry', desc: 'Furniture and woodwork', q: 'carpenter' },
+    { icon: '✦', title: 'Cleaning', desc: 'Keep your space fresh', q: 'cleaning' },
+    { icon: '◆', title: 'Carpentry', desc: 'Furniture and woodwork', q: 'carpenter' },
     { icon: 'ϟ', title: 'Electrical work', desc: 'Electrical service providers', q: 'electrician' },
     { icon: '◉', title: 'Plumbing', desc: 'Water and plumbing needs', q: 'plumber' },
   ];

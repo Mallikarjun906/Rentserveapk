@@ -7,16 +7,24 @@ const ProviderApplication = require("../models/ProviderApplication");
 const ServiceProvider = require("../models/ServiceProvider");
 const ServiceCategory = require("../models/ServiceCategory");
 const AuditLog = require("../models/AuditLog");
+const Booking = require("../models/Booking");
+const TransportBooking = require("../models/TransportBooking");
+const SupportTicket = require("../models/SupportTicket");
 const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
 const asyncHandler = require("../utils/asyncHandler");
 const { cloudinary, cloudinaryConfigured } = require("../config/cloudinary");
 const { PRIVATE_DIR, maskIdentifier } = require("../services/documentService");
 
-// 1. Dashboard Comprehensive Stats (All 12 sections overview)
+// 1. Dashboard Comprehensive Stats (All 14 real metrics overview)
 const dashboardStats = asyncHandler(async (req, res) => {
   const [
     totalUsers,
+    activeCustomers,
+    registeredProviders,
+    propertyOwners,
+    studentPartners,
+    registeredDrivers,
     totalServices,
     totalProperties,
     pendingProviders,
@@ -26,9 +34,23 @@ const dashboardStats = asyncHandler(async (req, res) => {
     approvedDrivers,
     approvedStudents,
     rejectedApps,
-    suspendedUsers
+    suspendedUsers,
+    totalRegularBookings,
+    pendingRegularBookings,
+    completedRegularBookings,
+    cancelledRegularBookings,
+    totalTransportBookings,
+    pendingTransportBookings,
+    completedTransportBookings,
+    cancelledTransportBookings,
+    supportRequests
   ] = await Promise.all([
     User.countDocuments(),
+    User.countDocuments({ role: "customer", isActive: true }),
+    User.countDocuments({ role: "provider" }),
+    User.countDocuments({ role: "owner" }),
+    User.countDocuments({ role: "student" }),
+    User.countDocuments({ role: "driver" }),
     ServiceListing.countDocuments(),
     Property.countDocuments(),
     ProviderApplication.countDocuments({ applicationType: "provider", status: "pending" }),
@@ -38,14 +60,37 @@ const dashboardStats = asyncHandler(async (req, res) => {
     ProviderApplication.countDocuments({ applicationType: "driver", status: "approved" }),
     ProviderApplication.countDocuments({ applicationType: "student", status: "approved" }),
     ProviderApplication.countDocuments({ status: "rejected" }),
-    User.countDocuments({ approvalStatus: "suspended" })
+    User.countDocuments({ approvalStatus: "suspended" }),
+    Booking.countDocuments(),
+    Booking.countDocuments({ status: "pending" }),
+    Booking.countDocuments({ status: "completed" }),
+    Booking.countDocuments({ status: "cancelled" }),
+    TransportBooking.countDocuments(),
+    TransportBooking.countDocuments({ status: "pending" }),
+    TransportBooking.countDocuments({ status: "completed" }),
+    TransportBooking.countDocuments({ status: "cancelled" }),
+    SupportTicket.countDocuments({ status: { $in: ["open", "in_progress"] } })
   ]);
+
+  const totalBookings = totalRegularBookings + totalTransportBookings;
+  const pendingBookings = pendingRegularBookings + pendingTransportBookings;
+  const completedBookings = completedRegularBookings + completedTransportBookings;
+  const cancelledBookings = cancelledRegularBookings + cancelledTransportBookings;
 
   res.json(
     new ApiResponse(200, {
       totalUsers,
+      activeCustomers,
+      registeredProviders,
+      propertyOwners,
+      studentPartners,
+      registeredDrivers,
       totalServices,
       totalProperties,
+      totalBookings,
+      pendingBookings,
+      completedBookings,
+      cancelledBookings,
       pendingProviders,
       pendingDrivers,
       pendingStudents,
@@ -53,7 +98,8 @@ const dashboardStats = asyncHandler(async (req, res) => {
       approvedDrivers,
       approvedStudents,
       rejectedApplications: rejectedApps,
-      suspendedAccounts: suspendedUsers
+      suspendedAccounts: suspendedUsers,
+      supportRequests
     })
   );
 });

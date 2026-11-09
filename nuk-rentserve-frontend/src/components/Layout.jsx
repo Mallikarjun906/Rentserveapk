@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { clearSession, readUser } from '../services/api';
+import { clearSession, logoutSession, readUser } from '../services/api';
 
 export default function Layout({ children }) {
   const user = readUser();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const logout = () => {
-    clearSession();
+  const logout = async () => {
+    await logoutSession();
     navigate('/login', { replace: true });
     window.location.reload();
   };

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 
-export type ButtonVariant = 'primary' | 'yellow' | 'outline' | 'ghost' | 'dark' | 'danger';
+export type ButtonVariant = 'primary' | 'yellow' | 'outline' | 'ghost' | 'dark' | 'danger' | 'glass';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -23,6 +23,7 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
+  pill?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
@@ -36,6 +37,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   loading = false,
   fullWidth = false,
+  pill = false,
   style,
   textStyle,
   icon,
@@ -69,6 +71,12 @@ export const Button: React.FC<ButtonProps> = ({
           borderColor: COLORS.bad,
           borderWidth: 1.5,
         };
+      case 'glass':
+        return {
+          backgroundColor: COLORS.white,
+          borderColor: COLORS.line,
+          borderWidth: 1,
+        };
       case 'primary':
       default:
         return {
@@ -90,6 +98,8 @@ export const Button: React.FC<ButtonProps> = ({
         return { color: COLORS.white };
       case 'danger':
         return { color: COLORS.bad };
+      case 'glass':
+        return { color: COLORS.ink };
       case 'primary':
       default:
         return { color: COLORS.white };
@@ -132,6 +142,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       style={[
         styles.base,
+        pill && styles.pill,
         getContainerStyle(),
         {
           height: getHeight(),
@@ -171,6 +182,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pill: {
+    borderRadius: RADIUS.full,
   },
   contentRow: {
     flexDirection: 'row',

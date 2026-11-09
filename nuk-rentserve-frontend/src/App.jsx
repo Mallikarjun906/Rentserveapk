@@ -15,7 +15,8 @@ import {
   CustomerRegister,
   ProviderRegister,
   DriverRegister,
-  StudentRegister
+  StudentRegister,
+  OwnerRegister
 } from './pages/Registration.jsx';
 import { Directory, Detail } from './pages/Directory.jsx';
 import Transport from './pages/Transport.jsx';
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/provider/register" element={<PublicPage><ProviderRegister /></PublicPage>} />
         <Route path="/register/driver" element={<PublicPage><DriverRegister /></PublicPage>} />
         <Route path="/register/student" element={<PublicPage><StudentRegister /></PublicPage>} />
+        <Route path="/register/owner" element={<PublicPage><OwnerRegister /></PublicPage>} />
 
         {/* 2. Distinct Role Login Routes */}
         <Route path="/login" element={<PublicPage><Login /></PublicPage>} />

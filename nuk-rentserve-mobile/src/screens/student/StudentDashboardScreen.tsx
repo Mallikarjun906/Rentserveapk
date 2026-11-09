@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Share,
+  Platform,
+  Alert,
 } from 'react-native';
 import {
   GraduationCap,
@@ -22,6 +24,7 @@ import {
   ArrowRight,
   ShieldCheck,
   MapPin,
+  LogOut,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -31,18 +34,34 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
+import { confirmAction } from '../../utils/confirmAlert';
 
 interface StudentDashboardScreenProps {
   onBack: () => void;
   onAddProperty: () => void;
+  onLogout?: () => void;
 }
 
 export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
   onBack,
   onAddProperty,
+  onLogout,
 }) => {
   const { t } = useLocalization();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    confirmAction(
+      t('Logout', 'ಲಾಗ್ ಔಟ್'),
+      t('Are you sure you want to sign out?', 'ನೀವು ಖಚಿತವಾಗಿ ಲಾಗ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?'),
+      async () => {
+        await logout();
+        if (onLogout) onLogout();
+        else onBack();
+      },
+      'Sign Out'
+    );
+  };
 
   const [copied, setCopied] = useState(false);
   const studentSlug = user?.name ? user.name.toLowerCase().replace(/\s+/g, '-') : 'student';
@@ -89,12 +108,32 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
         subtitle={`${studentName} · ${collegeName}`}
         onBack={onBack}
         rightAction={
-          <Button
-            title="+ List"
-            onPress={onAddProperty}
-            variant="yellow"
-            size="sm"
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Button
+              title="+ List"
+              onPress={onAddProperty}
+              variant="yellow"
+              size="sm"
+            />
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#FEE2E2',
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: RADIUS.full,
+                borderWidth: 1,
+                borderColor: '#FECACA',
+              }}
+              accessibilityLabel="Sign Out"
+            >
+              <LogOut size={13} color={COLORS.bad} />
+              <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.bad }}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
 

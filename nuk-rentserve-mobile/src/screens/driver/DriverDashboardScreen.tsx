@@ -36,6 +36,7 @@ import {
   Check,
   X,
   History,
+  LogOut,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -49,20 +50,36 @@ import { transportApi, TransportBooking } from '../../api/transportApi';
 import { authApi } from '../../api/authApi';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
+import { confirmAction } from '../../utils/confirmAlert';
 
 interface DriverDashboardScreenProps {
   onBack?: () => void;
   onNavigateOnboarding?: () => void;
   onOpenChat?: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
+  onLogout?: () => void;
 }
 
 export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
   onBack,
   onNavigateOnboarding,
   onOpenChat,
+  onLogout,
 }) => {
   const { t } = useLocalization();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    confirmAction(
+      t('Logout', 'ಲಾಗ್ ಔಟ್'),
+      t('Are you sure you want to sign out?', 'ನೀವು ಖಚಿತವಾಗಿ ಲಾಗ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?'),
+      async () => {
+        await logout();
+        if (onLogout) onLogout();
+        else if (onBack) onBack();
+      },
+      'Sign Out'
+    );
+  };
 
   const [isOnline, setIsOnline] = useState<boolean>(user?.isOnline !== false);
   const [onlineUpdating, setOnlineUpdating] = useState<boolean>(false);
@@ -297,21 +314,41 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
         subtitle={vehicleSubtitle}
         onBack={onBack}
         rightAction={
-          <View style={styles.onlineToggleRow}>
-            {onlineUpdating ? (
-              <ActivityIndicator size="small" color={COLORS.brand} style={{ marginRight: 6 }} />
-            ) : (
-              <Text style={[styles.onlineLabel, isOnline ? styles.textOk : styles.textMute]}>
-                {isOnline ? t('goOnline', 'ಆನ್‌ಲೈನ್') : t('goOffline', 'ಆಫ್‌ಲೈನ್')}
-              </Text>
-            )}
-            <Switch
-              value={isOnline}
-              onValueChange={handleToggleOnline}
-              trackColor={{ false: '#D1D5DB', true: COLORS.okTint }}
-              thumbColor={isOnline ? COLORS.ok : '#9CA3AF'}
-              disabled={onlineUpdating}
-            />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={styles.onlineToggleRow}>
+              {onlineUpdating ? (
+                <ActivityIndicator size="small" color={COLORS.brand} style={{ marginRight: 6 }} />
+              ) : (
+                <Text style={[styles.onlineLabel, isOnline ? styles.textOk : styles.textMute]}>
+                  {isOnline ? t('goOnline', 'ಆನ್‌ಲೈನ್') : t('goOffline', 'ಆಫ್‌ಲೈನ್')}
+                </Text>
+              )}
+              <Switch
+                value={isOnline}
+                onValueChange={handleToggleOnline}
+                trackColor={{ false: '#D1D5DB', true: COLORS.okTint }}
+                thumbColor={isOnline ? COLORS.ok : '#9CA3AF'}
+                disabled={onlineUpdating}
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#FEE2E2',
+                paddingVertical: 6,
+                paddingHorizontal: 8,
+                borderRadius: RADIUS.full,
+                borderWidth: 1,
+                borderColor: '#FECACA',
+              }}
+              accessibilityLabel="Sign Out"
+            >
+              <LogOut size={13} color={COLORS.bad} />
+            </TouchableOpacity>
           </View>
         }
       />
@@ -647,7 +684,7 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
                 {/* Status Progress Button */}
                 {activeTrip.status === 'accepted' ? (
                   <Button
-                    title="✓ Passenger Picked Up (Start Trip)"
+                    title="Passenger Picked Up (Start Trip)"
                     onPress={() => handleStartRide(activeTrip._id)}
                     variant="primary"
                     size="lg"
@@ -657,7 +694,7 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
                   />
                 ) : (
                   <Button
-                    title="✓ Complete Ride & Confirm Cash"
+                    title="Complete Ride & Confirm Cash"
                     onPress={() => handleCompleteRide(activeTrip._id)}
                     variant="yellow"
                     size="lg"

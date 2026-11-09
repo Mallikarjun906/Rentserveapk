@@ -72,6 +72,7 @@ export const Storage = {
       await AsyncStorage.removeItem(TOKEN_KEY);
       await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
       await AsyncStorage.removeItem(USER_KEY);
+      await AsyncStorage.removeItem(ROLE_KEY);
     } catch {}
   },
 

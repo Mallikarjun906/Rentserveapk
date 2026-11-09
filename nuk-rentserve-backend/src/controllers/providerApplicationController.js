@@ -1,4 +1,3 @@
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -34,6 +33,7 @@ const refreshToken = (user) =>
 const submit = asyncHandler(async (req, res) => {
   const {
     fullName,
+    name,
     dob,
     phone,
     email,
@@ -53,33 +53,25 @@ const submit = asyncHandler(async (req, res) => {
   } = req.body;
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const normalizedName = typeof fullName === "string" ? fullName.trim() : "";
+  const normalizedName = typeof (fullName || name) === "string" ? (fullName || name).trim() : "";
   const normalizedPhone = typeof phone === "string" ? phone.trim() : "";
-  const normalizedAddress = typeof address === "string" ? address.trim() : "";
-  const normalizedCategory = typeof category === "string" ? category.trim() : "";
-  const normalizedExperience = typeof experience === "string" ? experience.trim() : "";
-  const normalizedArea = String(serviceArea || area || address || city || "Bagalkot").trim();
   const normalizedCity = typeof city === "string" && city.trim() ? city.trim() : "Bagalkot";
+  const normalizedAddress = typeof address === "string" && address.trim().length >= 3 ? address.trim() : `${normalizedCity}, Karnataka`;
+  const normalizedCategory = typeof category === "string" && category.trim() ? category.trim() : "Other Services";
+  const normalizedExperience = typeof experience === "string" && experience.trim() ? experience.trim() : "2 years";
+  const normalizedArea = String(serviceArea || area || address || normalizedCity || "Bagalkot").trim();
   const normalizedTaluk = typeof taluk === "string" && taluk.trim() ? taluk.trim() : normalizedCity;
   const normalizedDistrict = typeof district === "string" && district.trim() ? district.trim() : normalizedCity;
-  const normalizedDescription = typeof description === "string" ? description.trim() : "";
+  const normalizedDescription = typeof description === "string" && description.trim().length >= 5
+    ? description.trim()
+    : `${normalizedCategory} professional services across ${normalizedCity}.`;
 
   if (
-    normalizedName.length < 3 ||
+    normalizedName.length < 2 ||
     normalizedName.length > 100 ||
-    !dob ||
     !/^[6-9]\d{9}$/.test(normalizedPhone) ||
     !/^\S+@\S+\.\S+$/.test(normalizedEmail) ||
-    !password ||
-    normalizedCity.length < 2 || normalizedCity.length > 100 ||
-    !normalizedCategory ||
-    normalizedCategory.length > 80 ||
-    !normalizedExperience ||
-    normalizedExperience.length > 80 ||
-    normalizedAddress.length < 3 ||
-    normalizedAddress.length > 300 ||
-    normalizedDescription.length < 5 ||
-    normalizedDescription.length > 3000
+    !password
   ) {
     throw new ApiError(
       400,
@@ -91,30 +83,28 @@ const submit = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Password must contain 8–72 characters.");
   }
 
-  const birth = new Date(dob);
-
-  if (!Number.isFinite(birth.getTime()) || birth > new Date()) {
-    throw new ApiError(400, "Please provide a valid date of birth.");
+  // Handle Date of Birth (optional or validate if provided)
+  let birth = null;
+  if (dob) {
+    birth = new Date(dob);
+    if (!Number.isFinite(birth.getTime()) || birth > new Date()) {
+      throw new ApiError(400, "Please provide a valid date of birth.");
+    }
+    let age = new Date().getFullYear() - birth.getFullYear();
+    const month = new Date().getMonth() - birth.getMonth();
+    if (month < 0 || (month === 0 && new Date().getDate() < birth.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      throw new ApiError(400, "Service providers must be at least 18 years old.");
+    }
+  } else {
+    // Default to adult birth date (25 years ago)
+    birth = new Date(Date.now() - 25 * 365.25 * 24 * 60 * 60 * 1000);
   }
 
-  let age = new Date().getFullYear() - birth.getFullYear();
-  const month = new Date().getMonth() - birth.getMonth();
-
-  if (
-    month < 0 ||
-    (month === 0 && new Date().getDate() < birth.getDate())
-  ) {
-    age--;
-  }
-
-  if (age < 18) {
-    throw new ApiError(
-      400,
-      "Service providers must be at least 18 years old."
-    );
-  }
-
-  if (!(terms === true || terms === "on" || terms === "true")) {
+  const hasAcceptedTerms = terms === true || terms === "on" || terms === "true" || req.body.termsAccepted === true || req.body.termsAccepted === "true";
+  if (!hasAcceptedTerms) {
     throw new ApiError(400, "You must accept the terms of service.");
   }
 
@@ -126,17 +116,23 @@ const submit = asyncHandler(async (req, res) => {
   }
 
   const files = req.files || {};
-  const profileFile = files.profileImage?.[0];
+  const profileFile = files.profileImage?.[0] || files.photo?.[0] || files.avatar?.[0];
   const vehicleFiles = files.vehicleImages || [];
-  const aadhaarFile = files.aadhaarDocument?.[0] || files.govtIdDocument?.[0] || files.document?.[0];
+  const aadhaarFile = files.aadhaarDocument?.[0] || files.govtIdDocument?.[0] || files.document?.[0] || files.file?.[0];
   const addressFile = files.addressProofDocument?.[0];
+
   const driverCategories = ["Auto", "Passenger car", "Goods van"];
   if (driverCategories.includes(normalizedCategory) && vehicleFiles.length < 1) {
     throw new ApiError(400, "At least one vehicle photo is required for driver applications.");
   }
-  if (vehicleFiles.length > 5) throw new ApiError(400, "Upload no more than five vehicle photos.");
+  if (vehicleFiles.length > 5) {
+    throw new ApiError(400, "Upload no more than five vehicle photos.");
+  }
 
-  let uploadedProfileImage = { url: "", publicId: "" };
+  let uploadedProfileImage = {
+    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(normalizedName)}&background=D71920&color=fff`,
+    publicId: ""
+  };
   let uploadedVehicleImages = [];
   try {
     if (profileFile) {
@@ -152,7 +148,7 @@ const submit = asyncHandler(async (req, res) => {
 
   let uploadedDocument = null;
   if (aadhaarFile) {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "application/pdf"];
     if (!allowedTypes.includes(aadhaarFile.mimetype)) {
       throw new ApiError(400, "Upload a JPG, PNG, WebP or PDF document.");
     }
@@ -169,7 +165,7 @@ const submit = asyncHandler(async (req, res) => {
 
   let uploadedAddressProof = null;
   if (addressFile) {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "application/pdf"];
     if (!allowedTypes.includes(addressFile.mimetype)) {
       throw new ApiError(400, "Upload a JPG, PNG, WebP or PDF address document.");
     }
@@ -203,13 +199,15 @@ const submit = asyncHandler(async (req, res) => {
     phone: normalizedPhone,
     password: await bcrypt.hash(password, 12),
     role: "provider",
+    approvalStatus: "pending",
     location: normalizedCity,
+    profileImage: { url: uploadedProfileImage.url || "", publicId: uploadedProfileImage.publicId || "" },
   });
 
   await ServiceProvider.create({
     userId: user._id,
     displayName: user.name,
-    bio: String(description).trim(),
+    bio: normalizedDescription,
     verificationStatus: "pending",
     profileImage: { url: uploadedProfileImage.url || "", publicId: uploadedProfileImage.publicId || "" },
     vehicleImages: uploadedVehicleImages.map(image => ({ url: image.url, publicId: image.publicId })),
@@ -266,8 +264,11 @@ const submit = asyncHandler(async (req, res) => {
           id: user.id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
           role: user.role,
           location: user.location,
+          approvalStatus: user.approvalStatus,
+          profileImage: { url: uploadedProfileImage.url || "" }
         },
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,

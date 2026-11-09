@@ -31,6 +31,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
+import { appendFileToFormData, validateImage } from '../../utils/fileUpload';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -67,6 +68,7 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [dob, setDob] = useState('1995-01-01');
   const [showPassword, setShowPassword] = useState(false);
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('Bagalkot');
@@ -166,6 +168,14 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       return;
     }
 
+    if (profileFile) {
+      const imgVal = validateImage(profileFile);
+      if (!imgVal.valid) {
+        setError(imgVal.error || 'Invalid profile photo.');
+        return;
+      }
+    }
+
     setError('');
     setLoading(true);
 
@@ -175,6 +185,7 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       formData.append('email', email.trim().toLowerCase());
       formData.append('phone', phone.trim());
       formData.append('password', password);
+      formData.append('dob', dob || '1995-01-01');
       formData.append('address', address.trim() || 'Bagalkot');
       formData.append('city', city.trim());
       formData.append('category', category);
@@ -189,27 +200,15 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       }
 
       if (profileFile) {
-        formData.append('profileImage', {
-          uri: profileFile.uri,
-          name: profileFile.name,
-          type: profileFile.type,
-        } as any);
+        await appendFileToFormData(formData, 'profileImage', profileFile);
       }
 
       if (idFile) {
-        formData.append('aadhaarDocument', {
-          uri: idFile.uri,
-          name: idFile.name,
-          type: idFile.type,
-        } as any);
+        await appendFileToFormData(formData, 'aadhaarDocument', idFile);
       }
 
       if (addressFile) {
-        formData.append('addressDocument', {
-          uri: addressFile.uri,
-          name: addressFile.name,
-          type: addressFile.type,
-        } as any);
+        await appendFileToFormData(formData, 'addressProofDocument', addressFile);
       }
 
       await authApi.registerProvider(formData);

@@ -11,6 +11,7 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import {
   User,
@@ -41,6 +42,7 @@ import { providerApi } from '../../api/providerApi';
 import { authApi } from '../../api/authApi';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
+import { confirmAction } from '../../utils/confirmAlert';
 
 interface ProviderMyProfileScreenProps {
   onBack?: () => void;
@@ -133,21 +135,15 @@ export const ProviderMyProfileScreen: React.FC<ProviderMyProfileScreenProps> = (
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
+  const handleLogout = () => {
+    confirmAction(
       t('Logout', 'ಲಾಗ್ ಔಟ್'),
       t('Are you sure you want to sign out?', 'ನೀವು ಖಚಿತವಾಗಿ ಲಾಗ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?'),
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            onLogout();
-          },
-        },
-      ]
+      async () => {
+        await logout();
+        onLogout();
+      },
+      'Sign Out'
     );
   };
 
@@ -175,7 +171,7 @@ export const ProviderMyProfileScreen: React.FC<ProviderMyProfileScreenProps> = (
   const rejectionReason = user?.rejectionReason || profile?.rejectionReason || '';
 
   const getApprovalBadge = () => {
-    if (approvalStatus === 'approved') return <Badge tone="ok" label="Verified Provider ✓" />;
+    if (approvalStatus === 'approved') return <Badge tone="ok" label="Verified Provider" />;
     if (approvalStatus === 'rejected') return <Badge tone="bad" label="Verification Rejected" />;
     return <Badge tone="warn" label="Pending Admin Review" />;
   };

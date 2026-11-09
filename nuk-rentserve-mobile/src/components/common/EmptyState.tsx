@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Search } from 'lucide-react-native';
 import { COLORS } from '../../constants/theme';
 import { Button } from './Button';
 
@@ -31,7 +32,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <View style={styles.iconBox}>{icon}</View>
       ) : (
         <View style={styles.defaultIconBox}>
-          <Text style={styles.defaultIconText}>🔍</Text>
+          <Search size={32} color={COLORS.mute} strokeWidth={1.8} />
         </View>
       )}
 

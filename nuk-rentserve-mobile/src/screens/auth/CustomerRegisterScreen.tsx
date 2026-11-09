@@ -20,6 +20,8 @@ import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
+import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
+import { appendFileToFormData, validateImage } from '../../utils/fileUpload';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -52,6 +54,7 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('Bagalkot');
+  const [profileImage, setProfileImage] = useState<UploadFile | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -79,6 +82,13 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
       setError(t('Passwords do not match', 'ಪಾಸ್‌ವರ್ಡ್‌ಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ'));
       return;
     }
+    if (profileImage) {
+      const imgVal = validateImage(profileImage);
+      if (!imgVal.valid) {
+        setError(imgVal.error || 'Invalid profile photo.');
+        return;
+      }
+    }
     if (!termsAccepted) {
       setError(t('Please accept Terms & Conditions to proceed', 'ಮುಂದುವರಿಯಲು ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳನ್ನು ಒಪ್ಪಿಕೊಳ್ಳಿ'));
       return;
@@ -88,16 +98,30 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
     setLoading(true);
 
     try {
-      await authApi.registerCustomer({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        password,
-        confirmPassword,
-        address: address.trim(),
-        city: city.trim(),
-        terms: true,
-      });
+      if (profileImage) {
+        const formData = new FormData();
+        formData.append('name', name.trim());
+        formData.append('email', email.trim().toLowerCase());
+        formData.append('phone', phone.trim());
+        formData.append('password', password);
+        formData.append('confirmPassword', confirmPassword);
+        formData.append('address', address.trim());
+        formData.append('city', city.trim());
+        formData.append('terms', 'true');
+        await appendFileToFormData(formData, 'profileImage', profileImage);
+        await authApi.registerCustomer(formData as any);
+      } else {
+        await authApi.registerCustomer({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          password,
+          confirmPassword,
+          address: address.trim(),
+          city: city.trim(),
+          terms: true,
+        });
+      }
 
       // Login customer session
       await login(email.trim().toLowerCase(), password);
@@ -225,6 +249,15 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showPassword}
+            />
+
+            <DocumentUploader
+              label={t('Profile Photograph (Optional)', 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ (ಐಚ್ಛಿಕ)')}
+              description="Front facing photo / selfie (JPG, PNG)"
+              acceptTypes="image"
+              file={profileImage}
+              onFileSelect={setProfileImage}
+              uploadState={loading ? 'uploading' : profileImage ? 'selected' : 'idle'}
             />
 
             <Input

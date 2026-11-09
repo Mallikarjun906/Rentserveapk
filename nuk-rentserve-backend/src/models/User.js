@@ -27,6 +27,17 @@ const userSchema = new mongoose.Schema(
       default: ""
     },
 
+    profileImage: {
+      url: {
+        type: String,
+        default: ""
+      },
+      publicId: {
+        type: String,
+        default: ""
+      }
+    },
+
     // Password is required for traditional accounts,
     // but Google accounts can authenticate without one.
     password: {

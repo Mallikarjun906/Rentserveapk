@@ -1,28 +1,42 @@
 // NUK RentServe Theme Tokens (Karnataka Crimson Red & Sun Gold)
+// Premium White Glassmorphic Design System
 
 export const COLORS = {
   // Brand colors
   brand: '#D71920',
   brandDeep: '#A80F17',
   brandTint: '#FDECEC',
+  brandGlow: 'rgba(215, 25, 32, 0.12)',
   sun: '#FFC928',
   sunDeep: '#F0B800',
   sunTint: '#FFF6D6',
+  sunGlow: 'rgba(255, 201, 40, 0.18)',
 
-  // Surfaces & Neutrals
-  paper: '#F8F7F4',
+  // Surfaces & Neutrals (Premium White Glass Design)
+  paper: '#F7F8FA',
+  canvas: '#FFFFFF',
   white: '#FFFFFF',
   card: '#FFFFFF',
-  ink: '#202124',
+  ink: '#171717',
   inkLight: '#3C4043',
-  mute: '#686868',
+  mute: '#666666',
   muteLight: '#9B9B9B',
-  line: '#E7E7E7',
-  lineDark: '#D6D6D6',
+  line: '#EAEBED',
+  lineDark: '#DCE0E5',
+
+  // Glassmorphic Surfaces & Specular Borders
+  glassSurface: 'rgba(255, 255, 255, 0.92)',
+  glassSurfaceLighter: 'rgba(255, 255, 255, 0.97)',
+  glassSurfaceTranslucent: 'rgba(255, 255, 255, 0.82)',
+  glassBorder: 'rgba(0, 0, 0, 0.06)',
+  glassBorderSubtle: 'rgba(234, 235, 237, 0.9)',
+  specularWhite: 'rgba(255, 255, 255, 0.8)',
 
   // Semantic Status Tones
-  ok: '#16834A',
-  okTint: '#E5F4EC',
+  ok: '#00D084',
+  okTint: '#E6FAF2',
+  liveMint: '#00D084',
+  liveMintTint: '#E6FAF2',
   bad: '#DC2626',
   badDeep: '#991B1B',
   badTint: '#FEE2E2',
@@ -30,20 +44,20 @@ export const COLORS = {
   infoTint: '#E7F0FD',
   warn: '#B45309',
   warnTint: '#FEF3C7',
-  dark: '#202124',
+  dark: '#171717',
 
   // Map & accents
-  mapBg: '#EEF0E8',
+  mapBg: '#F3F4F6',
   gpsBlue: '#2563EB',
-  overlayDark: 'rgba(0, 0, 0, 0.55)',
+  overlayDark: 'rgba(0, 0, 0, 0.45)',
 
   // Semantic and naming compatibility aliases
   crimson: '#D71920',
   crimsonTint: '#FDECEC',
-  inkMuted: '#686868',
-  emerald: '#16834A',
-  emeraldTint: '#E5F4EC',
-  sand: '#F7F4EE',
+  inkMuted: '#666666',
+  emerald: '#00D084',
+  emeraldTint: '#E6FAF2',
+  sand: '#F7F8FA',
 };
 
 export const STATUS_TONES: Record<string, { bg: string; text: string }> = {
@@ -62,7 +76,7 @@ export const STATUS_TONES: Record<string, { bg: string; text: string }> = {
   Confirmed: { bg: COLORS.infoTint, text: COLORS.info },
   Assigned: { bg: COLORS.infoTint, text: COLORS.info },
   Verified: { bg: COLORS.okTint, text: COLORS.ok },
-  Draft: { bg: '#EFEFEF', text: '#555555' },
+  Draft: { bg: '#EAEBED', text: '#555555' },
 };
 
 export const SPACING = {
@@ -76,26 +90,49 @@ export const SPACING = {
 };
 
 export const RADIUS = {
-  sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 18,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 26,
   full: 9999,
 };
 
 export const SHADOWS = {
-  card: {
-    shadowColor: '#202124',
+  soft: {
+    shadowColor: '#171717',
     shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  card: {
+    shadowColor: '#171717',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowRadius: 14,
     elevation: 2,
   },
+  luxe: {
+    shadowColor: '#171717',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 22,
+    elevation: 4,
+  },
   pop: {
-    shadowColor: '#202124',
+    shadowColor: '#171717',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.12,
     shadowRadius: 16,
-    elevation: 6,
+    elevation: 4,
+  },
+  brandGlow: {
+    shadowColor: '#D71920',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 4,
   },
 };

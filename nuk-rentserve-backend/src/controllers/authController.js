@@ -254,9 +254,21 @@ const refresh = asyncHandler(async (req, res) => {
 
 /* Logout */
 const logout = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(req.user.id, {
-    $unset: { refreshTokenHash: 1 }
-  });
+  const userId = req.user?.id || req.user?._id;
+  if (userId) {
+    await User.findByIdAndUpdate(userId, {
+      $unset: { refreshTokenHash: 1 }
+    });
+  } else if (req.body?.refreshToken) {
+    try {
+      const payload = jwt.verify(req.body.refreshToken, process.env.JWT_REFRESH_SECRET);
+      if (payload?.sub) {
+        await User.findByIdAndUpdate(payload.sub, {
+          $unset: { refreshTokenHash: 1 }
+        });
+      }
+    } catch {}
+  }
 
   return res.json(new ApiResponse(200, null, "Logged out."));
 });

@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import {
   FileText,
@@ -19,6 +20,20 @@ import {
   Check,
   X,
   Search,
+  LogOut,
+  Mail,
+  Phone,
+  Users,
+  Wrench,
+  Home,
+  Car,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Calendar,
+  ShieldAlert,
+  LifeBuoy,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -26,11 +41,14 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { adminApi, AdminStats, ApplicationRecord, AuditLogItem } from '../../api/adminApi';
 import { useLocalization } from '../../context/LocalizationContext';
+import { useAuth } from '../../context/AuthContext';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
+import { confirmAction } from '../../utils/confirmAlert';
 
 interface AdminDashboardScreenProps {
   onBack: () => void;
+  onLogout?: () => void;
 }
 
 type SectionKey =
@@ -47,8 +65,22 @@ type SectionKey =
   | 'users'
   | 'audit';
 
-export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBack }) => {
+export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBack, onLogout }) => {
   const { t } = useLocalization();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    confirmAction(
+      'Sign Out',
+      'Are you sure you want to exit the administrator console?',
+      async () => {
+        await logout();
+        if (onLogout) onLogout();
+        else onBack();
+      },
+      'Sign Out'
+    );
+  };
 
   const [activeSection, setActiveSection] = useState<SectionKey>('overview');
   const [loading, setLoading] = useState(false);
@@ -437,6 +469,17 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
         title={t('adminDashboard', 'ನಿರ್ವಾಹಕರ ಕಂಟ್ರೋಲ್ ಪ್ಯಾನೆಲ್')}
         subtitle="12-Section Verification & Platform Governance Desk"
         onBack={onBack}
+        rightAction={
+          <TouchableOpacity
+            style={styles.headerLogoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+            accessibilityLabel="Sign Out"
+          >
+            <LogOut size={14} color={COLORS.bad} />
+            <Text style={styles.headerLogoutText}>Sign Out</Text>
+          </TouchableOpacity>
+        }
       />
 
       {/* Section Tabs Scroll */}
@@ -459,33 +502,144 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
       <ScrollView contentContainerStyle={styles.scroll}>
         {loading ? <ActivityIndicator size="large" color={COLORS.brand} style={{ marginVertical: 30 }} /> : null}
 
-        {/* 1. OVERVIEW SECTION */}
+        {/* 1. OVERVIEW SECTION - 14 GENUINE DATA-DRIVEN KPIS */}
         {activeSection === 'overview' && (
           <View>
             <View style={styles.metricsGrid}>
+              {/* 1. Total Users */}
               <View style={[styles.metricCard, SHADOWS.card]}>
-                <Text style={styles.metricLabel}>Total Users</Text>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Total Users</Text>
+                  <Users size={14} color={COLORS.mute} />
+                </View>
                 <Text style={styles.metricVal}>{stats.totalUsers}</Text>
               </View>
+
+              {/* 2. Active Customers */}
               <View style={[styles.metricCard, SHADOWS.card]}>
-                <Text style={styles.metricLabel}>Pending Providers</Text>
-                <Text style={[styles.metricVal, { color: COLORS.sun }]}>{stats.pendingProviders}</Text>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Customers</Text>
+                  <Users size={14} color={COLORS.brand} />
+                </View>
+                <Text style={styles.metricVal}>
+                  {stats.activeCustomers ?? Math.max(0, stats.totalUsers - ((stats.approvedProviders || 0) + (stats.approvedDrivers || 0) + (stats.propertyOwners || 0) + (stats.approvedStudents || 0)))}
+                </Text>
               </View>
+
+              {/* 3. Service Providers */}
               <View style={[styles.metricCard, SHADOWS.card]}>
-                <Text style={styles.metricLabel}>Pending Drivers</Text>
-                <Text style={[styles.metricVal, { color: COLORS.sun }]}>{stats.pendingDrivers}</Text>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Providers</Text>
+                  <Wrench size={14} color={COLORS.ok} />
+                </View>
+                <Text style={[styles.metricVal, { color: COLORS.ok }]}>
+                  {stats.approvedProviders ?? stats.registeredProviders ?? 0}
+                </Text>
               </View>
+
+              {/* 4. Transport Drivers */}
               <View style={[styles.metricCard, SHADOWS.card]}>
-                <Text style={styles.metricLabel}>Pending Students</Text>
-                <Text style={[styles.metricVal, { color: COLORS.sun }]}>{stats.pendingStudents}</Text>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Drivers</Text>
+                  <Car size={14} color={COLORS.ok} />
+                </View>
+                <Text style={[styles.metricVal, { color: COLORS.ok }]}>
+                  {stats.approvedDrivers ?? stats.registeredDrivers ?? 0}
+                </Text>
               </View>
+
+              {/* 5. Property Owners */}
               <View style={[styles.metricCard, SHADOWS.card]}>
-                <Text style={styles.metricLabel}>Approved Drivers</Text>
-                <Text style={[styles.metricVal, { color: COLORS.ok }]}>{stats.approvedDrivers}</Text>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Property Owners</Text>
+                  <Home size={14} color={COLORS.brand} />
+                </View>
+                <Text style={styles.metricVal}>{stats.propertyOwners ?? 0}</Text>
               </View>
+
+              {/* 6. Student Partners */}
               <View style={[styles.metricCard, SHADOWS.card]}>
-                <Text style={styles.metricLabel}>Suspended Accounts</Text>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Student Partners</Text>
+                  <GraduationCap size={14} color="#2563EB" />
+                </View>
+                <Text style={[styles.metricVal, { color: '#2563EB' }]}>
+                  {stats.approvedStudents ?? stats.studentPartners ?? 0}
+                </Text>
+              </View>
+
+              {/* 7. Rental Properties */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Properties</Text>
+                  <Home size={14} color={COLORS.mute} />
+                </View>
+                <Text style={styles.metricVal}>{stats.totalProperties}</Text>
+              </View>
+
+              {/* 8. Service Categories */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Service Listings</Text>
+                  <Wrench size={14} color={COLORS.mute} />
+                </View>
+                <Text style={styles.metricVal}>{stats.totalServices}</Text>
+              </View>
+
+              {/* 9. Total Bookings */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Total Bookings</Text>
+                  <Calendar size={14} color={COLORS.ink} />
+                </View>
+                <Text style={styles.metricVal}>{stats.totalBookings ?? 0}</Text>
+              </View>
+
+              {/* 10. Pending Bookings */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Pending Bookings</Text>
+                  <Clock size={14} color={COLORS.sun} />
+                </View>
+                <Text style={[styles.metricVal, { color: COLORS.sun }]}>{stats.pendingBookings ?? 0}</Text>
+              </View>
+
+              {/* 11. Completed Commission-Free Bookings */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Completed Jobs</Text>
+                  <CheckCircle2 size={14} color={COLORS.ok} />
+                </View>
+                <Text style={[styles.metricVal, { color: COLORS.ok }]}>{stats.completedBookings ?? 0}</Text>
+              </View>
+
+              {/* 12. Verification Queue */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Pending Queue</Text>
+                  <AlertTriangle size={14} color={COLORS.sun} />
+                </View>
+                <Text style={[styles.metricVal, { color: COLORS.sun }]}>
+                  {stats.pendingProviders + stats.pendingDrivers + stats.pendingStudents}
+                </Text>
+              </View>
+
+              {/* 13. Suspended Accounts */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Suspended</Text>
+                  <ShieldAlert size={14} color={COLORS.bad} />
+                </View>
                 <Text style={[styles.metricVal, { color: COLORS.bad }]}>{stats.suspendedAccounts}</Text>
+              </View>
+
+              {/* 14. Customer Grievances */}
+              <View style={[styles.metricCard, SHADOWS.card]}>
+                <View style={styles.metricHeaderRow}>
+                  <Text style={styles.metricLabel}>Support Tickets</Text>
+                  <LifeBuoy size={14} color={COLORS.brand} />
+                </View>
+                <Text style={styles.metricVal}>{stats.supportRequests ?? 0}</Text>
               </View>
             </View>
 
@@ -560,7 +714,13 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
               suspendedUsers.map((u) => (
                 <View key={u._id} style={[styles.card, SHADOWS.card]}>
                   <Text style={styles.appName}>{u.name} ({u.role})</Text>
-                  <Text style={styles.appSub}>✉️ {u.email} · 📞 {u.phone}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
+                    <Mail size={12} color={COLORS.mute} />
+                    <Text style={styles.appSub}>{u.email}</Text>
+                    <Text style={styles.appSub}>·</Text>
+                    <Phone size={12} color={COLORS.mute} />
+                    <Text style={styles.appSub}>{u.phone || 'N/A'}</Text>
+                  </View>
                   <Text style={styles.rejectionText}>Reason: {u.suspendedReason || 'Administrative suspension'}</Text>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.approveBtn, { marginTop: 10 }]}
@@ -821,6 +981,28 @@ const styles = StyleSheet.create({
   tabPillText: { fontSize: 12, fontWeight: '700', color: COLORS.ink },
   tabPillTextActive: { color: COLORS.brand },
   scroll: { padding: 16, paddingBottom: 60 },
+  headerLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  headerLogoutText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.bad,
+  },
+  metricHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
   metricCard: {
     flex: 1,

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { WifiOff } from 'lucide-react-native';
 import { COLORS } from '../../constants/theme';
 import { useLocalization } from '../../context/LocalizationContext';
 
@@ -16,7 +17,7 @@ export const OfflineNotice: React.FC<OfflineNoticeProps> = ({ isOffline = true }
 
   return (
     <View style={styles.banner}>
-      <Text style={styles.icon}>📡</Text>
+      <WifiOff size={14} color={COLORS.white} style={{ marginRight: 6 }} />
       <Text style={styles.text}>
         {t('offlineTitle', 'ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ')} · {t('offlineMessage', 'ಕ್ಯಾಶ್ ಮಾಹಿತಿ')}
       </Text>

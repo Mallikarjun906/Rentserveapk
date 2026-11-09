@@ -29,6 +29,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
+import { appendFileToFormData, validateImage } from '../../utils/fileUpload';
 import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -107,6 +108,14 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       return;
     }
 
+    if (profileImage) {
+      const imgVal = validateImage(profileImage);
+      if (!imgVal.valid) {
+        setError(imgVal.error || 'Invalid profile photo.');
+        return;
+      }
+    }
+
     if (!consent) {
       setError(t('Explicit consent is required for government licence verification', 'ಲೈಸೆನ್ಸ್ ಪರಿಶೀಲನೆಗೆ ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಅಗತ್ಯವಿದೆ'));
       return;
@@ -134,35 +143,19 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       formData.append('consent', 'true');
 
       if (profileImage) {
-        formData.append('profileImage', {
-          uri: profileImage.uri,
-          name: profileImage.name,
-          type: profileImage.type,
-        } as any);
+        await appendFileToFormData(formData, 'profileImage', profileImage);
       }
 
       if (dlDoc) {
-        formData.append('drivingLicenceDocument', {
-          uri: dlDoc.uri,
-          name: dlDoc.name,
-          type: dlDoc.type,
-        } as any);
+        await appendFileToFormData(formData, 'drivingLicenceDocument', dlDoc);
       }
 
       if (rcDoc) {
-        formData.append('vehicleRcDocument', {
-          uri: rcDoc.uri,
-          name: rcDoc.name,
-          type: rcDoc.type,
-        } as any);
+        await appendFileToFormData(formData, 'vehicleRcDocument', rcDoc);
       }
 
       if (addressDoc) {
-        formData.append('addressProofDocument', {
-          uri: addressDoc.uri,
-          name: addressDoc.name,
-          type: addressDoc.type,
-        } as any);
+        await appendFileToFormData(formData, 'addressProofDocument', addressDoc);
       }
 
       await authApi.registerDriver(formData);

@@ -17,6 +17,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { FileText, Image as ImageIcon, AlertTriangle, Lock, Check, X } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Badge } from './Badge';
 import { Button } from './Button';
@@ -156,7 +157,10 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             onPress={onClose}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Text style={styles.backBtnText}>✕ Close</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <X size={15} color={COLORS.ink} />
+              <Text style={styles.backBtnText}>Close</Text>
+            </View>
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
@@ -168,7 +172,10 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 tone={isPdf ? 'info' : 'ok'}
                 label={isPdf ? 'Multi-page PDF Document' : 'Official Photo / ID'}
               />
-              <Text style={styles.secureText}>🔒 In-Screen Authenticated Preview</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 }}>
+                <Lock size={12} color={COLORS.ok} />
+                <Text style={styles.secureText}>In-Screen Authenticated Preview</Text>
+              </View>
             </View>
           </View>
 
@@ -212,19 +219,25 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                   style={[
                     styles.docTabPill,
                     activeIdx === idx && styles.docTabPillActive,
+                    { flexDirection: 'row', alignItems: 'center' },
                   ]}
                   onPress={() => {
                     setActiveIdx(idx);
                     if (onSelectIndex) onSelectIndex(idx);
                   }}
                 >
+                  {item.isPdf ? (
+                    <FileText size={13} color={activeIdx === idx ? COLORS.white : COLORS.mute} style={{ marginRight: 5 }} />
+                  ) : (
+                    <ImageIcon size={13} color={activeIdx === idx ? COLORS.white : COLORS.mute} style={{ marginRight: 5 }} />
+                  )}
                   <Text
                     style={[
                       styles.docTabPillText,
                       activeIdx === idx && styles.docTabPillTextActive,
                     ]}
                   >
-                    {item.isPdf ? '📄' : '🖼️'} {item.title}
+                    {item.title}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -245,7 +258,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
           {loadError ? (
             <View style={styles.errorBox}>
-              <Text style={styles.errorEmoji}>⚠️</Text>
+              <AlertTriangle size={36} color={COLORS.bad} />
               <Text style={styles.errorTitle}>Could Not Load Document</Text>
               <Text style={styles.errorDesc}>{loadError}</Text>
               <Button
@@ -419,19 +432,21 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity
-                  style={[styles.decisionBtn, styles.rejectBtn]}
+                  style={[styles.decisionBtn, styles.rejectBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                   onPress={() => setRejectModalOpen(true)}
                   disabled={actionLoading}
                 >
-                  <Text style={styles.rejectBtnText}>✕ Reject Document</Text>
+                  <X size={15} color={COLORS.bad} />
+                  <Text style={styles.rejectBtnText}>Reject Document</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.decisionBtn, styles.approveBtn]}
+                  style={[styles.decisionBtn, styles.approveBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                   onPress={() => onApprove && onApprove(currentDoc.docType)}
                   disabled={actionLoading}
                 >
-                  <Text style={styles.approveBtnText}>✓ Approve Document</Text>
+                  <Check size={15} color={COLORS.white} />
+                  <Text style={styles.approveBtnText}>Approve Document</Text>
                 </TouchableOpacity>
               </View>
             </View>

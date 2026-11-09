@@ -1,8 +1,8 @@
 const multer = require("multer");
 const ApiError = require("../utils/ApiError");
 
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const imageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/jpg"]);
+const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/jpg", "application/pdf"]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -15,6 +15,7 @@ const upload = multer({
       "drivingLicenceDocument",
       "vehicleRcDocument",
       "studentIdCardDocument",
+      "studentIdCard",
       "file",
       "document"
     ];
@@ -23,7 +24,7 @@ const upload = multer({
       if (!allowedTypes.has(file.mimetype)) {
         return cb(new ApiError(400, "Documents must be JPG, PNG, or PDF format (max 5 MB)."));
       }
-    } else if (["profileImage", "vehicleImages"].includes(file.fieldname)) {
+    } else if (["profileImage", "photo", "avatar", "vehicleImages"].includes(file.fieldname)) {
       if (!imageTypes.has(file.mimetype)) {
         return cb(new ApiError(400, "Photos must be JPG, PNG, or WebP format (max 5 MB each)."));
       }
@@ -37,12 +38,15 @@ const upload = multer({
 function uploadRegistrationFiles(req, res, next) {
   upload.fields([
     { name: "profileImage", maxCount: 1 },
+    { name: "photo", maxCount: 1 },
+    { name: "avatar", maxCount: 1 },
     { name: "aadhaarDocument", maxCount: 1 },
     { name: "govtIdDocument", maxCount: 1 },
     { name: "addressProofDocument", maxCount: 1 },
     { name: "drivingLicenceDocument", maxCount: 1 },
     { name: "vehicleRcDocument", maxCount: 1 },
     { name: "studentIdCardDocument", maxCount: 1 },
+    { name: "studentIdCard", maxCount: 1 },
     { name: "vehicleImages", maxCount: 5 },
     { name: "document", maxCount: 1 },
     { name: "file", maxCount: 1 }

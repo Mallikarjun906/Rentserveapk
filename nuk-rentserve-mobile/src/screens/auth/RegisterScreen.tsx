@@ -11,12 +11,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Check } from 'lucide-react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
+import { DocumentUploader, UploadFile } from '../../components/common/DocumentUploader';
+import { appendFileToFormData, validateImage } from '../../utils/fileUpload';
+import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { CONFIG } from '../../constants/config';
@@ -35,7 +39,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onSuccess,
   onBack,
 }) => {
-  const { register, setRole, setTermsAccepted } = useAuth();
+  const { register, login, setRole, setTermsAccepted } = useAuth();
   const { t } = useLocalization();
 
   const [name, setName] = useState('');
@@ -43,6 +47,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('Bagalkot');
+  const [profileImage, setProfileImage] = useState<UploadFile | null>(null);
   const [roleChoice, setRoleChoice] = useState<
     'Customer' | 'Property Owner' | 'Auto/Car Driver' | 'Student Rental Partner'
   >('Customer');
@@ -64,9 +69,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       setError(t('Enter a valid 10-digit mobile number', '10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
       return;
     }
-    if (password.length < 6) {
-      setError(t('Password must be at least 6 characters', 'ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ 6 ಅಕ್ಷರಗಳಿರಬೇಕು'));
+    if (password.length < 8) {
+      setError(t('Password must be at least 8 characters', 'ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳಾಗಿರಬೇಕು'));
       return;
+    }
+    if (profileImage) {
+      const imgVal = validateImage(profileImage);
+      if (!imgVal.valid) {
+        setError(imgVal.error || 'Invalid profile photo.');
+        return;
+      }
     }
     if (!termsAcceptedLocal) {
       setError(
@@ -81,13 +93,39 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     setError('');
     setLoading(true);
     try {
-      await register({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        password,
-        location: city,
-      });
+      if (roleChoice === 'Property Owner') {
+        if (profileImage) {
+          const formData = new FormData();
+          formData.append('name', name.trim());
+          formData.append('email', email.trim().toLowerCase());
+          formData.append('phone', phone.trim());
+          formData.append('password', password);
+          formData.append('location', city);
+          formData.append('city', city);
+          formData.append('terms', 'true');
+          await appendFileToFormData(formData, 'profileImage', profileImage);
+          await authApi.registerOwner(formData);
+        } else {
+          await authApi.registerOwner({
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            phone: phone.trim(),
+            password,
+            location: city,
+            city,
+            terms: true,
+          });
+        }
+        await login(email.trim().toLowerCase(), password);
+      } else {
+        await register({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          password,
+          location: city,
+        });
+      }
 
       // Record legal consent audit
       setTermsAccepted({
@@ -153,6 +191,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               onChangeText={setPassword}
             />
 
+            <DocumentUploader
+              label={t('profilePhoto', 'ಪ್ರೊಫೈಲ್ ಭಾವಚಿತ್ರ (ಐಚ್ಛಿಕ)')}
+              description="Front facing photo / selfie (JPG, PNG)"
+              acceptTypes="image"
+              file={profileImage}
+              onFileSelect={setProfileImage}
+              uploadState={loading ? 'uploading' : profileImage ? 'selected' : 'idle'}
+            />
+
             {/* City Selector */}
             <Text style={styles.fieldLabel}>{t('location', 'ನಗರ / ತಾಲೂಕು')}</Text>
             <View style={styles.chipsRow}>
@@ -197,7 +244,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               activeOpacity={0.8}
             >
               <View style={[styles.checkbox, termsAcceptedLocal && styles.checkboxActive]}>
-                {termsAcceptedLocal && <Text style={styles.checkMark}>✓</Text>}
+                {termsAcceptedLocal && <Check size={14} color={COLORS.brand} />}
               </View>
               <Text style={styles.termsText}>
                 {t('acceptTermsPrefix', 'ನಾನು')}{' '}

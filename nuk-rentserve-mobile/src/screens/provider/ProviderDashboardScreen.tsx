@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Linking,
   Switch,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import {
@@ -33,6 +34,7 @@ import {
   Banknote,
   Radio,
   Check,
+  LogOut,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -46,18 +48,34 @@ import { providerApi, ProviderServiceRequest } from '../../api/providerApi';
 import { authApi } from '../../api/authApi';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
+import { confirmAction } from '../../utils/confirmAlert';
 
 interface ProviderDashboardScreenProps {
   onBack?: () => void;
   onOpenChat: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
+  onLogout?: () => void;
 }
 
 export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = ({
   onBack,
   onOpenChat,
+  onLogout,
 }) => {
   const { t } = useLocalization();
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
+
+  const handleLogout = () => {
+    confirmAction(
+      t('Logout', 'ಲಾಗ್ ಔಟ್'),
+      t('Are you sure you want to sign out?', 'ನೀವು ಖಚಿತವಾಗಿ ಲಾಗ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?'),
+      async () => {
+        await logout();
+        if (onLogout) onLogout();
+        else if (onBack) onBack();
+      },
+      'Sign Out'
+    );
+  };
 
   const [profile, setProfile] = useState<any>(null);
   const [requests, setRequests] = useState<ProviderServiceRequest[]>([]);
@@ -285,6 +303,25 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
               ) : (
                 <MapPin size={18} color={COLORS.brand} />
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#FEE2E2',
+                paddingVertical: 6,
+                paddingHorizontal: 8,
+                borderRadius: RADIUS.full,
+                borderWidth: 1,
+                borderColor: '#FECACA',
+                marginLeft: 4,
+              }}
+              accessibilityLabel="Sign Out"
+            >
+              <LogOut size={13} color={COLORS.bad} />
             </TouchableOpacity>
           </View>
         }
@@ -544,7 +581,7 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
                     </TouchableOpacity>
 
                     <Button
-                      title="✓ Mark Completed"
+                      title="Mark Completed"
                       onPress={() => handleUpdateJobStatus(b._id, 'completed')}
                       variant="primary"
                       size="sm"

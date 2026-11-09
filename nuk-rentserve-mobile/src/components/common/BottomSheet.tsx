@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   ScrollView,
 } from 'react-native';
+import { X } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 
 interface BottomSheetProps {
@@ -49,7 +50,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                     {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
                   </View>
                   <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                    <Text style={styles.closeText}>✕</Text>
+                    <X size={18} color={COLORS.mute} strokeWidth={2.2} />
                   </TouchableOpacity>
                 </View>
               )}

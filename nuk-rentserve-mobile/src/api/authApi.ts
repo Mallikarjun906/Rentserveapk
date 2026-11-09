@@ -1,6 +1,7 @@
 // Authentication, Separate Registrations, and User Profile API Service
 
 import { apiClient } from './client';
+import { Storage } from '../utils/storage';
 
 export type UserRole = 'customer' | 'owner' | 'provider' | 'driver' | 'student' | 'admin';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -89,6 +90,18 @@ export const authApi = {
     return res.data || res;
   },
 
+  // 5. Property Owner Registration (JSON or FormData)
+  async registerOwner(data: any): Promise<AuthResponse> {
+    const res: any = await apiClient.post('/auth/register/owner', data);
+    return res.data || res;
+  },
+
+  // Dedicated Profile Photo Upload
+  async uploadProfilePhoto(formData: FormData): Promise<{ user: User; profileImage: { url: string } }> {
+    const res: any = await apiClient.post('/users/me/photo', formData);
+    return res.data || res;
+  },
+
   // Backward compatible register
   async register(data: {
     name: string;
@@ -134,7 +147,8 @@ export const authApi = {
   // Logout
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/auth/logout');
+      const refreshToken = await Storage.getRefreshToken();
+      await apiClient.post('/auth/logout', { refreshToken });
     } catch {}
   },
 

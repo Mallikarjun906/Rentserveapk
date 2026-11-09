@@ -10,6 +10,13 @@ export function saveSession(payload) {
   return data.user;
 }
 export function clearSession() { ['nuk_user','nuk_access_token','nuk_refresh_token'].forEach(k => sessionStorage.removeItem(k)); }
+export async function logoutSession() {
+  const refreshToken = sessionStorage.getItem('nuk_refresh_token');
+  try {
+    await api('/auth/logout', { method: 'POST', body: { refreshToken } });
+  } catch {}
+  clearSession();
+}
 export async function api(path, { method = 'GET', body, query } = {}) {
   const url = new URL(`${API_BASE}/${String(path).replace(/^\//, '')}`, window.location.origin);
   Object.entries(query || {}).forEach(([k,v]) => { if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v)); });

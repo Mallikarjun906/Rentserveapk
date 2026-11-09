@@ -42,10 +42,10 @@ function FileUploadPreview({ file, label, accept = 'image/*,application/pdf', re
             <img src={preview} alt="Upload preview" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--line)' }} />
           ) : (
             <div style={{ padding: '6px 12px', background: '#f5f5f5', borderRadius: '6px', fontSize: '12px' }}>
-              📄 {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+              {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
             </div>
           )}
-          <span style={{ fontSize: '12px', color: '#176a3a', fontWeight: 600 }}>✓ File selected</span>
+          <span style={{ fontSize: '12px', color: '#176a3a', fontWeight: 600 }}>File selected</span>
         </div>
       )}
     </div>
@@ -56,36 +56,44 @@ function FileUploadPreview({ file, label, accept = 'image/*,application/pdf', re
 export function RegisterHub() {
   const roles = [
     {
+      num: '01',
       title: 'Customer',
       kannada: 'ಗ್ರಾಹಕರು',
       desc: 'Browse verified rentals, book trusted home services, and request rides.',
       to: '/register/customer',
-      icon: '🏠',
       badge: 'IMMEDIATE ACCESS'
     },
     {
+      num: '02',
       title: 'Service Provider',
       kannada: 'ಸೇವಾ ಪೂರೈಕೆದಾರರು',
       desc: 'List your trade (electrician, plumber, carpenter, cleaning) and connect directly with clients.',
       to: '/register/provider',
-      icon: '🛠️',
       badge: 'TRADE ONBOARDING'
     },
     {
+      num: '03',
       title: 'Transport Driver',
       kannada: 'ಚಾಲಕರು',
       desc: 'Register Auto Rickshaw, Passenger Car, or Goods Van with 0% platform retention.',
       to: '/register/driver',
-      icon: '🛺',
       badge: 'FLEET & DRIVER'
     },
     {
+      num: '04',
       title: 'Student Rental Partner',
       kannada: 'ವಿದ್ಯಾರ್ಥಿ ಪಾಲುದಾರರು',
       desc: 'Access verified college campus housing, student PGs and peer rental support.',
       to: '/register/student',
-      icon: '🎓',
       badge: 'COLLEGE ID VERIFIED'
+    },
+    {
+      num: '05',
+      title: 'Property Owner',
+      kannada: 'ಆಸ್ತಿ ಮಾಲೀಕರು',
+      desc: 'List your houses, rooms, PGs and commercial shops directly to verified tenants across Karnataka.',
+      to: '/register/owner',
+      badge: 'RENTAL LISTINGS'
     }
   ];
 
@@ -118,7 +126,7 @@ export function RegisterHub() {
           >
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontSize: '32px' }}>{r.icon}</span>
+                <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--red)', fontFamily: 'monospace' }}>{r.num}</span>
                 <span className="eyebrow" style={{ fontSize: '10px' }}>{r.badge}</span>
               </div>
               <h2 style={{ fontSize: '22px', margin: '6px 0 4px' }}>{r.title}</h2>
@@ -307,6 +315,7 @@ export function CustomerRegister() {
 export function ProviderRegister() {
   const [form, setForm] = useState({
     fullName: '',
+    dob: '1995-01-01',
     email: '',
     phone: '',
     password: '',
@@ -987,6 +996,179 @@ export function StudentRegister() {
 
         <p className="form-note">
           Already verified? <Link to="/student/login"><b>Student Sign In</b></Link>
+        </p>
+      </form>
+    </AuthShell>
+  );
+}
+
+// 6. Property Owner Registration (/register/owner)
+export function OwnerRegister() {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    address: '',
+    city: 'Bagalkot',
+    terms: false
+  });
+  const [profileImage, setProfileImage] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const nav = useNavigate();
+
+  const update = (k, v) => setForm(old => ({ ...old, [k]: v }));
+
+  async function submit(e) {
+    e.preventDefault();
+    setError('');
+
+    if (form.password !== form.confirmPassword) {
+      setError('Password and Confirm Password do not match.');
+      return;
+    }
+    if (!form.terms) {
+      setError('You must accept the Terms and Conditions to proceed.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      let data;
+      if (profileImage) {
+        const fd = new FormData();
+        Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
+        fd.append('profileImage', profileImage);
+        data = await api('auth/register/owner', {
+          method: 'POST',
+          body: fd
+        });
+      } else {
+        data = await api('auth/register/owner', {
+          method: 'POST',
+          body: form
+        });
+      }
+      saveSession(data);
+      nav('/owner/dashboard', { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AuthShell
+      title="Property Owner Registration"
+      subtitle="Register as a property owner to list houses, rooms, PGs, and commercial spaces."
+      badge="PROPERTY OWNER REGISTRATION"
+      asideTitle="List with confidence."
+      asideSubtitle="Direct tenant enquiries with zero brokerage."
+    >
+      <form onSubmit={submit} className="form-stack">
+        <label>
+          Full Name / Property Owner Name
+          <input
+            required
+            minLength={2}
+            maxLength={100}
+            placeholder="e.g. Anand Deshmukh"
+            value={form.name}
+            onChange={e => update('name', e.target.value)}
+          />
+        </label>
+
+        <div className="form-two">
+          <label>
+            Mobile Number
+            <input
+              required
+              type="tel"
+              pattern="[6-9][0-9]{9}"
+              title="Enter valid 10-digit Indian mobile number"
+              placeholder="e.g. 9876543210"
+              value={form.phone}
+              onChange={e => update('phone', e.target.value)}
+            />
+          </label>
+          <label>
+            Email Address
+            <input
+              required
+              type="email"
+              placeholder="e.g. anand@example.com"
+              value={form.email}
+              onChange={e => update('email', e.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="form-two">
+          <label>
+            Locality / Address
+            <input
+              placeholder="e.g. Navanagar Sector 5"
+              value={form.address}
+              onChange={e => update('address', e.target.value)}
+            />
+          </label>
+          <label>
+            City / Town
+            <input
+              required
+              placeholder="e.g. Bagalkot"
+              value={form.city}
+              onChange={e => update('city', e.target.value)}
+            />
+          </label>
+        </div>
+
+        <label>
+          Password
+          <PasswordInput
+            value={form.password}
+            onChange={e => update('password', e.target.value)}
+            placeholder="At least 8 characters"
+          />
+        </label>
+
+        <label>
+          Confirm Password
+          <PasswordInput
+            value={form.confirmPassword}
+            onChange={e => update('confirmPassword', e.target.value)}
+            placeholder="Re-enter your password"
+          />
+        </label>
+
+        <FileUploadPreview
+          label="Profile / Owner Photograph (Optional)"
+          accept="image/jpeg,image/png"
+          file={profileImage}
+          onChange={setProfileImage}
+        />
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+          <input
+            type="checkbox"
+            checked={form.terms}
+            onChange={e => update('terms', e.target.checked)}
+            style={{ width: 'auto', marginTop: '3px' }}
+          />
+          <span>I accept the Property Owner Terms of Service and Rental Rules.</span>
+        </label>
+
+        {error && <div className="notice error" role="alert">{error}</div>}
+
+        <button className="btn btn-full" disabled={busy}>
+          {busy ? 'Creating owner account…' : 'Register as Property Owner'}
+        </button>
+
+        <p className="form-note">
+          Already registered? <Link to="/login"><b>Sign In Here</b></Link>
         </p>
       </form>
     </AuthShell>

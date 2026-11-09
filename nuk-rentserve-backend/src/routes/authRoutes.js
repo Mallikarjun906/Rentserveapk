@@ -60,23 +60,51 @@ router.post("/send-otp", otpLimiter, otpController.send);
 router.post("/verify-otp", otpLimiter, otpController.verify);
 
 // 1. Separate Registration Endpoints
-router.post("/register/customer", registrationController.registerCustomer);
+const normalizeLocation = (req, _res, next) => {
+  if (!req.body.location && req.body.city) {
+    req.body.location = req.body.city;
+  }
+  if (!req.body.location) {
+    req.body.location = "Bagalkot";
+  }
+  next();
+};
+
+router.post("/register/customer", uploadRegistrationFiles, registrationController.registerCustomer);
+router.post("/register/owner", uploadRegistrationFiles, registrationController.registerOwner);
 router.post("/register/driver", uploadRegistrationFiles, registrationController.registerDriver);
 router.post("/register/student", uploadRegistrationFiles, registrationController.registerStudent);
 router.post("/register/provider", uploadRegistrationFiles, providerApplicationController.submit);
 
-// Backward-compatible generic registration (forced to customer)
+// Backward-compatible generic registration
 router.post(
   "/register",
+  normalizeLocation,
   validateBody(["name", "email", "phone", "password", "location"]),
   controller.register
 );
 
 // 2. Authentication
+const jwt = require("jsonwebtoken");
+const optionalAuth = (req, res, next) => {
+  const header = req.headers.authorization || "";
+  let token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token && req.query && req.query.token) {
+    token = String(req.query.token).trim();
+  }
+  if (token) {
+    try {
+      const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      req.user = { id: payload.sub };
+    } catch {}
+  }
+  next();
+};
+
 router.post("/login", loginLimiter, controller.login);
 router.post("/admin/login", loginLimiter, controller.adminLogin);
 router.post("/refresh", controller.refresh);
-router.post("/logout", authenticate, controller.logout);
+router.post("/logout", optionalAuth, controller.logout);
 router.post("/google", googleAuthLimiter, controller.googleLogin);
 
 // 3. Password recovery

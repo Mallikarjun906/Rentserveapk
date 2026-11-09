@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import {
   User,
   Phone,
@@ -28,6 +31,7 @@ import {
   LogOut,
   ChevronRight,
   Eye,
+  Camera,
   Image as ImageIcon,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
@@ -38,6 +42,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { authApi } from '../../api/authApi';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
+import { appendFileToFormData } from '../../utils/fileUpload';
 import { CONFIG } from '../../constants/config';
 
 interface ProfileScreenProps {
@@ -65,13 +70,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigateTerms,
   onLogout,
 }) => {
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, updateUser } = useAuth();
   const { language, setLanguage, t } = useLocalization();
 
   const [myApp, setMyApp] = useState<any | null>(null);
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [previewDocs, setPreviewDocs] = useState<DocumentItem[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   React.useEffect(() => {
     let active = true;
@@ -102,12 +108,94 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setDocModalOpen(true);
   };
 
+  const handlePickPhoto = async (useCamera = false) => {
+    try {
+      let result;
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            t('Camera Permission Required', 'ಕ್ಯಾಮರಾ ಅನುಮತಿ ಅಗತ್ಯವಿದೆ'),
+            t('Camera access is required to take a profile photo.', 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ ತೆಗೆದುಕೊಳ್ಳಲು ಕ್ಯಾಮರಾ ಅನುಮತಿ ಅಗತ್ಯ.')
+          );
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            t('Gallery Permission Required', 'ಗ್ಯಾಲರಿ ಅನುಮತಿ ಅಗತ್ಯವಿದೆ'),
+            t('Photo library access is required to select a profile photo.', 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ ಆಯ್ಕೆ ಮಾಡಲು ಗ್ಯಾಲರಿ ಅನುಮತಿ ಅಗತ್ಯ.')
+          );
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      }
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setUploadingPhoto(true);
+        const formData = new FormData();
+        await appendFileToFormData(formData, 'profileImage', {
+          uri: asset.uri,
+          name: asset.fileName || `profile-${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          size: asset.fileSize,
+          file: (asset as any).file,
+        });
+
+        const res = await authApi.uploadProfilePhoto(formData);
+        if (res?.user) {
+          await updateUser(res.user);
+        } else if (res?.profileImage) {
+          await updateUser({ profileImage: res.profileImage });
+        }
+        Alert.alert(
+          t('Success', 'ಯಶಸ್ಸು'),
+          t('Profile photo updated successfully!', 'ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಫೋಟೋ ಯಶಸ್ವಿಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ!')
+        );
+      }
+    } catch (err: any) {
+      Alert.alert(
+        t('Upload Failed', 'ಅಪ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ'),
+        err.message || 'Could not update profile photo.'
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const promptPhotoChoice = () => {
+    Alert.alert(
+      t('Update Profile Photo', 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ ನವೀಕರಿಸಿ'),
+      t('Choose how you want to update your profile photo', 'ಫೋಟೋ ಆಯ್ಕೆ ವಿಧಾನವನ್ನು ಆರಿಸಿ'),
+      [
+        { text: t('Take Photo (Camera)', 'ಕ್ಯಾಮರಾ ಬಳಸಿ'), onPress: () => handlePickPhoto(true) },
+        { text: t('Choose from Gallery', 'ಗ್ಯಾಲರಿಯಿಂದ ಆರಿಸಿ'), onPress: () => handlePickPhoto(false) },
+        { text: t('Cancel', 'ರದ್ದುಮಾಡಿ'), style: 'cancel' },
+      ]
+    );
+  };
+
   const userName = user?.name || 'NUK Member';
   const userPhone = user?.phone || 'Not provided';
   const userLocation = user?.location || 'Bagalkot';
   const userRole = user?.role || 'customer';
   const approvalStatus = user?.approvalStatus || 'approved';
   const rejectionReason = user?.rejectionReason || '';
+  const avatarUrl =
+    user?.profileImage?.url ||
+    (myApp?.profileImage ? (typeof myApp.profileImage === 'string' ? myApp.profileImage : myApp.profileImage.url) : '');
 
   const handleLogout = async () => {
     await logout();
@@ -125,9 +213,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* User Card */}
         <View style={[styles.userCard, SHADOWS.card]}>
           <View style={styles.userTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.avatarWrap}
+              onPress={promptPhotoChoice}
+              activeOpacity={0.8}
+            >
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <View style={styles.cameraPill}>
+                {uploadingPhoto ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <Camera size={12} color={COLORS.white} />
+                )}
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.userCol}>
               <Text style={styles.name}>{userName}</Text>
               <Text style={styles.phone}>{userPhone}</Text>
@@ -555,14 +661,38 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   userTop: { flexDirection: 'row', alignItems: 'center' },
+  avatarWrap: {
+    position: 'relative',
+    marginRight: 14,
+  },
   avatar: {
-    width: 54,
-    height: 54,
+    width: 58,
+    height: 58,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+  },
+  avatarImg: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderColor: COLORS.brand,
+    backgroundColor: COLORS.paper,
+  },
+  cameraPill: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: COLORS.brand,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarText: { fontSize: 22, fontWeight: '900', color: COLORS.white },
   userCol: { flex: 1 },

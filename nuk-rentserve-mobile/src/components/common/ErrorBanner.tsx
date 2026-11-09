@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { AlertTriangle } from 'lucide-react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 
 interface ErrorBannerProps {
@@ -18,7 +19,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.leftRow}>
-        <Text style={styles.icon}>⚠️</Text>
+        <AlertTriangle size={18} color={COLORS.bad} style={{ marginRight: 8 }} />
         <Text style={styles.message} numberOfLines={2}>
           {message}
         </Text>

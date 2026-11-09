@@ -34,14 +34,23 @@
         "ACCESS_FINE_LOCATION",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow NUK RentServe to access your photos for profile pictures and document uploads.",
+          "cameraPermission": "Allow NUK RentServe to access your camera to take profile photos and document pictures."
+        }
+      ],
+      "expo-document-picker"
     ],
     "updates": {
       "url": "https://u.expo.dev/9975e43d-8eac-4e92-a9f5-48a9c040962e"

@@ -45,6 +45,8 @@ interface AuthContextType {
   isSaved: (id: string) => boolean;
   termsAccepted: { at: string; version: string } | null;
   setTermsAccepted: (data: { at: string; version: string } | null) => void;
+  updateUser: (user: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -63,6 +65,8 @@ const AuthContext = createContext<AuthContextType>({
   isSaved: () => false,
   termsAccepted: null,
   setTermsAccepted: () => {},
+  updateUser: async () => {},
+  refreshUser: async () => null,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -224,6 +228,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isSaved = (id: string) => savedIds.includes(id);
 
+  const updateUser = async (updatedFields: Partial<User>) => {
+    if (!user) return;
+    const updated = { ...user, ...updatedFields };
+    setUser(updated);
+    await Storage.setUser(updated);
+  };
+
+  const refreshUser = async () => {
+    try {
+      const fresh = await authApi.getMe();
+      if (fresh) {
+        setUser(fresh);
+        await Storage.setUser(fresh);
+        return fresh;
+      }
+    } catch {}
+    return null;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -242,6 +265,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSaved,
         termsAccepted,
         setTermsAccepted,
+        updateUser,
+        refreshUser,
       }}
     >
       {children}

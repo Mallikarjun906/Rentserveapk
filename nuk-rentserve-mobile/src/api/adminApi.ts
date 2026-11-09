@@ -4,8 +4,17 @@ import { apiClient } from './client';
 
 export interface AdminStats {
   totalUsers: number;
+  activeCustomers?: number;
+  registeredProviders?: number;
+  propertyOwners?: number;
+  studentPartners?: number;
+  registeredDrivers?: number;
   totalServices: number;
   totalProperties: number;
+  totalBookings?: number;
+  pendingBookings?: number;
+  completedBookings?: number;
+  cancelledBookings?: number;
   pendingProviders: number;
   pendingDrivers: number;
   pendingStudents: number;
@@ -14,6 +23,7 @@ export interface AdminStats {
   approvedStudents: number;
   rejectedApplications: number;
   suspendedAccounts: number;
+  supportRequests?: number;
 }
 
 export interface ApplicationRecord {

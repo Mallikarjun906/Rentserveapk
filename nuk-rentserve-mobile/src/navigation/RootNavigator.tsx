@@ -381,6 +381,9 @@ export const RootNavigator: React.FC = () => {
             onNavigateServices={() => switchTab('explore')}
             onSelectProperty={(id) => go('property', { id })}
             onSelectProvider={(id) => go('provider', { id })}
+            onNavigateProfile={() => switchTab('profile')}
+            onNavigateBookings={() => switchTab('bookings')}
+            onNavigateMessages={() => switchTab('messages')}
           />
         );
       case 'explore':
@@ -515,6 +518,7 @@ export const RootNavigator: React.FC = () => {
             onBack={stack.length > 1 ? back : undefined}
             onNavigateOnboarding={() => go('driver-onboarding')}
             onOpenChat={(params) => go('chat', params)}
+            onLogout={() => reset('login')}
           />
         );
       case 'driver-profile':
@@ -541,6 +545,7 @@ export const RootNavigator: React.FC = () => {
           <ProviderDashboardScreen
             onBack={stack.length > 1 ? back : undefined}
             onOpenChat={(params) => go('chat', params)}
+            onLogout={() => reset('login')}
           />
         );
       case 'provider-profile':
@@ -558,16 +563,17 @@ export const RootNavigator: React.FC = () => {
 
       // Additional Roles
       case 'owner-dashboard':
-        return <OwnerDashboardScreen onBack={back} />;
+        return <OwnerDashboardScreen onBack={back} onLogout={() => reset('login')} />;
       case 'student-dashboard':
         return (
           <StudentDashboardScreen
             onBack={back}
             onAddProperty={() => go('owner-dashboard')}
+            onLogout={() => reset('login')}
           />
         );
       case 'admin-dashboard':
-        return <AdminDashboardScreen onBack={back} />;
+        return <AdminDashboardScreen onBack={back} onLogout={() => reset('login')} />;
       case 'terms':
         return (
           <TermsViewerScreen
@@ -616,6 +622,7 @@ export const RootNavigator: React.FC = () => {
             <ProviderDashboardScreen
               onBack={stack.length > 1 ? back : undefined}
               onOpenChat={(params) => go('chat', params)}
+              onLogout={() => reset('login')}
             />
           </View>
 
@@ -659,6 +666,7 @@ export const RootNavigator: React.FC = () => {
               onBack={stack.length > 1 ? back : undefined}
               onNavigateOnboarding={() => go('driver-onboarding')}
               onOpenChat={(params) => go('chat', params)}
+              onLogout={() => reset('login')}
             />
           </View>
 

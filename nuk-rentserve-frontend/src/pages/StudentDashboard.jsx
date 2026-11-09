@@ -177,7 +177,6 @@ export default function StudentDashboard() {
         </div>
       ) : (
         <div className="empty-state">
-          <span>🏠</span>
           <h3>No student rentals listed right now</h3>
           <p>Check back soon or browse all available properties in Bagalkot and surrounding districts.</p>
           <Link to="/rentals" className="btn" style={{ marginTop: '12px' }}>Explore Rentals</Link>

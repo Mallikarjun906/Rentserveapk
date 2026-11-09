@@ -9,6 +9,7 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { X } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 
 interface ModalProps {
@@ -41,7 +42,7 @@ export const Modal: React.FC<ModalProps> = ({
               <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                  <Text style={styles.closeText}>✕</Text>
+                  <X size={18} color={COLORS.mute} strokeWidth={2.2} />
                 </TouchableOpacity>
               </View>
 

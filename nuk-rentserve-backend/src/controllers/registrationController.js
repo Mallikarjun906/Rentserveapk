@@ -50,7 +50,8 @@ async function createAuthSession(user) {
       role: user.role,
       location: user.location,
       approvalStatus: user.approvalStatus,
-      rejectionReason: user.rejectionReason || ""
+      rejectionReason: user.rejectionReason || "",
+      profileImage: user.profileImage || { url: "" }
     },
     accessToken: newAccessToken,
     refreshToken: newRefreshToken
@@ -84,6 +85,16 @@ const registerCustomer = asyncHandler(async (req, res) => {
     throw new ApiError(409, "Email is already registered. Please log in instead.");
   }
 
+  const files = req.files || {};
+  const profileFile = files.profileImage?.[0] || files.photo?.[0] || files.avatar?.[0];
+  let uploadedProfile = {
+    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(String(name).trim())}&background=D71920&color=fff`,
+    publicId: ""
+  };
+  if (profileFile) {
+    uploadedProfile = await uploadPublicImage(profileFile);
+  }
+
   const hashedPassword = await bcrypt.hash(password, 12);
   const user = await User.create({
     name: String(name).trim(),
@@ -92,7 +103,8 @@ const registerCustomer = asyncHandler(async (req, res) => {
     password: hashedPassword,
     role: "customer",
     approvalStatus: "approved",
-    location: finalCity
+    location: finalCity,
+    profileImage: { url: uploadedProfile.url, publicId: uploadedProfile.publicId }
   });
 
   const session = await createAuthSession(user);
@@ -103,6 +115,7 @@ const registerCustomer = asyncHandler(async (req, res) => {
 const registerDriver = asyncHandler(async (req, res) => {
   const {
     fullName,
+    name,
     email,
     phone,
     password,
@@ -117,7 +130,7 @@ const registerDriver = asyncHandler(async (req, res) => {
     consent
   } = req.body;
 
-  const normalizedName = String(fullName || "").trim();
+  const normalizedName = String(fullName || name || "").trim();
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const normalizedPhone = String(phone || "").trim();
   const normalizedAddress = String(address || "").trim();
@@ -128,7 +141,7 @@ const registerDriver = asyncHandler(async (req, res) => {
   const vType = String(vehicleType || "auto").trim().toLowerCase();
   const vReg = String(vehicleRegistrationNumber || "").trim().toUpperCase();
 
-  if (!normalizedName || !normalizedEmail || !normalizedPhone || !password || !normalizedAddress || !dlNum || !vReg) {
+  if (!normalizedName || !normalizedEmail || !normalizedPhone || !password || !dlNum || !vReg) {
     throw new ApiError(400, "Please provide all required driver registration fields.");
   }
 
@@ -150,17 +163,21 @@ const registerDriver = asyncHandler(async (req, res) => {
   }
 
   const files = req.files || {};
-  const profileFile = files.profileImage?.[0];
-  const dlFile = files.drivingLicenceDocument?.[0] || files.aadhaarDocument?.[0];
+  const profileFile = files.profileImage?.[0] || files.photo?.[0] || files.avatar?.[0];
+  const dlFile = files.drivingLicenceDocument?.[0] || files.aadhaarDocument?.[0] || files.document?.[0] || files.file?.[0];
   const addressProofFile = files.addressProofDocument?.[0];
   const rcFile = files.vehicleRcDocument?.[0];
   const vehicleFiles = files.vehicleImages || [];
 
-  if (!profileFile) throw new ApiError(400, "Profile photograph is required.");
   if (!dlFile) throw new ApiError(400, "Driving licence document upload is required.");
 
-  // Upload public profile photo
-  const uploadedProfile = await uploadPublicImage(profileFile);
+  let uploadedProfile = {
+    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(normalizedName)}&background=D71920&color=fff`,
+    publicId: ""
+  };
+  if (profileFile) {
+    uploadedProfile = await uploadPublicImage(profileFile);
+  }
 
   // Upload vehicle images if any
   const uploadedVehicles = [];
@@ -181,7 +198,8 @@ const registerDriver = asyncHandler(async (req, res) => {
     password: hashedPassword,
     role: "driver",
     approvalStatus: "pending",
-    location: normalizedCity
+    location: normalizedCity,
+    profileImage: { url: uploadedProfile.url, publicId: uploadedProfile.publicId }
   });
 
   const categoryName = vType === "car" ? "Passenger car" : vType === "goods-van" ? "Goods van" : "Auto";
@@ -287,10 +305,24 @@ const registerStudent = asyncHandler(async (req, res) => {
   }
 
   const files = req.files || {};
-  const studentCardFile = files.studentIdCardDocument?.[0] || files.aadhaarDocument?.[0] || files.document?.[0];
+  const studentCardFile =
+    files.studentIdCardDocument?.[0] ||
+    files.studentIdCard?.[0] ||
+    files.aadhaarDocument?.[0] ||
+    files.document?.[0] ||
+    files.file?.[0];
+  const profileFile = files.profileImage?.[0] || files.photo?.[0] || files.avatar?.[0];
 
   if (!studentCardFile) {
     throw new ApiError(400, "Student ID card document upload is required.");
+  }
+
+  let uploadedProfile = {
+    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(normalizedName)}&background=D71920&color=fff`,
+    publicId: ""
+  };
+  if (profileFile) {
+    uploadedProfile = await uploadPublicImage(profileFile);
   }
 
   const idCardDoc = await uploadPrivateDocument(studentCardFile, "student-id");
@@ -303,7 +335,8 @@ const registerStudent = asyncHandler(async (req, res) => {
     password: hashedPassword,
     role: "student",
     approvalStatus: "pending",
-    location: normalizedCity
+    location: normalizedCity,
+    profileImage: { url: uploadedProfile.url, publicId: uploadedProfile.publicId }
   });
 
   const application = await ProviderApplication.create({
@@ -348,6 +381,66 @@ const registerStudent = asyncHandler(async (req, res) => {
       "Student registration submitted for review."
     )
   );
+});
+
+// 4. Property Owner Registration
+const registerOwner = asyncHandler(async (req, res) => {
+  const { name, fullName, email, phone, password, confirmPassword, address, location, city, terms } = req.body;
+  const ownerName = String(name || fullName || "").trim();
+  const finalCity = String(location || city || "Bagalkot").trim();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedPhone = String(phone || "").trim();
+
+  if (!ownerName || !normalizedEmail || !normalizedPhone || !password) {
+    throw new ApiError(400, "Full name, email, mobile number, and password are required.");
+  }
+
+  if (confirmPassword && password !== confirmPassword) {
+    throw new ApiError(400, "Password and confirm password do not match.");
+  }
+
+  if (typeof password !== "string" || password.length < 8 || password.length > 72) {
+    throw new ApiError(400, "Password must contain between 8 and 72 characters.");
+  }
+
+  const hasAcceptedTerms =
+    terms === true ||
+    terms === "true" ||
+    terms === "on" ||
+    req.body.termsAccepted === true ||
+    req.body.termsAccepted === "true";
+  if (!hasAcceptedTerms) {
+    throw new ApiError(400, "You must accept the Terms and Conditions.");
+  }
+
+  if (await User.exists({ email: normalizedEmail })) {
+    throw new ApiError(409, "Email is already registered. Please log in instead.");
+  }
+
+  const files = req.files || {};
+  const profileFile = files.profileImage?.[0] || files.photo?.[0] || files.avatar?.[0];
+  let uploadedProfile = {
+    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(ownerName)}&background=D71920&color=fff`,
+    publicId: ""
+  };
+  if (profileFile) {
+    uploadedProfile = await uploadPublicImage(profileFile);
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+  const user = await User.create({
+    name: ownerName,
+    email: normalizedEmail,
+    phone: normalizedPhone,
+    password: hashedPassword,
+    role: "owner",
+    approvalStatus: "approved",
+    location: finalCity,
+    profileImage: { url: uploadedProfile.url, publicId: uploadedProfile.publicId }
+  });
+
+  const session = await createAuthSession(user);
+  res.status(201).json(new ApiResponse(201, session, "Property owner registration successful."));
 });
 
 // 4. Resubmit Documents
@@ -551,6 +644,7 @@ module.exports = {
   registerCustomer,
   registerDriver,
   registerStudent,
+  registerOwner,
   resubmitDocuments,
   viewPrivateDocument,
   getMyApplication,

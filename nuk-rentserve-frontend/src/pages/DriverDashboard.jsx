@@ -203,7 +203,7 @@ export default function DriverDashboard() {
         </article>
         <article className="dashboard-card">
           <span className="eyebrow">DUTY STATUS</span>
-          <h2>{online ? '🟢 Online' : '⚪ Offline'}</h2>
+          <h2>{online ? 'Online' : 'Offline'}</h2>
           <p>
             <button
               className="btn btn-small"
@@ -228,7 +228,7 @@ export default function DriverDashboard() {
           <p className="muted" style={{ margin: 0, fontSize: '13px' }}>Broadcast current location to receive nearest auto & car requests.</p>
         </div>
         <button className="btn btn-small" onClick={shareLocation} disabled={!isApproved}>
-          📍 Update GPS Location
+          Update GPS Location
         </button>
       </div>
 
@@ -244,7 +244,6 @@ export default function DriverDashboard() {
 
       {!isApproved ? (
         <div className="empty-state">
-          <span>🔒</span>
           <h3>Verification Required</h3>
           <p>New trip requests will be dispatched here once your documents are approved by an administrator.</p>
         </div>
@@ -280,7 +279,6 @@ export default function DriverDashboard() {
         </div>
       ) : (
         <div className="empty-state">
-          <span>🛺</span>
           <h3>No ride requests right now</h3>
           <p>New customer ride requests will appear here in real time. Keep your GPS updated.</p>
         </div>
