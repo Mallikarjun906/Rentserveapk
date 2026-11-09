@@ -16,6 +16,7 @@ import { Header } from '../../components/common/Header';
 import { EmptyState } from '../../components/common/EmptyState';
 import { useLocalization } from '../../context/LocalizationContext';
 import { chatApi, ConversationThread } from '../../api/chatApi';
+import { getOrConnectSocket } from '../../services/socketService';
 
 interface MessagesScreenProps {
   onOpenChat: (thread: ConversationThread) => void;
@@ -43,11 +44,30 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({ onOpenChat }) =>
 
   useEffect(() => {
     loadConversations();
+
+    let socket: any = null;
+    (async () => {
+      try {
+        socket = await getOrConnectSocket();
+        if (socket) {
+          socket.on('chat:new_message', () => {
+            loadConversations(true);
+          });
+        }
+      } catch {}
+    })();
+
     // 5-second polling interval for real-time conversation updates
     const timer = setInterval(() => {
       loadConversations(true);
     }, 5000);
-    return () => clearInterval(timer);
+
+    return () => {
+      clearInterval(timer);
+      if (socket) {
+        socket.off('chat:new_message');
+      }
+    };
   }, [loadConversations]);
 
   const onRefresh = () => {

@@ -20,6 +20,10 @@ const schema = new mongoose.Schema({
     latitude: { type: Number, min: -90, max: 90 },
     longitude: { type: Number, min: -180, max: 180 }
   },
+  pickupGeo: {
+    type: { type: String, enum: ["Point"] },
+    coordinates: [Number]
+  },
   destinationCoordinates: {
     latitude: { type: Number, min: -90, max: 90 },
     longitude: { type: Number, min: -180, max: 180 }
@@ -31,7 +35,13 @@ const schema = new mongoose.Schema({
     heading: { type: Number, min: 0, max: 360 },
     speed: { type: Number, min: 0, max: 500 },
     updatedAt: { type: Date, default: null }
+  },
+  liveLocationGeo: {
+    type: { type: String, enum: ["Point"] },
+    coordinates: [Number]
   }
 }, { timestamps: true });
 schema.index({ vehicleType: 1, status: 1, scheduledAt: 1 });
+schema.index({ pickupGeo: "2dsphere" }, { sparse: true });
+schema.index({ liveLocationGeo: "2dsphere" }, { sparse: true });
 module.exports = mongoose.model("TransportBooking", schema);

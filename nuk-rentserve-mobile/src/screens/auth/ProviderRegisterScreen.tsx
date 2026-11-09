@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { resolveKarnatakaLocation } from '../../utils/reverseGeocoding';
 import {
   Wrench,
   MapPin,
@@ -120,14 +121,14 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         });
-        if (reverse && reverse[0]) {
-          const loc = reverse[0];
-          const detectedCity = loc.city || loc.subregion || loc.district || 'Bagalkot';
-          setCity(detectedCity);
-          const detectedAddr = [loc.name, loc.street, loc.subregion].filter(Boolean).join(', ');
-          if (detectedAddr) setAddress(detectedAddr);
-          setLocationStatusText(`Location set: ${detectedCity} (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
-        }
+        const loc = reverse && reverse.length > 0 ? reverse[0] : null;
+        const resolved = resolveKarnatakaLocation(
+          { latitude: pos.coords.latitude, longitude: pos.coords.longitude },
+          loc
+        );
+        setCity(resolved.town);
+        setAddress(resolved.formattedAddress);
+        setLocationStatusText(`Location set: ${resolved.town}, ${resolved.district} (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
       }
     } catch {
       if (userInitiated) {

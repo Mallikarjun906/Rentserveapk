@@ -7,7 +7,7 @@ const { authenticate } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
 const esc = (s) => String(s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function shape(item) {
-  return { ...item.toObject(), id: item.id, name: item.title, city: item.location, category: item.categoryId?.name || "Service", experience: item.providerId?.experienceYears ? `${item.providerId.experienceYears} years` : "Local professional", price: item.priceRange?.min != null ? `₹${item.priceRange.min}${item.priceRange.max != null && item.priceRange.max !== item.priceRange.min ? `–₹${item.priceRange.max}` : "+"}` : "Contact for price", icon: "🛠️" };
+  return { ...item.toObject(), id: item.id, name: item.title, city: item.location, category: item.categoryId?.name || "Service", experience: item.providerId?.experienceYears ? `${item.providerId.experienceYears} years` : "Local professional", price: item.priceRange?.min != null ? `₹${item.priceRange.min}${item.priceRange.max != null && item.priceRange.max !== item.priceRange.min ? `–₹${item.priceRange.max}` : "+"}` : "Contact for price", icon: "wrench" };
 }
 router.get("/mine", authenticate, allowRoles("provider", "admin"), async (req, res, next) => {
   try {

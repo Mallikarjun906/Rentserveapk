@@ -45,11 +45,17 @@ async function startServer() {
     console.log(`Administrator account provisioned: ${adminEmail}`);
   }
 
+  const http = require("http");
   const app = require("./app");
+  const { initSocket } = require("./services/socketService");
   const port = Number(process.env.PORT) || 5000;
 
-  const server = app.listen(port, () => {
+  const server = http.createServer(app);
+  initSocket(server);
+
+  server.listen(port, () => {
     console.log(`NUK RentServe Backend listening on http://localhost:${port}`);
+    console.log(`Socket.IO initialized on port ${port}`);
     console.log(`Health check: http://localhost:${port}/api/v1/health`);
   });
 

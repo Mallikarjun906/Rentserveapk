@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { Coordinates, LiveLocation, transportApi, TransportBooking } from '../api/transportApi';
 import { CONFIG } from '../constants/config';
 import { calculateAutoFare } from '../utils/fareCalculator';
+import { getOrConnectSocket, joinTripRoom, leaveTripRoom } from '../services/socketService';
 
 export type RidePhase =
   | 'idle'
@@ -144,7 +145,66 @@ export const ActiveRideProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setDriverTracking(null);
   };
 
-  // Tracking Poller (queries tracking snapshot every 4s when trip is active)
+  // Real-Time Socket.IO Trip & Location Tracking
+  useEffect(() => {
+    const bookingId = activeBooking?._id;
+    if (!bookingId || bookingId.startsWith('auto-')) return;
+
+    let isMounted = true;
+    let socket: any = null;
+
+    (async () => {
+      try {
+        socket = await getOrConnectSocket();
+        if (!isMounted || !socket) return;
+
+        joinTripRoom(bookingId);
+
+        const handleAccepted = (updated: TransportBooking) => {
+          if (!updated || updated._id !== bookingId) return;
+          setActiveBooking(updated);
+          setPhase('accepted');
+          if (updated.liveLocation) {
+            setDriverTracking(updated.liveLocation);
+          }
+        };
+
+        const handleLocationUpdate = (payload: { bookingId: string; liveLocation: LiveLocation }) => {
+          if (!payload || payload.bookingId !== bookingId) return;
+          if (payload.liveLocation) {
+            setDriverTracking(payload.liveLocation);
+          }
+        };
+
+        const handleStatusChange = (payload: { bookingId: string; status: string }) => {
+          if (!payload || payload.bookingId !== bookingId) return;
+          if (payload.status === 'in_progress') {
+            setPhase('riding');
+          } else if (payload.status === 'completed') {
+            setPhase('completed');
+          } else if (payload.status === 'cancelled') {
+            setPhase('cancelled');
+          }
+        };
+
+        socket.on('ride:accepted', handleAccepted);
+        socket.on('trip:location_update', handleLocationUpdate);
+        socket.on('ride:status_change', handleStatusChange);
+      } catch {}
+    })();
+
+    return () => {
+      isMounted = false;
+      leaveTripRoom(bookingId);
+      if (socket) {
+        socket.off('ride:accepted');
+        socket.off('trip:location_update');
+        socket.off('ride:status_change');
+      }
+    };
+  }, [activeBooking?._id]);
+
+  // Tracking Poller (queries tracking snapshot every 4s as resilient fallback)
   useEffect(() => {
     const isTrackingPhase = ['searching', 'accepted', 'arriving', 'riding'].includes(phase);
     if (!isTrackingPhase || !activeBooking?._id) {

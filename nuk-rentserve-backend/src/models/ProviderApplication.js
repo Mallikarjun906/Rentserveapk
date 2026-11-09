@@ -26,6 +26,14 @@ const schema = new mongoose.Schema({
   serviceArea: { type: String, trim: true, maxlength: 200, default: "" },
   // Optional GPS coordinates used for proximity-aware dispatch when collected with consent.
   locationCoordinates: { latitude: { type: Number, min: -90, max: 90 }, longitude: { type: Number, min: -180, max: 180 } },
+  location: {
+    type: { type: String, enum: ["Point"] },
+    coordinates: [Number]
+  },
+  heading: { type: Number, min: 0, max: 360 },
+  speed: { type: Number, min: 0, max: 500 },
+  accuracy: { type: Number, min: 0, max: 100000 },
+  lastLocationUpdatedAt: { type: Date, default: null },
   email: { type: String, trim: true, lowercase: true, maxlength: 254, default: "" },
   city: { type: String, required: true, trim: true, minlength: 2, maxlength: 100, index: true },
   taluk: { type: String, trim: true, maxlength: 100, default: "", index: true },
@@ -88,6 +96,9 @@ const schema = new mongoose.Schema({
   isOnline: { type: Boolean, default: true, index: true },
   isDemo: { type: Boolean, default: false, index: true }
 }, { timestamps: true });
+
+schema.index({ location: "2dsphere" }, { sparse: true });
+schema.index({ applicationType: 1, category: 1, status: 1, isOnline: 1 });
 
 schema.pre("validate", function(next) {
   const driverCategories = ["Auto", "Passenger car", "Goods van"];

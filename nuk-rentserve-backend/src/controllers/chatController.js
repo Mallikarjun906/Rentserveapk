@@ -7,6 +7,7 @@ const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
 const asyncHandler = require("../utils/asyncHandler");
+const socketService = require("../services/socketService");
 
 // Helper to find and authorize a conversation thread across Conversation, TransportBooking, or Booking
 async function findAndAuthorizeBooking(bookingId, user) {
@@ -99,7 +100,16 @@ async function findAndAuthorizeBooking(bookingId, user) {
 
 // 1. Get or create a direct conversation between customer and provider/owner
 const getOrCreateConversation = asyncHandler(async (req, res) => {
-  const { recipientId, serviceId, propertyId, title } = req.body;
+  let { recipientId, serviceId, propertyId, title } = req.body;
+
+  // Resolve recipientId from serviceId if not directly supplied
+  if (!recipientId && serviceId && mongoose.isValidObjectId(serviceId)) {
+    const ServiceListing = require("../models/ServiceListing");
+    const sl = await ServiceListing.findById(serviceId).select("providerId");
+    if (sl?.providerId) {
+      recipientId = sl.providerId.toString();
+    }
+  }
 
   if (!recipientId || !mongoose.isValidObjectId(recipientId)) {
     throw new ApiError(400, "Valid recipientId is required.");
@@ -364,6 +374,17 @@ const sendMessage = asyncHandler(async (req, res) => {
       lastMessage: text,
       lastMessageAt: new Date(),
     });
+  }
+
+  // Real-time Socket.IO emission to room and recipient
+  socketService.emitToChat(bookingId, "chat:new_message", saved);
+  if (authInfo.conversation?._id) {
+    socketService.emitToChat(authInfo.conversation._id.toString(), "chat:new_message", saved);
+  }
+  const recipientIdStr =
+    recipient?._id?.toString() || (typeof recipient === "string" ? recipient : null);
+  if (recipientIdStr) {
+    socketService.emitToUser(recipientIdStr, "chat:new_message", saved);
   }
 
   res.status(201).json(new ApiResponse(201, saved, "Message sent."));

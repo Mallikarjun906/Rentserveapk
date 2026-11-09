@@ -27,6 +27,7 @@ import { Header } from '../../components/common/Header';
 import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { chatApi, ChatMessage } from '../../api/chatApi';
+import { getOrConnectSocket, joinChatRoom, leaveChatRoom } from '../../services/socketService';
 
 interface ChatScreenProps {
   recipientName: string;
@@ -69,6 +70,45 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     } finally {
       setLoading(false);
     }
+  }, [bookingId]);
+
+  // Real-Time Socket.IO Message Listener
+  useEffect(() => {
+    if (!bookingId) return;
+
+    let isMounted = true;
+    let socket: any = null;
+
+    (async () => {
+      try {
+        socket = await getOrConnectSocket();
+        if (!isMounted || !socket) return;
+
+        joinChatRoom(bookingId);
+
+        const handleNewMessage = (msg: ChatMessage) => {
+          if (!msg || !msg._id) return;
+          setMessages((prev) => {
+            const alreadyExists = prev.some((m) => m._id === msg._id || (m.id && m.id === msg.id));
+            if (alreadyExists) return prev;
+            return [...prev, msg];
+          });
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        };
+
+        socket.on('chat:new_message', handleNewMessage);
+      } catch {}
+    })();
+
+    return () => {
+      isMounted = false;
+      leaveChatRoom(bookingId);
+      if (socket) {
+        socket.off('chat:new_message');
+      }
+    };
   }, [bookingId]);
 
   useEffect(() => {

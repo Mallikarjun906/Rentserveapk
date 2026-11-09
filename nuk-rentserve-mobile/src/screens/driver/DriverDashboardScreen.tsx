@@ -48,6 +48,14 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { transportApi, TransportBooking } from '../../api/transportApi';
 import { authApi } from '../../api/authApi';
+import * as Location from 'expo-location';
+import {
+  getOrConnectSocket,
+  emitDriverLocation,
+  emitDriverToggleOnline,
+  joinTripRoom,
+  disconnectSocket,
+} from '../../services/socketService';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
 import { confirmAction } from '../../utils/confirmAlert';
@@ -73,6 +81,11 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
       t('Logout', 'ಲಾಗ್ ಔಟ್'),
       t('Are you sure you want to sign out?', 'ನೀವು ಖಚಿತವಾಗಿ ಲಾಗ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?'),
       async () => {
+        if (locationWatcherRef.current) {
+          locationWatcherRef.current.remove();
+          locationWatcherRef.current = null;
+        }
+        disconnectSocket();
         await logout();
         if (onLogout) onLogout();
         else if (onBack) onBack();
@@ -106,6 +119,9 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
   const [previewIndex, setPreviewIndex] = useState(0);
 
   const pollingRef = useRef<any>(null);
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const locationWatcherRef = useRef<Location.LocationSubscription | null>(null);
+  const lastBroadcastTimeRef = useRef<number>(0);
 
   // Sync Data from Backend
   const syncDriverData = useCallback(async (silent = false) => {
@@ -158,7 +174,7 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
     }
   }, [subTab]);
 
-  // Initial Load & 5-Second Real-Time Polling Loop (Socket.IO fallback)
+  // Initial Load & 5-Second Real-Time Polling Loop (Fallback)
   useEffect(() => {
     syncDriverData();
 
@@ -172,6 +188,149 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [isOnline, syncDriverData]);
+
+  // 1. Live Driver GPS Tracking when Online
+  useEffect(() => {
+    let isCancelled = false;
+
+    const startTracking = async () => {
+      if (!isOnline) {
+        if (locationWatcherRef.current) {
+          locationWatcherRef.current.remove();
+          locationWatcherRef.current = null;
+        }
+        emitDriverToggleOnline(false);
+        return;
+      }
+
+      emitDriverToggleOnline(true);
+
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+
+        // Immediate position fix
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        if (pos?.coords && !isCancelled) {
+          const { latitude, longitude, accuracy, heading, speed } = pos.coords;
+          setDriverLocation({ latitude, longitude });
+
+          emitDriverLocation({
+            latitude,
+            longitude,
+            accuracy: accuracy || undefined,
+            heading: heading || undefined,
+            speed: speed || undefined,
+            bookingId: activeTrip?._id,
+          });
+
+          transportApi.updateDriverOnlineLocation({ latitude, longitude }).catch(() => {});
+        }
+
+        // Continuous watch
+        if (locationWatcherRef.current) {
+          locationWatcherRef.current.remove();
+        }
+
+        locationWatcherRef.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 4000,
+            distanceInterval: 5,
+          },
+          (position) => {
+            if (isCancelled || !position?.coords) return;
+            const { latitude, longitude, accuracy, heading, speed } = position.coords;
+            setDriverLocation({ latitude, longitude });
+
+            emitDriverLocation({
+              latitude,
+              longitude,
+              accuracy: accuracy || undefined,
+              heading: heading || undefined,
+              speed: speed || undefined,
+              bookingId: activeTrip?._id,
+            });
+
+            const now = Date.now();
+            if (now - lastBroadcastTimeRef.current > 8000) {
+              lastBroadcastTimeRef.current = now;
+              transportApi.updateDriverOnlineLocation({ latitude, longitude }).catch(() => {});
+
+              if (activeTrip?._id && (activeTrip.status === 'accepted' || activeTrip.status === 'in_progress')) {
+                transportApi.updateTripLocation(activeTrip._id, {
+                  locationCoordinates: { latitude, longitude },
+                  accuracy: accuracy || undefined,
+                  heading: heading || undefined,
+                  speed: speed || undefined,
+                }).catch(() => {});
+              }
+            }
+          }
+        );
+      } catch (err) {
+        console.warn('Driver GPS watch error:', err);
+      }
+    };
+
+    startTracking();
+
+    return () => {
+      isCancelled = true;
+      if (locationWatcherRef.current) {
+        locationWatcherRef.current.remove();
+        locationWatcherRef.current = null;
+      }
+    };
+  }, [isOnline, activeTrip?._id, activeTrip?.status]);
+
+  // 2. Real-Time Socket.IO Listeners for Incoming Requests and Status Changes
+  useEffect(() => {
+    let isMounted = true;
+    let currentSocket: any = null;
+
+    (async () => {
+      try {
+        currentSocket = await getOrConnectSocket();
+        if (!isMounted || !currentSocket) return;
+
+        if (activeTrip?._id) {
+          joinTripRoom(activeTrip._id);
+        }
+
+        const handleIncomingRide = (ride: TransportBooking) => {
+          if (!ride || !ride._id) return;
+          setIncomingRequests((prev) => {
+            const exists = prev.some((x) => x._id === ride._id);
+            if (exists) return prev;
+            return [ride, ...prev];
+          });
+        };
+
+        const handleClaimedRide = ({ bookingId }: { bookingId: string }) => {
+          setIncomingRequests((prev) => prev.filter((x) => x._id !== bookingId));
+        };
+
+        currentSocket.on('ride:incoming_request', handleIncomingRide);
+        currentSocket.on('ride:new_request', handleIncomingRide);
+        currentSocket.on('ride:claimed', handleClaimedRide);
+        currentSocket.on('ride:cancelled', handleClaimedRide);
+      } catch {}
+    })();
+
+    return () => {
+      isMounted = false;
+      if (currentSocket) {
+        currentSocket.off('ride:incoming_request');
+        currentSocket.off('ride:new_request');
+        currentSocket.off('ride:claimed');
+        currentSocket.off('ride:cancelled');
+      }
+    };
+  }, [activeTrip?._id]);
 
   // Handle Online / Offline Switch
   const handleToggleOnline = async (val: boolean) => {
@@ -197,6 +356,7 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
     setActionId(booking._id);
     try {
       await transportApi.updateStatus(booking._id, 'accepted');
+      joinTripRoom(booking._id);
       Alert.alert(
         t('Order Accepted!', 'ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ!'),
         t('Proceed to pickup location. You can now chat or call the customer directly.', 'ಪಿಕ್‌ಅಪ್ ಸ್ಥಳಕ್ಕೆ ತೆರಳಿ.')

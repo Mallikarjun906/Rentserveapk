@@ -100,6 +100,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     detectCurrentLocation,
     isLoadingLocation,
     detectedAddress,
+    locationMode,
+    gpsAccuracy,
+    locationError,
   } = useLocationContext();
 
   const {
@@ -336,6 +339,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </View>
             <ChevronRight size={16} color={COLORS.brand} />
           </TouchableOpacity>
+
+          {locationError ? (
+            <View style={{ backgroundColor: '#FEF2F2', padding: 10, borderRadius: 8, marginTop: 10, marginBottom: 6, borderWidth: 1, borderColor: '#FCA5A5' }}>
+              <Text style={{ fontSize: 12, color: '#B91C1C', fontWeight: '600' }}>{locationError}</Text>
+            </View>
+          ) : null}
+
+          {locationMode === 'gps' && gpsAccuracy ? (
+            <View style={{ backgroundColor: '#F0FDF4', padding: 8, borderRadius: 8, marginTop: 10, marginBottom: 6, borderWidth: 1, borderColor: '#86EFAC' }}>
+              <Text style={{ fontSize: 11, color: '#166534', fontWeight: '600' }}>GPS Active: {cityName} ({gpsAccuracy})</Text>
+            </View>
+          ) : null}
 
           <Text style={styles.manualAreaLabel}>
             {language === 'kn' ? 'ಅಥವಾ ಜಿಲ್ಲೆ / ನಗರವನ್ನು ಆಯ್ಕೆಮಾಡಿ:' : 'Or Select Karnataka District / Town:'}

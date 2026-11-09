@@ -141,13 +141,19 @@ export const CONFIG = {
     { key: 'shop', label: 'Commercial Shop', labelKn: 'ಅಂಗಡಿ' },
   ],
 
-  // Supported Cities
+  // Supported Cities & Taluks across North Karnataka
   SUPPORTED_CITIES: [
+    'Jamkhandi',
     'Bagalkot',
+    'Mudhol',
+    'Badami',
+    'Ilkal',
+    'Guledgudda',
+    'Bilgi',
+    'Vijayapura',
     'Belagavi',
     'Hubballi',
     'Dharwad',
-    'Vijayapura',
     'Gadag',
     'Koppal',
   ],

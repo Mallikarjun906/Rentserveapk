@@ -42,6 +42,7 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { useActiveRide } from '../../context/ActiveRideContext';
 import { useLocationContext } from '../../context/LocationContext';
 import { transportApi, NearbyDriver, Coordinates } from '../../api/transportApi';
+import { resolveKarnatakaLocation } from '../../utils/reverseGeocoding';
 
 // Standard Haversine distance calculator in kilometers
 function calculateHaversineKm(
@@ -168,29 +169,19 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
         setGpsStatus('detected');
         setGpsAccuracy(accuracy ? `±${Math.round(accuracy)}m` : 'High');
 
-        // Reverse-geocode coordinates to readable address
+        // Reverse-geocode coordinates to readable address using accurate resolver
         try {
           const reverseResults = await Location.reverseGeocodeAsync({
             latitude,
             longitude,
           });
 
-          if (reverseResults && reverseResults.length > 0) {
-            const first = reverseResults[0];
-            const parts = [
-              first.name || first.street,
-              first.subregion || first.district || first.city,
-              first.postalCode,
-            ].filter(Boolean);
-
-            const readableAddress =
-              parts.join(', ') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            setPickupName(readableAddress);
-          } else {
-            setPickupName(`GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-          }
+          const first = reverseResults && reverseResults.length > 0 ? reverseResults[0] : null;
+          const resolved = resolveKarnatakaLocation({ latitude, longitude }, first);
+          setPickupName(resolved.formattedAddress);
         } catch {
-          setPickupName(`GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          const resolved = resolveKarnatakaLocation({ latitude, longitude }, null);
+          setPickupName(resolved.formattedAddress);
         }
 
         // Query genuine nearby drivers based on this GPS coordinate

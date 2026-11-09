@@ -124,30 +124,25 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
   };
 
   const handleOpenDirectChat = async () => {
-    if (!service) return;
     const targetUserId =
-      typeof service.providerId === 'object' && service.providerId?._id
+      typeof service?.providerId === 'object' && service?.providerId?._id
         ? service.providerId._id
-        : typeof service.providerId === 'string'
+        : typeof service?.providerId === 'string'
         ? service.providerId
-        : null;
+        : '';
 
-    if (!targetUserId) {
-      Alert.alert('Notice', 'Provider contact information is currently unavailable.');
-      return;
-    }
     setChatStarting(true);
     try {
       const conv = await chatApi.getOrCreateConversation({
         recipientId: targetUserId,
-        serviceId: service._id || providerId,
-        title: name,
+        serviceId: service?._id || providerId,
+        title: name || 'Direct Service Enquiry',
       });
       onOpenChat({
         bookingId: conv.conversationId || conv.id || conv.bookingId,
-        name,
-        role: categoryName,
-        phone,
+        name: name || conv.recipient?.name || 'Service Provider',
+        role: categoryName || conv.recipient?.role || 'Service',
+        phone: phone || conv.recipient?.phone,
       });
     } catch (err: any) {
       Alert.alert('Chat Notice', err.message || 'Could not open conversation. Please try again.');
