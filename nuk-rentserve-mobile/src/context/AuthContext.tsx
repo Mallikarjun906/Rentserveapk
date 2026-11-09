@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authApi, User } from '../api/authApi';
 import { Storage } from '../utils/storage';
+import { disconnectSocket } from '../services/socketService';
 
 export type AppRole =
   | 'Customer'
@@ -206,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authApi.logout();
     } catch {}
+    disconnectSocket();
     await Storage.clearAuth();
     setUser(null);
     setToken(null);

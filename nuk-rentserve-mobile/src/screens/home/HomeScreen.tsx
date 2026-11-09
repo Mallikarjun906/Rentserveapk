@@ -66,6 +66,7 @@ interface HomeScreenProps {
   onNavigateProfile?: () => void;
   onNavigateBookings?: () => void;
   onNavigateMessages?: () => void;
+  onNavigateNotifications?: () => void;
 }
 
 // Regional destination hubs for quick 1-tap auto ride estimation
@@ -89,6 +90,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateProfile,
   onNavigateBookings,
   onNavigateMessages,
+  onNavigateNotifications,
 }) => {
   const { language, setLanguage, t } = useLocalization();
   const { user, isSaved, toggleSaved } = useAuth();
@@ -278,6 +280,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <Text style={styles.langPillText}>
               {language === 'en' ? 'ಕನ್ನಡ' : 'ENG'}
             </Text>
+          </TouchableOpacity>
+
+          {/* Notification Action */}
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={onNavigateNotifications}
+            activeOpacity={0.8}
+            accessibilityLabel="Notifications"
+          >
+            <Bell size={18} color={COLORS.ink} />
           </TouchableOpacity>
 
           {/* Profile / Notification Action */}
@@ -1101,6 +1113,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: COLORS.ink,
+  },
+  notifBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.paper,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarBtn: {
     width: 32,

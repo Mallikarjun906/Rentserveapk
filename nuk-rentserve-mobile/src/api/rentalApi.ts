@@ -65,6 +65,13 @@ export const rentalApi = {
     return res.data || res;
   },
 
+  // Owner or Student partner gets their own property listings
+  async getMyProperties(): Promise<Property[]> {
+    const res: any = await apiClient.get('/properties/mine');
+    const items = res.data?.data || res.data || res;
+    return Array.isArray(items) ? items : [];
+  },
+
   // Owner creates new property listing (supports multipart image uploads)
   async createProperty(formData: FormData): Promise<Property> {
     const res: any = await apiClient.post('/properties', formData, {

@@ -7,9 +7,9 @@ const { authenticate } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
 const esc = (s) => String(s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function shape(item) {
-  return { ...item.toObject(), id: item.id, city: item.location, locality: item.address, available: Boolean(item.availability), icon: item.type === "pg" ? "🏢" : "🏠" };
+  return { ...item.toObject(), id: item.id, city: item.location, locality: item.address, available: Boolean(item.availability), icon: item.type === "pg" ? "building-2" : "home" };
 }
-router.get("/mine", authenticate, allowRoles("owner", "admin"), async (req, res, next) => {
+router.get("/mine", authenticate, allowRoles("owner", "student", "admin"), async (req, res, next) => {
   try {
     const filter = req.user.role === "admin" ? {} : { ownerId: req.user.id };
     const items = await Property.find(filter).populate("ownerId", "name phone location").sort({ createdAt: -1 }).limit(100);

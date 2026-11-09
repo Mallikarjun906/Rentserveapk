@@ -115,6 +115,22 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true
+    },
+
+    pushTokens: {
+      type: [String],
+      default: []
+    },
+
+    notificationPreferences: {
+      rideNotifications: { type: Boolean, default: true },
+      bookingNotifications: { type: Boolean, default: true },
+      messageNotifications: { type: Boolean, default: true },
+      enquiryNotifications: { type: Boolean, default: true },
+      rentalNotifications: { type: Boolean, default: true },
+      promoNotifications: { type: Boolean, default: false },
+      sound: { type: Boolean, default: true },
+      vibration: { type: Boolean, default: true }
     }
   },
   {

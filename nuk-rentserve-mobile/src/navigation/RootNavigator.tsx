@@ -20,6 +20,14 @@ import {
   User,
   LayoutDashboard,
   Car,
+  Navigation,
+  Wallet,
+  Clock,
+  Briefcase,
+  Wrench,
+  Building2,
+  Inbox,
+  Bell,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
 import { useLocalization } from '../context/LocalizationContext';
@@ -43,6 +51,7 @@ import { ExploreScreen } from '../screens/explore/ExploreScreen';
 import { BookingsScreen } from '../screens/bookings/BookingsScreen';
 import { MessagesScreen } from '../screens/chat/MessagesScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 
 import { AutoBookingScreen } from '../screens/transport/AutoBookingScreen';
 import { ScheduledTripScreen } from '../screens/transport/ScheduledTripScreen';
@@ -100,7 +109,8 @@ export type ScreenName =
   | 'admin-dashboard'
   | 'terms'
   | 'support'
-  | 'saved';
+  | 'saved'
+  | 'notifications';
 
 interface NavState {
   name: ScreenName;
@@ -228,7 +238,7 @@ export const RootNavigator: React.FC = () => {
     }
   }, []);
 
-  // Strict RBAC safety guard: Providers & Drivers are never placed on Customer Home
+  // Strict RBAC safety guard: Dedicated roles are never placed on Customer Home
   useEffect(() => {
     if (user?.role === 'provider') {
       if (['home', 'explore', 'bookings'].includes(current.name)) {
@@ -237,6 +247,14 @@ export const RootNavigator: React.FC = () => {
     } else if (user?.role === 'driver') {
       if (['home', 'explore', 'bookings'].includes(current.name)) {
         reset('driver-dashboard');
+      }
+    } else if (user?.role === 'student') {
+      if (['home', 'explore', 'bookings'].includes(current.name)) {
+        reset('student-dashboard');
+      }
+    } else if (user?.role === 'owner') {
+      if (['home', 'explore', 'bookings'].includes(current.name)) {
+        reset('owner-dashboard');
       }
     }
   }, [user?.role, current.name]);
@@ -264,10 +282,16 @@ export const RootNavigator: React.FC = () => {
   // Determine which bottom navigation bar to display based on user role
   const isProvider = user?.role === 'provider';
   const isDriver = user?.role === 'driver';
+  const isStudent = user?.role === 'student';
+  const isOwner = user?.role === 'owner';
+  const isAdmin = user?.role === 'admin';
+  const isCustomer = !isProvider && !isDriver && !isStudent && !isOwner && !isAdmin;
 
-  const showCustomerTabs = !isProvider && !isDriver && ['home', 'explore', 'bookings', 'messages', 'profile'].includes(current.name);
-  const showProviderTabs = isProvider && ['provider-dashboard', 'provider-profile'].includes(current.name);
-  const showDriverTabs = isDriver && ['driver-dashboard', 'driver-profile'].includes(current.name);
+  const showCustomerTabs = (isCustomer || !user) && ['home', 'explore', 'bookings', 'messages', 'profile'].includes(current.name);
+  const showDriverTabs = isDriver && ['driver-dashboard', 'driver-profile', 'messages'].includes(current.name);
+  const showProviderTabs = isProvider && ['provider-dashboard', 'provider-profile', 'messages'].includes(current.name);
+  const showStudentTabs = isStudent && ['student-dashboard', 'messages', 'profile'].includes(current.name);
+  const showOwnerTabs = isOwner && ['owner-dashboard', 'messages', 'profile'].includes(current.name);
 
   // Render active screen
   const renderScreen = () => {
@@ -384,6 +408,7 @@ export const RootNavigator: React.FC = () => {
             onNavigateProfile={() => switchTab('profile')}
             onNavigateBookings={() => switchTab('bookings')}
             onNavigateMessages={() => switchTab('messages')}
+            onNavigateNotifications={() => go('notifications')}
           />
         );
       case 'explore':
@@ -591,6 +616,13 @@ export const RootNavigator: React.FC = () => {
             onExplore={() => switchTab('explore')}
           />
         );
+      case 'notifications':
+        return (
+          <NotificationsScreen
+            onBack={back}
+            onNavigate={(screen, params) => go(screen as ScreenName, params)}
+          />
+        );
       default:
         return (
           <HomeScreen
@@ -793,9 +825,92 @@ export const RootNavigator: React.FC = () => {
         </View>
       )}
 
-      {/* Provider 2-Tab Navigation Bar */}
+      {/* Driver 5-Tab Navigation Bar */}
+      {showDriverTabs && (
+        <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('driver-dashboard')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'driver-dashboard' && styles.iconBubbleActive]}>
+              <LayoutDashboard
+                size={20}
+                color={current.name === 'driver-dashboard' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'driver-dashboard' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'driver-dashboard' && styles.tabLabelActive]}>
+              {t('tabHome', 'ಮುಖಪುಟ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('driver-dashboard', { view: 'requests' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Navigation size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabRequests', 'ವಿನಂತಿಗಳು')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('driver-dashboard', { view: 'earnings' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Wallet size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabEarnings', 'ಗಳಿಕೆ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('driver-dashboard', { view: 'history' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Clock size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabHistory', 'ಇತಿಹಾಸ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('driver-profile')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'driver-profile' && styles.iconBubbleActive]}>
+              <User
+                size={20}
+                color={current.name === 'driver-profile' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'driver-profile' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'driver-profile' && styles.tabLabelActive]}>
+              {t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Provider 5-Tab Navigation Bar */}
       {showProviderTabs && (
-        <View style={[styles.bottomNav, styles.roleNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
           <TouchableOpacity
             style={styles.navTab}
             onPress={() => switchTab('provider-dashboard')}
@@ -811,6 +926,52 @@ export const RootNavigator: React.FC = () => {
             </View>
             <Text style={[styles.tabLabel, current.name === 'provider-dashboard' && styles.tabLabelActive]}>
               {t('tabDashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('provider-dashboard', { view: 'jobs' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Briefcase size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabJobs', 'ಉದ್ಯೋಗಗಳು')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('messages')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'messages' && styles.iconBubbleActive]}>
+              <MessageSquare
+                size={20}
+                color={current.name === 'messages' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'messages' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'messages' && styles.tabLabelActive]}>
+              {t('tabChat', 'ಸಂದೇಶ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('provider-dashboard', { view: 'services' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Wrench size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabServices', 'ಸೇವೆಗಳು')}
             </Text>
           </TouchableOpacity>
 
@@ -834,41 +995,174 @@ export const RootNavigator: React.FC = () => {
         </View>
       )}
 
-      {/* Driver 2-Tab Navigation Bar */}
-      {showDriverTabs && (
-        <View style={[styles.bottomNav, styles.roleNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      {/* Student Partner 5-Tab Navigation Bar */}
+      {showStudentTabs && (
+        <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
           <TouchableOpacity
             style={styles.navTab}
-            onPress={() => switchTab('driver-dashboard')}
+            onPress={() => switchTab('student-dashboard')}
             accessibilityRole="tab"
             activeOpacity={0.7}
           >
-            <View style={[styles.iconBubble, current.name === 'driver-dashboard' && styles.iconBubbleActive]}>
+            <View style={[styles.iconBubble, current.name === 'student-dashboard' && styles.iconBubbleActive]}>
               <LayoutDashboard
                 size={20}
-                color={current.name === 'driver-dashboard' ? COLORS.brand : COLORS.mute}
-                strokeWidth={current.name === 'driver-dashboard' ? 2.4 : 1.8}
+                color={current.name === 'student-dashboard' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'student-dashboard' ? 2.4 : 1.8}
               />
             </View>
-            <Text style={[styles.tabLabel, current.name === 'driver-dashboard' && styles.tabLabelActive]}>
+            <Text style={[styles.tabLabel, current.name === 'student-dashboard' && styles.tabLabelActive]}>
               {t('tabDashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navTab}
-            onPress={() => switchTab('driver-profile')}
+            onPress={() => go('student-dashboard', { view: 'properties' })}
             accessibilityRole="tab"
             activeOpacity={0.7}
           >
-            <View style={[styles.iconBubble, current.name === 'driver-profile' && styles.iconBubbleActive]}>
-              <User
+            <View style={styles.iconBubble}>
+              <Building2 size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabProperties', 'ಆಸ್ತಿಗಳು')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('student-dashboard', { view: 'enquiries' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Inbox size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabEnquiries', 'ವಿಚಾರಣೆ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('messages')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'messages' && styles.iconBubbleActive]}>
+              <MessageSquare
                 size={20}
-                color={current.name === 'driver-profile' ? COLORS.brand : COLORS.mute}
-                strokeWidth={current.name === 'driver-profile' ? 2.4 : 1.8}
+                color={current.name === 'messages' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'messages' ? 2.4 : 1.8}
               />
             </View>
-            <Text style={[styles.tabLabel, current.name === 'driver-profile' && styles.tabLabelActive]}>
+            <Text style={[styles.tabLabel, current.name === 'messages' && styles.tabLabelActive]}>
+              {t('tabChat', 'ಸಂದೇಶ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('profile')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'profile' && styles.iconBubbleActive]}>
+              <User
+                size={20}
+                color={current.name === 'profile' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'profile' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'profile' && styles.tabLabelActive]}>
+              {t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Property Owner 5-Tab Navigation Bar */}
+      {showOwnerTabs && (
+        <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('owner-dashboard')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'owner-dashboard' && styles.iconBubbleActive]}>
+              <LayoutDashboard
+                size={20}
+                color={current.name === 'owner-dashboard' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'owner-dashboard' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'owner-dashboard' && styles.tabLabelActive]}>
+              {t('tabDashboard', 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('owner-dashboard', { view: 'properties' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Building2 size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabProperties', 'ಆಸ್ತಿಗಳು')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('owner-dashboard', { view: 'enquiries' })}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBubble}>
+              <Inbox size={20} color={COLORS.mute} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.tabLabel}>
+              {t('tabEnquiries', 'ವಿಚಾರಣೆ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => go('messages')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'messages' && styles.iconBubbleActive]}>
+              <MessageSquare
+                size={20}
+                color={current.name === 'messages' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'messages' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'messages' && styles.tabLabelActive]}>
+              {t('tabChat', 'ಸಂದೇಶ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navTab}
+            onPress={() => switchTab('profile')}
+            accessibilityRole="tab"
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconBubble, current.name === 'profile' && styles.iconBubbleActive]}>
+              <User
+                size={20}
+                color={current.name === 'profile' ? COLORS.brand : COLORS.mute}
+                strokeWidth={current.name === 'profile' ? 2.4 : 1.8}
+              />
+            </View>
+            <Text style={[styles.tabLabel, current.name === 'profile' && styles.tabLabelActive]}>
               {t('tabProfile', 'ಪ್ರೊಫೈಲ್')}
             </Text>
           </TouchableOpacity>

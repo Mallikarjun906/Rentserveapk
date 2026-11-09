@@ -1,6 +1,6 @@
 // Student Rental Partner Hub with Zero-Platform-Commission Ledger
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,8 @@ import { useAuth } from '../../context/AuthContext';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
 import { CONFIG } from '../../constants/config';
 import { confirmAction } from '../../utils/confirmAlert';
+import { rentalApi, Property } from '../../api/rentalApi';
+import { formatINR } from '../../utils/formatters';
 
 interface StudentDashboardScreenProps {
   onBack: () => void;
@@ -97,6 +99,33 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
       setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
+
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loadingProperties, setLoadingProperties] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    rentalApi
+      .getMyProperties()
+      .then((res) => {
+        if (!active) return;
+        setProperties(Array.isArray(res) ? res : []);
+      })
+      .catch(() => {
+        if (active) setProperties([]);
+      })
+      .finally(() => {
+        if (active) setLoadingProperties(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const expectedCommission = properties.reduce(
+    (sum, p: any) => sum + (p.commissionAgreedAmount || 0),
+    0
+  );
 
   const studentName = user?.name || 'Student Partner';
   const collegeName = user?.collegeName || 'BVVS Engineering College · Bagalkot';
@@ -245,7 +274,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
             <Text style={styles.statLabel}>
               {t('expectedCommission', 'ನಿರೀಕ್ಷಿತ ಕಮಿಷನ್')}
             </Text>
-            <Text style={styles.statAmountExpected}>₹0</Text>
+            <Text style={styles.statAmountExpected}>₹{expectedCommission.toLocaleString()}</Text>
             <Text style={styles.statSub}>Awaiting tenant possession</Text>
           </View>
 
@@ -254,7 +283,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
               {t('receivedCommission', 'ಪಡೆದ ಕಮಿಷನ್')}
             </Text>
             <Text style={styles.statAmountReceived}>₹0</Text>
-            <Text style={styles.statSub}>Directly collected</Text>
+            <Text style={styles.statSub}>Directly collected offline</Text>
           </View>
         </View>
 
@@ -295,23 +324,47 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
 
         {/* Student Property Listings Section */}
         <Text style={styles.sectionHeading}>
-          {t('My Partner Listings', 'ನನ್ನ ಪಾಲುದಾರ ಪಟ್ಟಿಗಳು')}
+          {t('My Partner Listings', 'ನನ್ನ ಪಾಲುದಾರ ಪಟ್ಟಿಗಳು')} ({properties.length})
         </Text>
 
-        <View style={[styles.card, styles.emptyListingsCard]}>
-          <Building2 size={32} color={COLORS.muteLight} />
-          <Text style={styles.emptyListingsTitle}>No partner listings yet</Text>
-          <Text style={styles.emptyListingsSub}>
-            Help property owners find student tenants and earn 100% of the brokerage directly.
-          </Text>
-          <Button
-            title="+ Add Student Listing"
-            onPress={onAddProperty}
-            variant="outline"
-            size="sm"
-            style={{ marginTop: 12 }}
-          />
-        </View>
+        {properties.length === 0 ? (
+          <View style={[styles.card, styles.emptyListingsCard]}>
+            <Building2 size={32} color={COLORS.muteLight} />
+            <Text style={styles.emptyListingsTitle}>No partner listings yet</Text>
+            <Text style={styles.emptyListingsSub}>
+              Help property owners find student tenants and earn 100% of the brokerage directly.
+            </Text>
+            <Button
+              title="+ Add Student Listing"
+              onPress={onAddProperty}
+              variant="outline"
+              size="sm"
+              style={{ marginTop: 12 }}
+            />
+          </View>
+        ) : (
+          <View style={{ gap: 12 }}>
+            {properties.map((p: any) => (
+              <View key={p._id || p.id} style={[styles.card, SHADOWS.card]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.ink }}>{p.title}</Text>
+                  <Badge tone={p.status === 'published' ? 'ok' : 'warn'} label={p.status || 'draft'} />
+                </View>
+                <Text style={{ fontSize: 13, color: COLORS.mute, marginBottom: 8 }}>
+                  {p.type?.toUpperCase()} · {p.address || p.location}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: COLORS.brand }}>
+                    {formatINR(p.rent)}/mo
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.ink }}>
+                    Brokerage: ₹{(p.commissionAgreedAmount || 0).toLocaleString()} (Direct)
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={{ height: 20 }} />
       </ScrollView>

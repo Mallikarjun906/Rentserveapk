@@ -157,6 +157,10 @@ app.use("/api/v1/bookings", require("./routes/bookingRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/v1/chat", require("./routes/chatRoutes"));
 
+// Notifications
+app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/v1/notifications", require("./routes/notificationRoutes"));
+
 // Error handling
 app.use(notFound);
 app.use(errorHandler);

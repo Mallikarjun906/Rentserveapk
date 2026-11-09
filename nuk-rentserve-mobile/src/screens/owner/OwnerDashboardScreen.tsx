@@ -84,7 +84,7 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
   useEffect(() => {
     let active = true;
     rentalApi
-      .getProperties()
+      .getMyProperties()
       .then((res) => {
         if (!active) return;
         if (Array.isArray(res) && res.length > 0) {

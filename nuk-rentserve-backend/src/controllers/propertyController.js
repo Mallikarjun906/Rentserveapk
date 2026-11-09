@@ -36,8 +36,13 @@ const getProperty = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, item));
 });
 
+const getMyProperties = asyncHandler(async (req, res) => {
+  const items = await Property.find({ ownerId: req.user.id }).sort({ createdAt: -1 });
+  res.json(new ApiResponse(200, items));
+});
+
 const createProperty = asyncHandler(async (req, res) => {
-  let { type, title, description, rent, deposit, rentPeriod, address, location, facilities } = req.body;
+  let { type, title, description, rent, deposit, rentPeriod, address, location, facilities, ownerPermissionConfirmed, studentContact, commissionAgreedAmount } = req.body;
   if (typeof type === "string") type = type.toLowerCase() === "pg" ? "PG" : type.toLowerCase();
   if (!type || !title || rent === undefined || !address || !location) throw new ApiError(400, "type, title, rent, address and location are required.");
   let parsedFacilities = facilities || [];
@@ -45,10 +50,25 @@ const createProperty = asyncHandler(async (req, res) => {
     try { parsedFacilities = JSON.parse(parsedFacilities); } catch { parsedFacilities = parsedFacilities.split(",").map((v) => v.trim()).filter(Boolean); }
   }
   const profile = await ServiceProvider.findOne({ userId: req.user.id }).select("verificationStatus");
-  const status = ["admin", "customer", "owner"].includes(req.user.role) || profile?.verificationStatus === "verified" ? "published" : "draft";
+  const isDirectPublishRole = ["admin", "customer", "owner"].includes(req.user.role);
+  const status = isDirectPublishRole || profile?.verificationStatus === "verified" ? "published" : "draft";
   const item = await Property.create({
-    ownerId: req.user.id, type, title, description, rent: Number(rent), deposit: Number(deposit || 0), rentPeriod, address, location,
-    facilities: parsedFacilities, images: filesToImageRecords(req.files), status
+    ownerId: req.user.id,
+    type,
+    title,
+    description,
+    rent: Number(rent),
+    deposit: Number(deposit || 0),
+    rentPeriod,
+    address,
+    location,
+    facilities: parsedFacilities,
+    images: filesToImageRecords(req.files),
+    status,
+    listedByRole: req.user.role === "student" ? "student" : req.user.role === "admin" ? "admin" : "owner",
+    ownerPermissionConfirmed: Boolean(ownerPermissionConfirmed),
+    studentContact: studentContact || req.user.phone || "",
+    commissionAgreedAmount: Number(commissionAgreedAmount || 0)
   });
   res.status(201).json(new ApiResponse(201, item, "Property created."));
 });
@@ -96,4 +116,4 @@ const deletePropertyImage = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, item, "Image deleted."));
 });
 
-module.exports = { listProperties, getProperty, createProperty, updateProperty, deleteProperty, deletePropertyImage };
+module.exports = { listProperties, getProperty, getMyProperties, createProperty, updateProperty, deleteProperty, deletePropertyImage };

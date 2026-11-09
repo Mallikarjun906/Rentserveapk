@@ -18,7 +18,13 @@ const propertySchema = new mongoose.Schema({
   facilities: [{ type: String, trim: true, maxlength: 80 }],
   images: { type: [imageSchema], default: [], validate: [(v) => v.length <= 10, "Maximum 10 images per property."] },
   availability: { type: Boolean, default: true, index: true },
-  status: { type: String, enum: ["draft", "published", "rented", "closed"], default: "published", index: true }
+  status: { type: String, enum: ["draft", "published", "rented", "closed"], default: "published", index: true },
+  listedByRole: { type: String, enum: ["owner", "student", "admin"], default: "owner", index: true },
+  ownerPermissionConfirmed: { type: Boolean, default: false },
+  studentContact: { type: String, trim: true, default: "" },
+  commissionAgreedAmount: { type: Number, default: 0 },
+  commissionStatus: { type: String, enum: ["pending", "agreed", "received"], default: "pending" },
+  rejectionReason: { type: String, trim: true, default: "" }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Property", propertySchema);

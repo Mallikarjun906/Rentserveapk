@@ -58,6 +58,8 @@ export function getSocketInstance(): Socket | null {
   return socket;
 }
 
+export const getSocket = getSocketInstance;
+
 /**
  * Disconnect socket cleanly on logout
  */
