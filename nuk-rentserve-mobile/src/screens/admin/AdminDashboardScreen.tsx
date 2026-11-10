@@ -49,6 +49,7 @@ import { confirmAction } from '../../utils/confirmAlert';
 interface AdminDashboardScreenProps {
   onBack: () => void;
   onLogout?: () => void;
+  onNavigateSupport?: () => void;
 }
 
 type SectionKey =
@@ -65,7 +66,11 @@ type SectionKey =
   | 'users'
   | 'audit';
 
-export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBack, onLogout }) => {
+export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
+  onBack,
+  onLogout,
+  onNavigateSupport,
+}) => {
   const { t } = useLocalization();
   const { logout } = useAuth();
 
@@ -470,15 +475,28 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ onBa
         subtitle="12-Section Verification & Platform Governance Desk"
         onBack={onBack}
         rightAction={
-          <TouchableOpacity
-            style={styles.headerLogoutBtn}
-            onPress={handleLogout}
-            activeOpacity={0.8}
-            accessibilityLabel="Sign Out"
-          >
-            <LogOut size={14} color={COLORS.bad} />
-            <Text style={styles.headerLogoutText}>Sign Out</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {onNavigateSupport && (
+              <TouchableOpacity
+                style={[styles.headerLogoutBtn, { backgroundColor: COLORS.white, borderColor: COLORS.line }]}
+                onPress={onNavigateSupport}
+                activeOpacity={0.8}
+                accessibilityLabel="Support Tickets"
+              >
+                <LifeBuoy size={14} color={COLORS.brand} />
+                <Text style={[styles.headerLogoutText, { color: COLORS.ink }]}>Support</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.headerLogoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+              accessibilityLabel="Sign Out"
+            >
+              <LogOut size={14} color={COLORS.bad} />
+              <Text style={styles.headerLogoutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
 

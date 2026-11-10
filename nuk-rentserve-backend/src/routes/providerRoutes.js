@@ -6,6 +6,7 @@ const controller = require("../controllers/providerController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
 
+router.get("/", controller.listPublicProviders);
 router.get("/me", authenticate, allowRoles("provider"), controller.getMyProviderProfile);
 router.patch("/me", authenticate, allowRoles("provider"), controller.updateMyProviderProfile);
 

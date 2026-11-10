@@ -51,8 +51,10 @@ export const serviceApi = {
   // Fetch verified service listings
   async getServices(params?: { category?: string; location?: string }): Promise<ServiceListing[]> {
     const res: any = await apiClient.get('/services', { params });
+    if (Array.isArray(res.data?.items)) return res.data.items;
     if (Array.isArray(res.data)) return res.data;
-    if (res.data?.services) return res.data.services;
+    if (Array.isArray(res.data?.services)) return res.data.services;
+    if (Array.isArray(res?.items)) return res.items;
     if (Array.isArray(res)) return res;
     return [];
   },

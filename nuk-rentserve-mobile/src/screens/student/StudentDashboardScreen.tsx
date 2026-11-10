@@ -42,12 +42,14 @@ interface StudentDashboardScreenProps {
   onBack: () => void;
   onAddProperty: () => void;
   onLogout?: () => void;
+  onNavigateSupport?: () => void;
 }
 
 export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
   onBack,
   onAddProperty,
   onLogout,
+  onNavigateSupport,
 }) => {
   const { t } = useLocalization();
   const { user, logout } = useAuth();
@@ -144,6 +146,24 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({
               variant="yellow"
               size="sm"
             />
+            {onNavigateSupport && (
+              <TouchableOpacity
+                onPress={onNavigateSupport}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: '#FEF3C7',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: RADIUS.full,
+                  borderWidth: 1,
+                  borderColor: '#FDE68A',
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#D97706' }}>Help</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={handleLogout}
               style={{

@@ -48,6 +48,7 @@ import { PropertyCard, PropertyCardItem } from '../../components/rentals/Propert
 import { ProviderCard, ProviderCardItem } from '../../components/services/ProviderCard';
 import { rentalApi } from '../../api/rentalApi';
 import { serviceApi } from '../../api/serviceApi';
+import { providerApi } from '../../api/providerApi';
 import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
@@ -150,9 +151,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     async function loadHomeData() {
       setLoadingData(true);
       try {
-        const [propsRes, provsRes] = await Promise.allSettled([
+        const [propsRes, provsRes, publicProvidersRes] = await Promise.allSettled([
           rentalApi.getProperties({ limit: 4 }),
           serviceApi.getServices(),
+          providerApi.getPublicProviders({ limit: 6 }),
         ]);
         if (propsRes.status === 'fulfilled' && Array.isArray(propsRes.value)) {
           setLiveProperties(
@@ -172,23 +174,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             }))
           );
         }
+
+        const gathered: ProviderCardItem[] = [];
+        const seen = new Set<string>();
+
         if (provsRes.status === 'fulfilled' && Array.isArray(provsRes.value)) {
-          setLiveProviders(
-            provsRes.value.slice(0, 3).map((s: any) => ({
-              id: s._id || s.id,
-              name: s.providerId?.name || s.title || 'Professional',
-              trade: s.categoryId?.name || s.category || 'General Service',
-              area: s.location || cityName,
-              rating: 5.0,
-              ratingCount: 1,
-              rate: s.priceRange?.min ? `₹${s.priceRange.min}` : '₹350',
-              rateUnit: s.payUnit ? `/${s.payUnit}` : '/visit',
-              photo: s.images?.[0]?.url || s.providerId?.profileImage?.url,
-              phone: s.providerId?.phone,
-              isAvailable: s.availability !== false,
-            }))
-          );
+          provsRes.value.forEach((s: any) => {
+            const sid = s._id || s.id;
+            if (sid && !seen.has(sid)) {
+              seen.add(sid);
+              gathered.push({
+                id: sid,
+                name: s.providerId?.name || s.title || 'Professional',
+                trade: s.categoryId?.name || s.category || 'General Service',
+                area: s.location || cityName,
+                rating: 5.0,
+                ratingCount: 1,
+                rate: s.priceRange?.min ? `₹${s.priceRange.min}` : '₹350',
+                rateUnit: s.payUnit ? `/${s.payUnit}` : '/visit',
+                photo: s.images?.[0]?.url || s.providerId?.profileImage?.url,
+                phone: s.providerId?.phone,
+                isAvailable: s.availability !== false,
+              });
+            }
+          });
         }
+
+        if (publicProvidersRes.status === 'fulfilled' && Array.isArray(publicProvidersRes.value)) {
+          publicProvidersRes.value.forEach((p: any) => {
+            const pid = p.id || p._id;
+            if (pid && !seen.has(pid)) {
+              seen.add(pid);
+              gathered.push({
+                id: pid,
+                name: p.name || 'Professional Provider',
+                trade: p.trade || p.category || 'Service',
+                area: p.area || cityName,
+                rating: p.rating || 4.8,
+                ratingCount: p.reviews || 1,
+                rate: p.rate || '₹350',
+                rateUnit: p.rateUnit || '/visit',
+                photo: p.photo,
+                phone: p.phone,
+                isAvailable: p.isAvailable !== false,
+              });
+            }
+          });
+        }
+
+        setLiveProviders(gathered.slice(0, 4));
       } catch (e) {
         // Handled silently
       } finally {

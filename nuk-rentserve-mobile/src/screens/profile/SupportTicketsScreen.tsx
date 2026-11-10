@@ -1,6 +1,6 @@
 // Support, Dispute Resolution & Emergency SOS Screen
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,15 @@ import {
   StyleSheet,
   Linking,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { AlertTriangle, CheckCircle2, Phone } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2, Phone, Clock, MessageSquare } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { useLocalization } from '../../context/LocalizationContext';
+import { apiClient } from '../../api/client';
 
 interface SupportTicketsScreenProps {
   onBack: () => void;
@@ -26,28 +28,74 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
 }) => {
   const { t } = useLocalization();
 
-  const [category, setCategory] = useState('A ride or driver issue');
+  const [categoryLabel, setCategoryLabel] = useState('A ride or driver issue');
   const [bookingRef, setBookingRef] = useState('');
   const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [ticketId, setTicketId] = useState('');
+  const [myTickets, setMyTickets] = useState<any[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
 
-  const categories = [
-    'A ride or driver issue',
-    'A rental listing',
-    'A service provider',
-    'Payment query',
-    'Account & data',
-  ];
+  const categoryMap: Record<string, 'booking' | 'payment' | 'account' | 'technical' | 'application' | 'other'> = {
+    'A ride or driver issue': 'booking',
+    'A rental listing': 'booking',
+    'A service provider': 'booking',
+    'Payment query': 'payment',
+    'Account & data': 'account',
+    'Technical problem': 'technical',
+  };
 
-  const handleSubmit = () => {
+  const categories = Object.keys(categoryMap);
+
+  const loadMyTickets = async () => {
+    setLoadingTickets(true);
+    try {
+      const res: any = await apiClient.get('/support/my');
+      const items = Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+      setMyTickets(items);
+    } catch {
+      // Handled silently
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMyTickets();
+  }, []);
+
+  const handleSubmit = async () => {
     if (!description.trim()) {
-      Alert.alert('Required', 'Please describe your query or problem.');
+      Alert.alert(t('Required', 'ಅಗತ್ಯವಿದೆ'), t('Please describe your query or problem.', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ವಿವರಿಸಿ.'));
       return;
     }
-    const id = 'RS-' + Math.floor(1000 + Math.random() * 9000);
-    setTicketId(id);
-    setSubmitted(true);
+
+    setSubmitting(true);
+    const backendCategory = categoryMap[categoryLabel] || 'other';
+    const fullMessage = bookingRef.trim()
+      ? `[Ref: ${bookingRef.trim()}] ${description.trim()}`
+      : description.trim();
+
+    try {
+      const res: any = await apiClient.post('/support', {
+        category: backendCategory,
+        subject: categoryLabel,
+        message: fullMessage,
+      });
+
+      const ticket = res.data || res;
+      setTicketId(ticket._id || ticket.id || 'SUBMITTED');
+      setSubmitted(true);
+      loadMyTickets();
+    } catch (err: any) {
+      Alert.alert(
+        t('Submission Failed', 'ಸಲ್ಲಿಕೆ ವಿಫಲವಾಗಿದೆ'),
+        err.message || t('Could not submit support ticket. Please check your internet connection.', 'ದಯವಿಟ್ಟು ಮರುಪ್ರಯತ್ನಿಸಿ.')
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -84,11 +132,15 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
             <Text style={styles.successTitle}>Support Ticket Created</Text>
             <Text style={styles.ticketNumber}>Ticket #{ticketId}</Text>
             <Text style={styles.successMessage}>
-              Our support team has received your details and will investigate within 2 business days. We may contact you via phone or email.
+              Our support team has received your details and logged it in our system. We will investigate within 2 business days and contact you if needed.
             </Text>
             <Button
-              title="Done"
-              onPress={onBack}
+              title="Create Another Ticket"
+              onPress={() => {
+                setSubmitted(false);
+                setDescription('');
+                setBookingRef('');
+              }}
               variant="outline"
               size="md"
               style={styles.doneBtn}
@@ -103,14 +155,14 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
                   key={c}
                   style={[
                     styles.catChip,
-                    category === c && styles.catChipActive,
+                    categoryLabel === c && styles.catChipActive,
                   ]}
-                  onPress={() => setCategory(c)}
+                  onPress={() => setCategoryLabel(c)}
                 >
                   <Text
                     style={[
                       styles.catChipText,
-                      category === c && styles.catChipTextActive,
+                      categoryLabel === c && styles.catChipTextActive,
                     ]}
                   >
                     {c}
@@ -135,13 +187,42 @@ export const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({
             />
 
             <Button
-              title="Submit Report"
+              title={submitting ? 'Submitting...' : 'Submit Report'}
               onPress={handleSubmit}
               variant="primary"
               size="lg"
               fullWidth
+              disabled={submitting}
               style={styles.submitBtn}
             />
+          </View>
+        )}
+
+        {/* Existing User Support Tickets */}
+        {myTickets.length > 0 && (
+          <View style={styles.historySection}>
+            <Text style={styles.historyTitle}>Your Previous Support Tickets</Text>
+            {myTickets.map((t) => (
+              <View key={t._id || t.id} style={[styles.ticketItem, SHADOWS.card]}>
+                <View style={styles.ticketHeader}>
+                  <Text style={styles.ticketSubject}>{t.subject || t.category}</Text>
+                  <Text
+                    style={[
+                      styles.statusPill,
+                      t.status === 'resolved' ? styles.statusResolved : styles.statusOpen,
+                    ]}
+                  >
+                    {t.status?.toUpperCase() || 'OPEN'}
+                  </Text>
+                </View>
+                <Text style={styles.ticketMsg} numberOfLines={2}>
+                  {t.message}
+                </Text>
+                {t.adminNote ? (
+                  <Text style={styles.adminNote}>Support Reply: {t.adminNote}</Text>
+                ) : null}
+              </View>
+            ))}
           </View>
         )}
 
@@ -269,5 +350,60 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: 10,
+  },
+  historySection: {
+    marginTop: 24,
+  },
+  historyTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink,
+    marginBottom: 12,
+  },
+  ticketItem: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+  },
+  ticketHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  ticketSubject: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.ink,
+    flex: 1,
+  },
+  statusPill: {
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
+  },
+  statusOpen: {
+    backgroundColor: '#FEF3C7',
+    color: '#D97706',
+  },
+  statusResolved: {
+    backgroundColor: '#D1FAE5',
+    color: '#059669',
+  },
+  ticketMsg: {
+    fontSize: 12,
+    color: COLORS.mute,
+    lineHeight: 16,
+  },
+  adminNote: {
+    fontSize: 11,
+    color: COLORS.brand,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 });

@@ -65,6 +65,7 @@ interface DriverDashboardScreenProps {
   onNavigateOnboarding?: () => void;
   onOpenChat?: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
   onLogout?: () => void;
+  onNavigateSupport?: () => void;
 }
 
 export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
@@ -72,6 +73,7 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
   onNavigateOnboarding,
   onOpenChat,
   onLogout,
+  onNavigateSupport,
 }) => {
   const { t } = useLocalization();
   const { user, logout } = useAuth();
@@ -334,7 +336,9 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
 
   // Handle Online / Offline Switch
   const handleToggleOnline = async (val: boolean) => {
+    if (onlineUpdating) return;
     setOnlineUpdating(true);
+    const previous = isOnline;
     setIsOnline(val);
     try {
       await authApi.updateMe({ isOnline: val });
@@ -345,7 +349,7 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
       }
     } catch (e: any) {
       Alert.alert('Status Error', e.message || 'Could not update online status.');
-      setIsOnline(!val);
+      setIsOnline(previous);
     } finally {
       setOnlineUpdating(false);
     }
@@ -491,6 +495,29 @@ export const DriverDashboardScreen: React.FC<DriverDashboardScreenProps> = ({
                 disabled={onlineUpdating}
               />
             </View>
+
+            {onNavigateSupport && (
+              <TouchableOpacity
+                onPress={onNavigateSupport}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: '#FEF3C7',
+                  paddingVertical: 6,
+                  paddingHorizontal: 8,
+                  borderRadius: RADIUS.full,
+                  borderWidth: 1,
+                  borderColor: '#FDE68A',
+                }}
+                accessibilityLabel="Help & Support"
+              >
+                <AlertTriangle size={13} color="#D97706" />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>
+                  {t('Help', 'ಸಹಾಯ')}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               onPress={handleLogout}

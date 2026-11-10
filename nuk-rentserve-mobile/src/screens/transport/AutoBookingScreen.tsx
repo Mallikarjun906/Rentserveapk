@@ -343,6 +343,21 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
     await startSearch();
   };
 
+  // Handle tap-to-select on map
+  const handleMapSelectLocation = (coords: Coordinates) => {
+    setPickupCoords(coords);
+    setIsManualPickup(true);
+    setGpsStatus('detected');
+    setGpsAccuracy('Map Pin');
+    try {
+      const geo = resolveKarnatakaLocation({ latitude: coords.latitude, longitude: coords.longitude });
+      setPickupName(geo.formattedAddress || `${geo.town || geo.district}, Karnataka`);
+    } catch {
+      setPickupName(`${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`);
+    }
+    fetchNearbyDrivers(coords.latitude, coords.longitude);
+  };
+
   const handleRideCompletion = () => {
     resetRide();
     onBack();
@@ -378,6 +393,8 @@ export const AutoBookingScreen: React.FC<AutoBookingScreenProps> = ({
         driverLocation={driverTracking}
         phase={phase}
         height={230}
+        interactive={phase === 'idle'}
+        onSelectLocation={phase === 'idle' ? handleMapSelectLocation : undefined}
       />
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">

@@ -91,6 +91,20 @@ export const providerApi = {
     return res.data || res;
   },
 
+  // Fetch public approved service providers
+  async getPublicProviders(params?: { category?: string; city?: string; limit?: number }): Promise<any[]> {
+    try {
+      const res: any = await apiClient.get('/providers', { params });
+      if (Array.isArray(res.data?.items)) return res.data.items;
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res?.items)) return res.items;
+      if (Array.isArray(res)) return res;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
   // Update GPS location for nearby request matching
   async updateLocation(coords: { latitude: number; longitude: number }): Promise<any> {
     const res: any = await apiClient.patch('/transport-bookings/location', {

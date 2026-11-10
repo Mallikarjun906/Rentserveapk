@@ -176,10 +176,31 @@ export const RootNavigator: React.FC = () => {
         } catch {}
       }
       setStack((prev) => prev.slice(0, -1));
-    } else if (stack.length === 1 && stack[0].name === 'provider-profile') {
-      switchTab('provider-dashboard');
-    } else if (stack.length === 1 && stack[0].name === 'driver-profile') {
-      switchTab('driver-dashboard');
+    } else if (stack.length === 1) {
+      const currentName = stack[0].name;
+      if (currentName === 'provider-profile') {
+        switchTab('provider-dashboard');
+      } else if (currentName === 'driver-profile') {
+        switchTab('driver-dashboard');
+      } else if (['support', 'saved'].includes(currentName)) {
+        switchTab('profile');
+      } else if (
+        [
+          'explore',
+          'bookings',
+          'messages',
+          'profile',
+          'auto',
+          'sched',
+          'notifications',
+          'property',
+          'provider',
+          'chat',
+          'live-tracking',
+        ].includes(currentName)
+      ) {
+        switchTab('home');
+      }
     }
   };
 
@@ -193,20 +214,45 @@ export const RootNavigator: React.FC = () => {
     reset(tab);
   };
 
-  // Android Hardware Back Button handling: Pops secondary screen, returns from profile to dashboard, or exits
+  // Android Hardware Back Button handling: Pops secondary screen, returns from profile to dashboard, or returns to Home
   useEffect(() => {
     const handleHardwareBack = () => {
       if (stack.length > 1) {
         setStack((prev) => prev.slice(0, -1));
         return true;
       }
-      if (stack.length === 1 && stack[0].name === 'provider-profile') {
-        switchTab('provider-dashboard');
-        return true;
-      }
-      if (stack.length === 1 && stack[0].name === 'driver-profile') {
-        switchTab('driver-dashboard');
-        return true;
+      if (stack.length === 1) {
+        const currentName = stack[0].name;
+        if (currentName === 'provider-profile') {
+          switchTab('provider-dashboard');
+          return true;
+        }
+        if (currentName === 'driver-profile') {
+          switchTab('driver-dashboard');
+          return true;
+        }
+        if (['support', 'saved'].includes(currentName)) {
+          switchTab('profile');
+          return true;
+        }
+        if (
+          [
+            'explore',
+            'bookings',
+            'messages',
+            'profile',
+            'auto',
+            'sched',
+            'notifications',
+            'property',
+            'provider',
+            'chat',
+            'live-tracking',
+          ].includes(currentName)
+        ) {
+          switchTab('home');
+          return true;
+        }
       }
       return false;
     };
@@ -543,6 +589,7 @@ export const RootNavigator: React.FC = () => {
             onBack={stack.length > 1 ? back : undefined}
             onNavigateOnboarding={() => go('driver-onboarding')}
             onOpenChat={(params) => go('chat', params)}
+            onNavigateSupport={() => go('support')}
             onLogout={() => reset('login')}
           />
         );
@@ -570,6 +617,7 @@ export const RootNavigator: React.FC = () => {
           <ProviderDashboardScreen
             onBack={stack.length > 1 ? back : undefined}
             onOpenChat={(params) => go('chat', params)}
+            onNavigateSupport={() => go('support')}
             onLogout={() => reset('login')}
           />
         );
@@ -588,17 +636,30 @@ export const RootNavigator: React.FC = () => {
 
       // Additional Roles
       case 'owner-dashboard':
-        return <OwnerDashboardScreen onBack={back} onLogout={() => reset('login')} />;
+        return (
+          <OwnerDashboardScreen
+            onBack={back}
+            onNavigateSupport={() => go('support')}
+            onLogout={() => reset('login')}
+          />
+        );
       case 'student-dashboard':
         return (
           <StudentDashboardScreen
             onBack={back}
             onAddProperty={() => go('owner-dashboard')}
+            onNavigateSupport={() => go('support')}
             onLogout={() => reset('login')}
           />
         );
       case 'admin-dashboard':
-        return <AdminDashboardScreen onBack={back} onLogout={() => reset('login')} />;
+        return (
+          <AdminDashboardScreen
+            onBack={back}
+            onNavigateSupport={() => go('support')}
+            onLogout={() => reset('login')}
+          />
+        );
       case 'terms':
         return (
           <TermsViewerScreen

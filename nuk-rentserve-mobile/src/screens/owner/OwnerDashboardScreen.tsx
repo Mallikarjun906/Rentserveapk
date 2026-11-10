@@ -48,11 +48,13 @@ interface OwnerProperty {
 interface OwnerDashboardScreenProps {
   onBack: () => void;
   onLogout?: () => void;
+  onNavigateSupport?: () => void;
 }
 
 export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
   onBack,
   onLogout,
+  onNavigateSupport,
 }) => {
   const { t } = useLocalization();
   const { user, logout } = useAuth();
@@ -174,6 +176,26 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
               variant="yellow"
               size="sm"
             />
+            {onNavigateSupport && (
+              <TouchableOpacity
+                onPress={onNavigateSupport}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: '#FEF3C7',
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: RADIUS.full,
+                  borderWidth: 1,
+                  borderColor: '#FDE68A',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#D97706' }}>
+                  {t('Help', 'ಸಹಾಯ')}
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={handleLogout}
               style={{

@@ -20,6 +20,9 @@ interface MapContainerProps {
   phase: string;
   onRecenter?: () => void;
   height?: number;
+  interactive?: boolean;
+  selectedLocation?: Coordinates | null;
+  onSelectLocation?: (coords: Coordinates) => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -31,6 +34,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   phase,
   onRecenter,
   height = 280,
+  interactive = false,
+  selectedLocation,
+  onSelectLocation,
 }) => {
   const isTracking = ['accepted', 'arriving', 'riding'].includes(phase);
 
@@ -39,6 +45,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const userY = height * 0.65;
   const destX = SCREEN_WIDTH * 0.72;
   const destY = height * 0.28;
+
+  // Selected Pin position relative to user location
+  const selX = selectedLocation
+    ? Math.max(20, Math.min(SCREEN_WIDTH - 20, userX + (selectedLocation.longitude - userLocation.longitude) / 0.00015))
+    : null;
+  const selY = selectedLocation
+    ? Math.max(20, Math.min(height - 30, userY - (selectedLocation.latitude - userLocation.latitude) / 0.00015))
+    : null;
 
   // Driver positions
   const drvX =
@@ -50,8 +64,22 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       ? (userY + destY) / 2
       : height * 0.45;
 
+  const handlePress = (e: any) => {
+    if (!onSelectLocation) return;
+    const { locationX, locationY } = e.nativeEvent;
+    const dLon = (locationX - userX) * 0.00015;
+    const dLat = (userY - locationY) * 0.00015;
+    const newLat = parseFloat((userLocation.latitude + dLat).toFixed(6));
+    const newLon = parseFloat((userLocation.longitude + dLon).toFixed(6));
+    onSelectLocation({ latitude: newLat, longitude: newLon });
+  };
+
   return (
-    <View style={[styles.mapCanvas, { height }]}>
+    <TouchableOpacity
+      activeOpacity={onSelectLocation ? 0.95 : 1}
+      onPress={onSelectLocation ? handlePress : undefined}
+      style={[styles.mapCanvas, { height }]}
+    >
       {/* City Road Network & Vector Grid Background */}
       <Svg width="100%" height={height} style={StyleSheet.absoluteFill}>
         {/* Soft Green Parks */}
@@ -100,6 +128,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         </View>
       )}
 
+      {/* Selected Drag/Tap Pin */}
+      {selX !== null && selY !== null && (
+        <View style={[styles.destMarker, { left: selX - 14, top: selY - 28 }]}>
+          <MapPin size={28} color={COLORS.brand} fill={COLORS.brand} />
+        </View>
+      )}
+
       {/* Customer User Location (Blue Pulse Dot) */}
       <View style={[styles.userMarker, { left: userX - 12, top: userY - 12 }]}>
         <View style={styles.pulseRing} />
@@ -113,13 +148,21 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         </View>
       )}
 
-      {/* Live GPS Coordinates Info Badge */}
+      {/* Interactive Guidance or Live GPS Coordinates Info Badge */}
       <View style={styles.coordsOverlay}>
         <View style={styles.livePulse} />
         <Text style={styles.coordsText}>
-          {userLocation.latitude.toFixed(4)}° N, {userLocation.longitude.toFixed(4)}° E
+          {selectedLocation
+            ? `Pin: ${selectedLocation.latitude.toFixed(4)}° N, ${selectedLocation.longitude.toFixed(4)}° E`
+            : `${userLocation.latitude.toFixed(4)}° N, ${userLocation.longitude.toFixed(4)}° E`}
         </Text>
       </View>
+
+      {onSelectLocation && !selectedLocation && (
+        <View style={styles.tapHintOverlay}>
+          <Text style={styles.tapHintText}>Tap map to set pin</Text>
+        </View>
+      )}
 
       {/* Recenter Crosshair Button */}
       {onRecenter && (
@@ -132,7 +175,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           <Navigation size={16} color={COLORS.brand} />
         </TouchableOpacity>
       )}
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -218,5 +261,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: COLORS.line,
+  },
+  tapHintOverlay: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
+  },
+  tapHintText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });

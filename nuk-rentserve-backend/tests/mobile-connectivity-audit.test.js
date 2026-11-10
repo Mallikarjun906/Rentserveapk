@@ -63,7 +63,7 @@ describe("Mobile Production Backend Connectivity & Error Handling Audit", () => 
         done();
       });
     }).on("error", (err) => done(err));
-  }, 15000);
+  }, 30000);
 
   test("8. Live Production Backend: /api/v1/health endpoint responds 200 OK", (done) => {
     https.get("https://rentserveapk.onrender.com/api/v1/health", (res) => {
@@ -76,7 +76,7 @@ describe("Mobile Production Backend Connectivity & Error Handling Audit", () => 
         done();
       });
     }).on("error", (err) => done(err));
-  }, 15000);
+  }, 30000);
 
   test("9. Live Production Backend: /api/v1/auth/login returns 401 with structured JSON", (done) => {
     const postData = JSON.stringify({ identifier: "audit.test@example.com", password: "AuditPassword123!" });

@@ -35,6 +35,7 @@ import {
   Radio,
   Check,
   LogOut,
+  HelpCircle,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { Header } from '../../components/common/Header';
@@ -54,12 +55,14 @@ interface ProviderDashboardScreenProps {
   onBack?: () => void;
   onOpenChat: (params: { bookingId: string; name: string; role: string; phone?: string }) => void;
   onLogout?: () => void;
+  onNavigateSupport?: () => void;
 }
 
 export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = ({
   onBack,
   onOpenChat,
   onLogout,
+  onNavigateSupport,
 }) => {
   const { t } = useLocalization();
   const { user, token, logout } = useAuth();
@@ -154,21 +157,23 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
   };
 
   const handleToggleOnline = async (val: boolean) => {
+    if (onlineUpdating) return;
     setOnlineUpdating(true);
+    const previous = isOnline;
     setIsOnline(val);
     try {
-      await Promise.allSettled([
-        providerApi.updateMyProfile({ availability: val }),
-        authApi.updateMe({ isOnline: val }),
-      ]);
+      await authApi.updateMe({ isOnline: val });
+      try {
+        await providerApi.updateMyProfile({ availability: val });
+      } catch {}
       if (!val) {
         setRequests([]);
       } else {
         loadData(true);
       }
     } catch (e: any) {
-      Alert.alert('Status Error', e.message || 'Could not update online status.');
-      setIsOnline(!val);
+      setIsOnline(previous);
+      Alert.alert('Status Error', e.message || 'Could not update online status. Please check your internet connection.');
     } finally {
       setOnlineUpdating(false);
     }
@@ -304,6 +309,23 @@ export const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = (
                 <MapPin size={18} color={COLORS.brand} />
               )}
             </TouchableOpacity>
+
+            {onNavigateSupport && (
+              <TouchableOpacity
+                onPress={onNavigateSupport}
+                style={{
+                  backgroundColor: COLORS.white,
+                  borderWidth: 1,
+                  borderColor: COLORS.line,
+                  padding: 7,
+                  borderRadius: RADIUS.full,
+                  marginLeft: 4,
+                }}
+                accessibilityLabel="Customer & Partner Support"
+              >
+                <HelpCircle size={16} color={COLORS.ink} />
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               onPress={handleLogout}

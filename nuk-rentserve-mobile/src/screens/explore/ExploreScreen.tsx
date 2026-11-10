@@ -26,6 +26,7 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { rentalApi } from '../../api/rentalApi';
 import { serviceApi } from '../../api/serviceApi';
+import { providerApi } from '../../api/providerApi';
 
 interface ExploreScreenProps {
   initialSegment?: 'rentals' | 'services';
@@ -55,9 +56,10 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     async function loadExploreData() {
       setLoading(true);
       try {
-        const [propsRes, provsRes] = await Promise.allSettled([
+        const [propsRes, provsRes, publicProvidersRes] = await Promise.allSettled([
           rentalApi.getProperties(),
           serviceApi.getServices(),
+          providerApi.getPublicProviders(),
         ]);
 
         if (propsRes.status === 'fulfilled' && Array.isArray(propsRes.value)) {
@@ -79,25 +81,60 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           );
         }
 
+        const gatheredProviders: ProviderCardItem[] = [];
+        const seenIds = new Set<string>();
+
+        // 1. From service listings
         if (provsRes.status === 'fulfilled' && Array.isArray(provsRes.value)) {
-          setProviders(
-            provsRes.value.map((s: any) => ({
-              id: s._id || s.id,
-              name: s.providerId?.name || s.title || 'Professional',
-              trade: s.categoryId?.name || s.category || 'General Service',
-              area: s.location || 'Bagalkot',
-              rating: 5.0,
-              ratingCount: 1,
-              reviews: 1,
-              price: s.priceRange?.min ? `₹${s.priceRange.min}` : '₹350',
-              rate: s.priceRange?.min ? `₹${s.priceRange.min}` : '₹350',
-              rateUnit: s.payUnit ? `/${s.payUnit}` : '/visit',
-              photo: s.images?.[0]?.url || s.providerId?.profileImage?.url,
-              phone: s.providerId?.phone,
-              isAvailable: s.availability !== false,
-            }))
-          );
+          provsRes.value.forEach((s: any) => {
+            const pid = s._id || s.id;
+            if (pid && !seenIds.has(pid)) {
+              seenIds.add(pid);
+              gatheredProviders.push({
+                id: pid,
+                name: s.providerId?.name || s.title || 'Professional Provider',
+                trade: s.categoryId?.name || s.category || 'General Service',
+                area: s.location || 'Bagalkot',
+                rating: 5.0,
+                ratingCount: 1,
+                reviews: 1,
+                price: s.priceRange?.min ? `₹${s.priceRange.min}` : '₹350',
+                rate: s.priceRange?.min ? `₹${s.priceRange.min}` : '₹350',
+                rateUnit: s.payUnit ? `/${s.payUnit}` : '/visit',
+                photo: s.images?.[0]?.url || s.providerId?.profileImage?.url,
+                phone: s.providerId?.phone,
+                isAvailable: s.availability !== false,
+              });
+            }
+          });
         }
+
+        // 2. From approved public providers
+        if (publicProvidersRes.status === 'fulfilled' && Array.isArray(publicProvidersRes.value)) {
+          publicProvidersRes.value.forEach((p: any) => {
+            const pid = p.id || p._id;
+            if (pid && !seenIds.has(pid)) {
+              seenIds.add(pid);
+              gatheredProviders.push({
+                id: pid,
+                name: p.name || 'Professional Provider',
+                trade: p.trade || p.category || 'Service',
+                area: p.area || 'Bagalkot',
+                rating: p.rating || 4.8,
+                ratingCount: p.reviews || 1,
+                reviews: p.reviews || 1,
+                price: p.price || '₹350',
+                rate: p.rate || '₹350',
+                rateUnit: p.rateUnit || '/visit',
+                photo: p.photo,
+                phone: p.phone,
+                isAvailable: p.isAvailable !== false,
+              });
+            }
+          });
+        }
+
+        setProviders(gatheredProviders);
       } catch (err) {
         // Handled gracefully
       } finally {

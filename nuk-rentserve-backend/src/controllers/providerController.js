@@ -36,4 +36,58 @@ const updateMyProviderProfile = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, profile, "Provider profile updated."));
 });
 
-module.exports = { getMyProviderProfile, updateMyProviderProfile };
+const listPublicProviders = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+
+  const filter = {
+    applicationType: "provider",
+    status: "approved"
+  };
+
+  if (req.query.category && String(req.query.category).trim() && String(req.query.category).trim() !== "All") {
+    filter.category = { $regex: String(req.query.category).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+  }
+
+  if (req.query.city && String(req.query.city).trim()) {
+    const cityTerm = String(req.query.city).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filter.$or = [
+      { city: { $regex: cityTerm, $options: "i" } },
+      { district: { $regex: cityTerm, $options: "i" } },
+      { address: { $regex: cityTerm, $options: "i" } }
+    ];
+  }
+
+  const [applications, total] = await Promise.all([
+    ProviderApplication.find(filter)
+      .populate("userId", "name email phone location isOnline profileImage")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    ProviderApplication.countDocuments(filter)
+  ]);
+
+  const items = applications.map(app => ({
+    id: app._id,
+    _id: app._id,
+    userId: app.userId?._id || app.userId,
+    name: app.fullName || app.userId?.name || "Professional Provider",
+    trade: app.category || "Service",
+    category: app.category || "Service",
+    area: app.city || app.address || app.userId?.location || "Bagalkot",
+    rating: 4.8,
+    reviews: 1,
+    price: app.price || "₹350",
+    rate: app.price || "₹350",
+    rateUnit: "/visit",
+    photo: app.profileImage?.url || app.userId?.profileImage?.url,
+    phone: app.phone || app.userId?.phone,
+    isAvailable: app.userId?.isOnline !== false,
+    experience: app.experience || "2+ years"
+  }));
+
+  res.json(new ApiResponse(200, { items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } }));
+});
+
+module.exports = { getMyProviderProfile, updateMyProviderProfile, listPublicProviders };
