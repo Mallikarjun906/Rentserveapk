@@ -10,12 +10,18 @@
       "channel": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://rentserveapk.onrender.com/api/v1"
       }
     },
     "production": {
       "channel": "production",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://rentserveapk.onrender.com/api/v1"
       }
     }
   },

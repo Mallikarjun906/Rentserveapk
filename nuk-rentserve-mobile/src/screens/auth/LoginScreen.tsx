@@ -30,6 +30,7 @@ import { Button } from '../../components/common/Button';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
+import { checkBackendConnectivity, AppApiError, ApiErrorKind } from '../../api/client';
 
 interface LoginScreenProps {
   onRegisterCustomer: () => void;
@@ -60,26 +61,132 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorKind, setErrorKind] = useState<ApiErrorKind | null>(null);
+  const [checkingConnection, setCheckingConnection] = useState(false);
 
   const handleLogin = async () => {
+    if (loading || checkingConnection) return;
+
     if (!identifier.trim()) {
       setError(t('Enter email or mobile number', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್ ನಮೂದಿಸಿ'));
+      setErrorKind(null);
       return;
     }
     if (!password) {
       setError(t('Enter your password', 'ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ'));
+      setErrorKind(null);
       return;
     }
 
     setError('');
+    setErrorKind(null);
     setLoading(true);
+
     try {
       const loggedIn = await login(identifier.trim(), password);
       onSuccess(loggedIn);
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      if (err instanceof AppApiError) {
+        setErrorKind(err.kind);
+        if (err.kind === 'COLD_START_TIMEOUT') {
+          setError(
+            t(
+              'Server is waking up from idle (cold start). Please wait a few moments and tap Retry.',
+              'ಸರ್ವರ್ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ. ದಯವಿಟ್ಟು ಕೆಲವು ಕ್ಷಣಗಳ ನಂತರ ಮರುಪ್ರಯತ್ನಿಸಿ.'
+            )
+          );
+        } else if (err.kind === 'NO_INTERNET') {
+          setError(
+            t(
+              'No internet connection. Please verify your Wi-Fi or mobile data and tap Retry.',
+              'ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವಿಲ್ಲ. ದಯವಿಟ್ಟು ವೈಫೈ ಅಥವಾ ಮೊಬೈಲ್ ಡೇಟಾ ಪರಿಶೀಲಿಸಿ.'
+            )
+          );
+        } else if (err.kind === 'INVALID_CREDENTIALS') {
+          setError(
+            t(
+              'Invalid mobile number/email or password. Please verify your credentials.',
+              'ತಪ್ಪಾದ ಇಮೇಲ್/ಮೊಬೈಲ್ ಅಥವಾ ಗುಪ್ತಪದ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.'
+            )
+          );
+        } else if (err.kind === 'ACCESS_DENIED') {
+          setError(
+            t(
+              'Account access restricted. Please check your verification status.',
+              'ಖಾತೆ ಪ್ರವೇಶ ನಿರ್ಬಂಧಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.'
+            )
+          );
+        } else if (err.kind === 'RATE_LIMITED') {
+          setError(
+            t(
+              'Too many attempts. Please wait a few minutes before trying again.',
+              'ಹೆಚ್ಚಿನ ಪ್ರಯತ್ನಗಳು. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಪ್ರಯತ್ನಿಸಿ.'
+            )
+          );
+        } else {
+          setError(err.message || t('Login failed. Please try again.', 'ಲಾಗಿನ್ ವಿಫಲವಾಗಿದೆ.'));
+        }
+      } else {
+        setErrorKind('UNKNOWN');
+        setError(err.message || t('Login failed. Please check your credentials.', 'ಲಾಗಿನ್ ವಿಫಲವಾಗಿದೆ.'));
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (checkingConnection || loading) return;
+
+    if (!identifier.trim() || !password) {
+      setError(t('Please enter your login details', 'ದಯವಿಟ್ಟು ಲಾಗಿನ್ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ'));
+      return;
+    }
+
+    // If it was a network or server issue, do a live backend ping first
+    if (
+      errorKind === 'NO_INTERNET' ||
+      errorKind === 'COLD_START_TIMEOUT' ||
+      errorKind === 'SERVER_UNAVAILABLE' ||
+      errorKind === 'SERVER_ERROR'
+    ) {
+      setCheckingConnection(true);
+      setError(t('Checking server connectivity...', 'ಸರ್ವರ್ ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...'));
+
+      try {
+        const health = await checkBackendConnectivity();
+        if (!health.isReachable) {
+          if (health.isColdStart) {
+            setError(
+              t(
+                'Server is waking up (cold start). Please wait a moment and tap Retry.',
+                'ಸರ್ವರ್ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ. ದಯವಿಟ್ಟು ಕೆಲವು ಕ್ಷಣಗಳ ನಂತರ ಮರುಪ್ರಯತ್ನಿಸಿ.'
+              )
+            );
+          } else if (health.isOffline) {
+            setError(
+              t(
+                'No internet connection. Please verify your Wi-Fi or mobile data.',
+                'ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವಿಲ್ಲ. ದಯವಿಟ್ಟು ವೈಫೈ ಅಥವಾ ಮೊಬೈಲ್ ಡೇಟಾ ಪರಿಶೀಲಿಸಿ.'
+              )
+            );
+          } else {
+            setError(health.message);
+          }
+          return;
+        }
+
+        // Server is verified healthy! Proceed to login immediately
+        setError('');
+        await handleLogin();
+      } catch {
+        await handleLogin();
+      } finally {
+        setCheckingConnection(false);
+      }
+    } else {
+      // Re-trigger standard login attempt
+      await handleLogin();
     }
   };
 
@@ -146,8 +253,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </Text>
           </View>
 
-          {/* Error Banner */}
-          {error ? <ErrorBanner message={error} onRetry={handleLogin} /> : null}
+          {/* Error Banner with Genuine Connectivity Verification */}
+          {error ? (
+            <ErrorBanner
+              message={error}
+              onRetry={handleRetry}
+              loading={checkingConnection}
+              retryText={t('Retry', 'ಮರುಪ್ರಯತ್ನ')}
+            />
+          ) : null}
 
           {/* Main Form Card */}
           <View style={[styles.formCard, SHADOWS.card]}>

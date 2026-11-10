@@ -8,70 +8,36 @@ import Constants from 'expo-constants';
 export const PROD_API_BASE_URL =
   'https://rentserveapk.onrender.com/api/v1';
 
-// Local development computer IP
-export const LOCAL_COMPUTER_IP = '172.16.11.62';
-
 export function resolveApiBaseUrl(): string {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-
-  // 1. Always prioritize the configured production/remote URL
-  if (
-    envUrl &&
-    !envUrl.includes('localhost') &&
-    !envUrl.includes('127.0.0.1')
-  ) {
-    return envUrl.replace(/\/+$/, '');
-  }
-
-  // 2. Resolve Expo development host
-  const expoHostUri =
-    Constants.expoConfig?.hostUri ||
-    (Constants as any)?.manifest?.debuggerHost ||
-    (Constants as any)?.manifest2?.extra?.expoClient?.hostUri;
-
-  const detectedHost = expoHostUri
-    ? expoHostUri.split(':')[0]
-    : null;
-
-  // 3. Android local development
-  if (Platform.OS === 'android') {
-    if (
-      !detectedHost ||
-      detectedHost === 'localhost' ||
-      detectedHost === '127.0.0.1'
-    ) {
-      return 'http://10.0.2.2:5000/api/v1';
-    }
-
-    return `http://${detectedHost}:5000/api/v1`;
-  }
-
-  // 4. iOS local development
-  if (Platform.OS === 'ios') {
-    if (
-      detectedHost &&
-      detectedHost !== 'localhost' &&
-      detectedHost !== '127.0.0.1'
-    ) {
-      return `http://${detectedHost}:5000/api/v1`;
-    }
-
+  // 1. If explicit local development is requested via environment variable, use local backend
+  if (process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true') {
     return 'http://localhost:5000/api/v1';
   }
 
-  // 5. Web local development
+  // 2. If explicit custom URL is provided via environment variable, sanitize and use it
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (
-    Platform.OS === 'web' &&
-    typeof globalThis !== 'undefined' &&
-    (globalThis as any).window?.location
+    envUrl &&
+    envUrl.trim().length > 0 &&
+    !envUrl.includes('localhost') &&
+    !envUrl.includes('127.0.0.1') &&
+    !envUrl.includes('10.0.2.2')
   ) {
-    const host =
-      (globalThis as any).window.location.hostname || 'localhost';
-
-    return `http://${host}:5000/api/v1`;
+    return envUrl.trim().replace(/\/+$/, '');
   }
 
-  // 6. Production fallback
+  // 3. If explicit manifest extra apiUrl is provided, sanitize and use it
+  const manifestApiUrl = Constants.expoConfig?.extra?.apiUrl;
+  if (
+    manifestApiUrl &&
+    !manifestApiUrl.includes('localhost') &&
+    !manifestApiUrl.includes('127.0.0.1') &&
+    !manifestApiUrl.includes('10.0.2.2')
+  ) {
+    return manifestApiUrl.replace(/\/+$/, '');
+  }
+
+  // 4. Safe default: Always use the live production Render backend across all devices & platforms
   return PROD_API_BASE_URL;
 }
 

@@ -1,7 +1,7 @@
 // Error Alert Banner with Retry Option
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import { COLORS, RADIUS } from '../../constants/theme';
 
@@ -9,24 +9,35 @@ interface ErrorBannerProps {
   message: string;
   onRetry?: () => void;
   retryText?: string;
+  loading?: boolean;
 }
 
 export const ErrorBanner: React.FC<ErrorBannerProps> = ({
   message,
   onRetry,
   retryText = 'Retry',
+  loading = false,
 }) => {
   return (
     <View style={styles.container}>
       <View style={styles.leftRow}>
         <AlertTriangle size={18} color={COLORS.bad} style={{ marginRight: 8 }} />
-        <Text style={styles.message} numberOfLines={2}>
+        <Text style={styles.message} numberOfLines={3}>
           {message}
         </Text>
       </View>
       {onRetry && (
-        <TouchableOpacity onPress={onRetry} style={styles.retryBtn}>
-          <Text style={styles.retryText}>{retryText}</Text>
+        <TouchableOpacity
+          onPress={onRetry}
+          style={[styles.retryBtn, loading && styles.retryBtnDisabled]}
+          disabled={loading}
+          activeOpacity={0.7}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <Text style={styles.retryText}>{retryText}</Text>
+          )}
         </TouchableOpacity>
       )}
     </View>
@@ -67,6 +78,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: RADIUS.sm,
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnDisabled: {
+    opacity: 0.7,
   },
   retryText: {
     fontSize: 12,

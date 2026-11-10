@@ -20,6 +20,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { useAuth } from '../../context/AuthContext';
+import { checkBackendConnectivity, AppApiError } from '../../api/client';
 
 interface AdminLoginScreenProps {
   onBackToApp: () => void;
@@ -36,9 +37,11 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(false);
   const [error, setError] = useState('');
 
   const handleAdminLogin = async () => {
+    if (loading || checkingConnection) return;
     if (!identifier.trim()) {
       setError('Please enter administrator email or username.');
       return;
@@ -58,6 +61,32 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
       setError(err.message || 'Administrator authentication failed. Access denied.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (checkingConnection || loading) return;
+    setCheckingConnection(true);
+    setError('Checking server connectivity...');
+
+    try {
+      const health = await checkBackendConnectivity();
+      if (!health.isReachable) {
+        if (health.isColdStart) {
+          setError('Server is waking up (cold start). Please wait a few moments and tap Retry.');
+        } else if (health.isOffline) {
+          setError('Device is offline. Please check your Wi-Fi or mobile data.');
+        } else {
+          setError(health.message);
+        }
+        return;
+      }
+      setError('');
+      await handleAdminLogin();
+    } catch {
+      await handleAdminLogin();
+    } finally {
+      setCheckingConnection(false);
     }
   };
 
@@ -92,7 +121,14 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
             </Text>
           </View>
 
-          {error ? <ErrorBanner message={error} onRetry={handleAdminLogin} /> : null}
+          {error ? (
+            <ErrorBanner
+              message={error}
+              onRetry={handleRetry}
+              loading={checkingConnection}
+              retryText="Retry"
+            />
+          ) : null}
 
           {/* Form Card */}
           <View style={[styles.card, SHADOWS.card]}>

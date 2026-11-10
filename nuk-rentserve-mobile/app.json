@@ -56,6 +56,7 @@
       "url": "https://u.expo.dev/9975e43d-8eac-4e92-a9f5-48a9c040962e"
     },
     "extra": {
+      "apiUrl": "https://rentserveapk.onrender.com/api/v1",
       "eas": {
         "projectId": "9975e43d-8eac-4e92-a9f5-48a9c040962e"
       }

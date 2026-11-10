@@ -137,21 +137,138 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Extract human-readable error message from backend envelope or network state
-    let message =
-      error.response?.data?.message ||
-      error.response?.data?.error;
+    // Extract human-readable error message and classify error type
+    const status = error.response?.status;
+    let kind: ApiErrorKind = 'UNKNOWN';
+    let message = error.response?.data?.message || error.response?.data?.error;
 
-    if (!message) {
-      if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
-        message = 'Connection timed out. The server may be starting up, please tap Retry in a moment.';
-      } else if (error.message === 'Network Error' || !error.response) {
-        message = 'Unable to reach NUK server. Please check your internet connection and tap Retry.';
-      } else {
-        message = error.message || 'An unexpected error occurred. Please try again.';
-      }
+    if (status === 401) {
+      kind = 'INVALID_CREDENTIALS';
+      message = message || 'Invalid mobile number/email or password. Please verify your credentials.';
+    } else if (status === 403) {
+      kind = 'ACCESS_DENIED';
+      message = message || 'Access denied. Your account may be pending verification or suspended.';
+    } else if (status === 404) {
+      kind = 'UNKNOWN';
+      message = message || 'The requested service was not found on the server.';
+    } else if (status === 429) {
+      kind = 'RATE_LIMITED';
+      message = message || 'Too many attempts. Please wait 15 minutes before trying again.';
+    } else if (status && status >= 502 && status <= 504) {
+      kind = 'COLD_START_TIMEOUT';
+      message = 'Server is currently waking up from idle (cold start). Please tap Retry in a few moments.';
+    } else if (status && status >= 500) {
+      kind = 'SERVER_ERROR';
+      message = message || 'Server encountered an internal error. Please try again shortly.';
+    } else if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+      kind = 'COLD_START_TIMEOUT';
+      message = 'Connection timed out. The server may be waking up from sleep, please tap Retry in a moment.';
+    } else if (error.message === 'Network Error' || (error as any).code === 'ERR_NETWORK' || !error.response) {
+      kind = 'NO_INTERNET';
+      message = 'No internet connection or network error. Please verify your Wi-Fi or mobile data and tap Retry.';
+    } else {
+      message = message || error.message || 'An unexpected error occurred. Please try again.';
     }
 
-    return Promise.reject(new Error(message));
+    return Promise.reject(new AppApiError(message, kind, status));
   }
 );
+
+export type ApiErrorKind =
+  | 'NO_INTERNET'
+  | 'SERVER_UNAVAILABLE'
+  | 'COLD_START_TIMEOUT'
+  | 'SERVER_ERROR'
+  | 'INVALID_CREDENTIALS'
+  | 'ACCESS_DENIED'
+  | 'RATE_LIMITED'
+  | 'UNKNOWN';
+
+export class AppApiError extends Error {
+  kind: ApiErrorKind;
+  statusCode?: number;
+
+  constructor(message: string, kind: ApiErrorKind, statusCode?: number) {
+    super(message);
+    this.name = 'AppApiError';
+    this.kind = kind;
+    this.statusCode = statusCode;
+  }
+}
+
+export interface HealthCheckResult {
+  isReachable: boolean;
+  isColdStart: boolean;
+  isOffline: boolean;
+  statusCode?: number;
+  responseTimeMs: number;
+  message: string;
+}
+
+/**
+ * Genuine live connectivity verification for the NUK production backend
+ */
+export async function checkBackendConnectivity(): Promise<HealthCheckResult> {
+  const start = Date.now();
+  const baseUrl = CONFIG.API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+  try {
+    const res = await axios.get(`${baseUrl}/api/v1/health`, {
+      timeout: 15000,
+      headers: { Accept: 'application/json' },
+    });
+    const elapsed = Date.now() - start;
+    return {
+      isReachable: res.status === 200,
+      isColdStart: false,
+      isOffline: false,
+      statusCode: res.status,
+      responseTimeMs: elapsed,
+      message: 'Server is online and responding normally.',
+    };
+  } catch (err: any) {
+    const elapsed = Date.now() - start;
+    const status = err.response?.status;
+
+    if (err.code === 'ECONNABORTED' || err.message?.toLowerCase().includes('timeout')) {
+      return {
+        isReachable: false,
+        isColdStart: true,
+        isOffline: false,
+        responseTimeMs: elapsed,
+        message: 'Server response timed out. The server may be waking up from sleep (cold start).',
+      };
+    }
+
+    if (status && status >= 502 && status <= 504) {
+      return {
+        isReachable: false,
+        isColdStart: true,
+        isOffline: false,
+        statusCode: status,
+        responseTimeMs: elapsed,
+        message: 'Server gateway is booting up (cold start). Please tap Retry in a few seconds.',
+      };
+    }
+
+    if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
+      return {
+        isReachable: false,
+        isColdStart: false,
+        isOffline: true,
+        statusCode: status,
+        responseTimeMs: elapsed,
+        message: 'No internet connection detected. Please verify your mobile data or Wi-Fi.',
+      };
+    }
+
+    return {
+      isReachable: false,
+      isColdStart: false,
+      isOffline: false,
+      statusCode: status,
+      responseTimeMs: elapsed,
+      message: err.message || 'Unable to connect to NUK server.',
+    };
+  }
+}
