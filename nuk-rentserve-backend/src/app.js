@@ -157,6 +157,17 @@ app.use("/api/v1/bookings", require("./routes/bookingRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/v1/chat", require("./routes/chatRoutes"));
 
+// Customer profile completion / update
+const { authenticate: authenticateCustomer } = require("./middleware/authMiddleware");
+const { uploadRegistrationFiles } = require("./middleware/identityUploadMiddleware");
+const phoneAuthController = require("./controllers/phoneAuthController");
+app.put(
+  ["/api/customer/profile", "/api/v1/customer/profile"],
+  authenticateCustomer,
+  uploadRegistrationFiles,
+  phoneAuthController.updateCustomerProfile
+);
+
 // Notifications
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/v1/notifications", require("./routes/notificationRoutes"));

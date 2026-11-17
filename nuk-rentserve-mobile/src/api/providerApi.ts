@@ -91,6 +91,12 @@ export const providerApi = {
     return res.data || res;
   },
 
+  // Get single provider public profile
+  async getProvider(id: string): Promise<any> {
+    const res: any = await apiClient.get(`/providers/${id}`);
+    return res.data || res;
+  },
+
   // Fetch public approved service providers
   async getPublicProviders(params?: { category?: string; city?: string; limit?: number }): Promise<any[]> {
     try {
@@ -115,7 +121,61 @@ export const providerApi = {
 
   // Get provider's service listings
   async getMyServices(): Promise<any[]> {
-    const res: any = await apiClient.get('/services/mine');
-    return Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+    try {
+      const res: any = await apiClient.get('/services/mine');
+      return Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // Create a service listing
+  async createService(data: any): Promise<any> {
+    const res: any = await apiClient.post('/services', data);
+    return res.data || res;
+  },
+
+  // Update a service listing
+  async updateService(id: string, data: any): Promise<any> {
+    const res: any = await apiClient.patch(`/services/${id}`, data);
+    return res.data || res;
+  },
+
+  // Delete a service listing
+  async deleteService(id: string): Promise<any> {
+    const res: any = await apiClient.delete(`/services/${id}`);
+    return res.data || res;
+  },
+
+  // Get customer enquiries received for listings
+  async getReceivedEnquiries(): Promise<any[]> {
+    try {
+      const res: any = await apiClient.get('/enquiries/received');
+      return Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // Update enquiry status / reply
+  async replyEnquiry(id: string, status: string, replyMessage?: string): Promise<any> {
+    const res: any = await apiClient.patch(`/enquiries/${id}/status`, { status, replyMessage });
+    return res.data || res;
+  },
+
+  // Get support tickets
+  async getSupportTickets(): Promise<any[]> {
+    try {
+      const res: any = await apiClient.get('/support/mine');
+      return Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // Submit a support ticket
+  async createSupportTicket(data: { subject: string; message: string; category?: string }): Promise<any> {
+    const res: any = await apiClient.post('/support', data);
+    return res.data || res;
   },
 };

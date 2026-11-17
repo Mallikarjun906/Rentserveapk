@@ -1,7 +1,276 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, clearSession, readUser, unwrapItems } from '../services/api';
-export function Dashboard(){const user=readUser();const [data,setData]=useState([]);const [propertyBookings,setPropertyBookings]=useState([]);const [transportBookings,setTransportBookings]=useState([]);const [error,setError]=useState('');const nav=useNavigate();useEffect(()=>{Promise.allSettled([api('enquiries/my'),api('bookings/mine'),api('transport-bookings/mine')]).then(results=>{if(results[0].status==='fulfilled')setData(unwrapItems(results[0].value));if(results[1].status==='fulfilled')setPropertyBookings(unwrapItems(results[1].value));if(results[2].status==='fulfilled')setTransportBookings(unwrapItems(results[2].value));const fail=results.find(r=>r.status==='rejected');if(fail)setError(fail.reason?.message||'Some account data could not be loaded.');});},[]);return <section className="wrap section"><span className="eyebrow">YOUR WORKSPACE</span><h1>Hello, {user?.name||'there'}.</h1><p className="muted">Manage your account, property requests and enquiries.</p><div className="dashboard-grid"><div className="dashboard-card"><span className="eyebrow">ACCOUNT ROLE</span><h2>{user?.role||'User'}</h2><p>Signed in as {user?.email}</p></div><div className="dashboard-card"><span className="eyebrow">ENQUIRIES</span><h2>{data.length}</h2><p>Requests linked to your account.</p><Link to="/enquiries" className="text-link">Open enquiries →</Link></div><div className="dashboard-card"><span className="eyebrow">PROPERTY BOOKINGS</span><h2>{propertyBookings.length}</h2><p>Your rental booking requests.</p><Link to="/rentals" className="text-link">Browse rentals →</Link></div></div>{error&&<div className="notice">Some account data could not be loaded: {error}</div>}<div className="section-head"><div><span className="eyebrow">TRANSPORT</span><h2>My transport requests ({transportBookings.length})</h2></div><Link to="/transport" className="btn btn-outline">Find transport</Link></div>{transportBookings.length?<div className="enquiry-list">{transportBookings.map(b=><article className="enquiry-card" key={b._id}><div><span className="eyebrow">{b.vehicleType} · {b.status}</span><h3>{b.pickup} → {b.destination}</h3><p>{new Date(b.scheduledAt).toLocaleString()}</p><small>{b.providerId?.name?`Provider: ${b.providerId.name}`:'Waiting for an approved provider'}</small></div></article>)}</div>:<div className="empty-state"><p>Your transport requests will appear here after you submit one.</p></div>}<button className="btn btn-outline" onClick={()=>{clearSession();nav('/login');}}>Sign out</button></section>}
+export function Dashboard() {
+  const [currentUser, setCurrentUser] = useState(readUser());
+  const [data, setData] = useState([]);
+  const [propertyBookings, setPropertyBookings] = useState([]);
+  const [transportBookings, setTransportBookings] = useState([]);
+  const [error, setError] = useState('');
+  const [profileMsg, setProfileMsg] = useState('');
+  const [profileErr, setProfileErr] = useState('');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: currentUser?.name || '',
+    email: currentUser?.email?.startsWith('phone_') ? '' : (currentUser?.email || ''),
+    city: currentUser?.location || 'Bagalkot'
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const nav = useNavigate();
+
+  useEffect(() => {
+    Promise.allSettled([
+      api('enquiries/my'),
+      api('bookings/mine'),
+      api('transport-bookings/mine')
+    ]).then(results => {
+      if (results[0].status === 'fulfilled') setData(unwrapItems(results[0].value));
+      if (results[1].status === 'fulfilled') setPropertyBookings(unwrapItems(results[1].value));
+      if (results[2].status === 'fulfilled') setTransportBookings(unwrapItems(results[2].value));
+      const fail = results.find(r => r.status === 'rejected');
+      if (fail) setError(fail.reason?.message || 'Some account data could not be loaded.');
+    });
+  }, []);
+
+  async function handleProfileUpdate(e) {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileErr('');
+    setProfileMsg('');
+    try {
+      const updated = await api('auth/customer/profile', {
+        method: 'PUT',
+        body: {
+          name: profileForm.name.trim(),
+          email: profileForm.email.trim(),
+          city: profileForm.city.trim()
+        }
+      });
+      const mergedUser = { ...currentUser, ...updated, profileCompleted: true };
+      sessionStorage.setItem('nuk_user', JSON.stringify(mergedUser));
+      setCurrentUser(mergedUser);
+      setProfileMsg('Profile details updated successfully.');
+      setEditingProfile(false);
+    } catch (err) {
+      setProfileErr(err.message);
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  const isCustomer = currentUser?.role === 'customer' || !currentUser?.role;
+  const isProfileIncomplete = isCustomer && (!currentUser?.profileCompleted || currentUser?.email?.startsWith('phone_'));
+
+  return (
+    <section className="wrap section">
+      <span className="eyebrow">YOUR WORKSPACE</span>
+      <h1>Hello, {currentUser?.name || 'there'}.</h1>
+      <p className="muted">Manage your account, property requests and enquiries.</p>
+
+      {/* Profile Completion Alert for Customers */}
+      {isProfileIncomplete && !editingProfile && (
+        <div
+          style={{
+            background: '#fffbeb',
+            border: '1.5px solid #f59e0b',
+            borderRadius: '10px',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+        >
+          <div>
+            <strong style={{ color: '#92400e', fontSize: '15px' }}>
+              Complete Your Customer Profile
+            </strong>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#b45309' }}>
+              Your mobile is verified! Add your email address and name to complete your profile.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => setEditingProfile(true)}
+            style={{ borderColor: '#d97706', color: '#b45309' }}
+          >
+            Update Profile Details
+          </button>
+        </div>
+      )}
+
+      {profileMsg && <div className="notice success" role="status" style={{ marginBottom: '20px' }}>{profileMsg}</div>}
+      {profileErr && <div className="notice error" role="alert" style={{ marginBottom: '20px' }}>{profileErr}</div>}
+
+      {/* Inline Profile Editor Form */}
+      {editingProfile && (
+        <form
+          onSubmit={handleProfileUpdate}
+          className="form-stack"
+          style={{
+            background: '#fff',
+            border: '1px solid var(--line)',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '28px',
+            maxWidth: '640px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>Update Customer Profile</h3>
+            <button
+              type="button"
+              onClick={() => { setEditingProfile(false); setProfileErr(''); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '13px' }}
+            >
+              Cancel ✕
+            </button>
+          </div>
+
+          <label>
+            Full Name
+            <input
+              required
+              minLength={2}
+              maxLength={100}
+              value={profileForm.name}
+              onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
+              placeholder="e.g. Ramesh Patil"
+            />
+          </label>
+
+          <label>
+            Email Address
+            <input
+              type="email"
+              required
+              value={profileForm.email}
+              onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
+              placeholder="e.g. ramesh@example.com"
+            />
+          </label>
+
+          <label>
+            City / Location
+            <input
+              value={profileForm.city}
+              onChange={e => setProfileForm({ ...profileForm, city: e.target.value })}
+              placeholder="e.g. Bagalkot, Karnataka"
+            />
+          </label>
+
+          <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '6px', fontSize: '12px', color: 'var(--muted)' }}>
+            Verified Mobile: <b>+91 {currentUser?.phoneNumber || currentUser?.phone || '—'}</b> (Phone number cannot be changed here).
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+            <button className="btn" disabled={savingProfile}>
+              {savingProfile ? 'Saving…' : 'Save Profile'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => { setEditingProfile(false); setProfileErr(''); }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Dashboard Summary Cards */}
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <span className="eyebrow">ACCOUNT PROFILE</span>
+          <h2>{currentUser?.role || 'Customer'}</h2>
+          <p style={{ margin: '4px 0 2px' }}><b>{currentUser?.name}</b></p>
+          <small className="muted" style={{ display: 'block', marginBottom: '8px' }}>
+            {currentUser?.email?.startsWith('phone_') ? 'Mobile account' : currentUser?.email}
+          </small>
+          {currentUser?.phone && (
+            <small style={{ display: 'block', color: '#166534', fontWeight: 600 }}>
+              +91 {currentUser.phone} (Verified ✓)
+            </small>
+          )}
+          {isCustomer && !editingProfile && (
+            <button
+              type="button"
+              onClick={() => setEditingProfile(true)}
+              style={{
+                marginTop: '10px',
+                background: 'none',
+                border: 'none',
+                color: 'var(--red)',
+                fontWeight: 700,
+                fontSize: '12px',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              Edit profile details →
+            </button>
+          )}
+        </div>
+        <div className="dashboard-card">
+          <span className="eyebrow">ENQUIRIES</span>
+          <h2>{data.length}</h2>
+          <p>Requests linked to your account.</p>
+          <Link to="/enquiries" className="text-link">Open enquiries →</Link>
+        </div>
+        <div className="dashboard-card">
+          <span className="eyebrow">PROPERTY BOOKINGS</span>
+          <h2>{propertyBookings.length}</h2>
+          <p>Your rental booking requests.</p>
+          <Link to="/rentals" className="text-link">Browse rentals →</Link>
+        </div>
+      </div>
+
+      {error && <div className="notice">Some account data could not be loaded: {error}</div>}
+
+      <div className="section-head" style={{ marginTop: '36px' }}>
+        <div>
+          <span className="eyebrow">TRANSPORT</span>
+          <h2>My transport requests ({transportBookings.length})</h2>
+        </div>
+        <Link to="/transport" className="btn btn-outline">Find transport</Link>
+      </div>
+
+      {transportBookings.length ? (
+        <div className="enquiry-list">
+          {transportBookings.map(b => (
+            <article className="enquiry-card" key={b._id}>
+              <div>
+                <span className="eyebrow">{b.vehicleType} · {b.status}</span>
+                <h3>{b.pickup} → {b.destination}</h3>
+                <p>{new Date(b.scheduledAt).toLocaleString()}</p>
+                <small>{b.providerId?.name ? `Provider: ${b.providerId.name}` : 'Waiting for an approved provider'}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <p>Your transport requests will appear here after you submit one.</p>
+        </div>
+      )}
+
+      <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid var(--line)' }}>
+        <button
+          className="btn btn-outline"
+          onClick={() => {
+            clearSession();
+            nav('/login');
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+    </section>
+  );
+}
 export function Enquiries(){const [items,setItems]=useState([]);const [error,setError]=useState('');const [loading,setLoading]=useState(true);useEffect(()=>{api('enquiries/my').then(d=>setItems(unwrapItems(d))).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);return <section className="wrap section"><span className="eyebrow">YOUR REQUESTS</span><h1>Enquiries & work chat</h1><p className="muted">Keep messages connected to the work they belong to.</p>{loading?<p>Loading enquiries…</p>:error?<div className="notice error">{error}</div>:items.length?<div className="enquiry-list">{items.map(i=><article className="enquiry-card" key={i._id||i.id}><div><span className="eyebrow">{i.listingType||'ENQUIRY'} · {i.contactStatus||'pending'}</span><h3>{i.listingTitle||i.title||'Enquiry'}</h3><p>{i.message}</p><small>Created {i.createdAt?new Date(i.createdAt).toLocaleString():'recently'}</small></div></article>)}</div>:<div className="empty-state"><h3>No enquiries yet</h3><p>When you submit a request, it will appear here.</p><Link className="btn" to="/transport">Find transport</Link></div>}</section>}
 export function Admin(){
  const [applications,setApplications]=useState([]); const [tickets,setTickets]=useState([]); const [users,setUsers]=useState([]); const [stats,setStats]=useState(null); const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [notice,setNotice]=useState(''); const [busyId,setBusyId]=useState('');

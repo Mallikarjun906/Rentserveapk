@@ -108,6 +108,21 @@ const submit = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You must accept the terms of service.");
   }
 
+  const { verificationToken } = req.body;
+  let verifiedSession = null;
+  if (verificationToken) {
+    const { consumeVerificationSession } = require("../services/phoneEmailService");
+    verifiedSession = await consumeVerificationSession({
+      verificationToken,
+      expectedPurpose: "provider-registration"
+    });
+  } else if (process.env.NODE_ENV !== "test") {
+    throw new ApiError(
+      400,
+      "Mobile OTP verification is required to complete provider registration."
+    );
+  }
+
   if (await User.exists({ email: normalizedEmail })) {
     throw new ApiError(
       409,
@@ -193,13 +208,23 @@ const submit = asyncHandler(async (req, res) => {
     locationCoordinates = { latitude: Number(req.body.latitude), longitude: Number(req.body.longitude) };
   }
 
+  const finalPhone = verifiedSession ? verifiedSession.phoneNumber : normalizedPhone;
+  const finalCc = verifiedSession ? verifiedSession.phoneCountryCode : "+91";
+  const finalNorm = verifiedSession ? verifiedSession.normalizedPhoneNumber : `+91${finalPhone.slice(-10)}`;
+
   const user = await User.create({
     name: normalizedName,
     email: normalizedEmail,
-    phone: normalizedPhone,
+    phone: finalPhone,
+    phoneCountryCode: finalCc,
+    phoneNumber: finalPhone,
+    normalizedPhoneNumber: finalNorm,
+    phoneVerified: Boolean(verifiedSession),
+    phoneVerifiedAt: verifiedSession ? new Date() : null,
     password: await bcrypt.hash(password, 12),
     role: "provider",
     approvalStatus: "pending",
+    registrationStatus: "pending",
     location: normalizedCity,
     profileImage: { url: uploadedProfileImage.url || "", publicId: uploadedProfileImage.publicId || "" },
   });

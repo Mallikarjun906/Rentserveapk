@@ -31,6 +31,7 @@ interface AuthContextType {
   setRole: (role: AppRole) => Promise<void>;
   isLoading: boolean;
   login: (login: string, pass: string) => Promise<User | null>;
+  loginWithOtp: (params: { phone?: string; otp?: string; verificationToken?: string; role?: string }) => Promise<User | null>;
   loginWithGoogle: (credential: string) => Promise<User | null>;
   adminLogin: (login: string, pass: string) => Promise<User | null>;
   register: (data: {
@@ -57,6 +58,7 @@ const AuthContext = createContext<AuthContextType>({
   setRole: async () => {},
   isLoading: true,
   login: async () => null,
+  loginWithOtp: async () => null,
   loginWithGoogle: async () => null,
   adminLogin: async () => null,
   register: async () => {},
@@ -132,6 +134,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
 
       // Infer authentic AppRole strictly from backend database role
+      if (res.user.role === 'admin') setRoleState('Administrator');
+      else if (res.user.role === 'driver') setRoleState('Auto/Car Driver');
+      else if (res.user.role === 'student') setRoleState('Student Rental Partner');
+      else if (res.user.role === 'provider') setRoleState('Service Provider');
+      else if (res.user.role === 'owner') setRoleState('Property Owner');
+      else setRoleState('Customer');
+    }
+    return res.user || null;
+  };
+
+  const loginWithOtp = async (params: {
+    phone?: string;
+    otp?: string;
+    verificationToken?: string;
+    role?: string;
+  }): Promise<User | null> => {
+    const res = await authApi.loginWithOtp(params);
+    if (res.accessToken) {
+      await Storage.setToken(res.accessToken);
+      setToken(res.accessToken);
+    }
+    if (res.refreshToken) {
+      await Storage.setRefreshToken(res.refreshToken);
+    }
+    if (res.user) {
+      await Storage.setUser(res.user);
+      setUser(res.user);
+
       if (res.user.role === 'admin') setRoleState('Administrator');
       else if (res.user.role === 'driver') setRoleState('Auto/Car Driver');
       else if (res.user.role === 'student') setRoleState('Student Rental Partner');
@@ -258,6 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRole,
         isLoading,
         login,
+        loginWithOtp,
         loginWithGoogle,
         adminLogin,
         register,

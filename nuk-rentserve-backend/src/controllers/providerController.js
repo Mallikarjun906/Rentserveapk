@@ -1,5 +1,8 @@
+const mongoose = require("mongoose");
 const ServiceProvider = require("../models/ServiceProvider");
 const ProviderApplication = require("../models/ProviderApplication");
+const ServiceListing = require("../models/ServiceListing");
+const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
 const asyncHandler = require("../utils/asyncHandler");
@@ -90,4 +93,76 @@ const listPublicProviders = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } }));
 });
 
-module.exports = { getMyProviderProfile, updateMyProviderProfile, listPublicProviders };
+const getPublicProviderById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid provider ID.");
+  }
+
+  // 1. Try ProviderApplication
+  let app = await ProviderApplication.findById(id).populate("userId", "name email phone location isOnline profileImage").lean();
+  let user = null;
+  let profile = null;
+
+  if (app) {
+    user = app.userId;
+    profile = await ServiceProvider.findOne({ userId: user?._id || user }).lean();
+  } else {
+    // 2. Try User directly
+    user = await User.findById(id).select("name email phone location isOnline profileImage role approvalStatus").lean();
+    if (user) {
+      app = await ProviderApplication.findOne({ userId: user._id, applicationType: "provider" }).lean();
+      profile = await ServiceProvider.findOne({ userId: user._id }).lean();
+    } else {
+      // 3. Try ServiceProvider
+      profile = await ServiceProvider.findById(id).populate("userId", "name email phone location isOnline profileImage").lean();
+      if (profile) {
+        user = profile.userId;
+        app = await ProviderApplication.findOne({ userId: user?._id || user, applicationType: "provider" }).lean();
+      }
+    }
+  }
+
+  if (!user && !app) {
+    throw new ApiError(404, "Provider not found.");
+  }
+
+  const userId = user?._id || user || app?.userId;
+  const services = await ServiceListing.find({ providerId: userId, status: "published" }).lean();
+
+  const formatted = {
+    id: app?._id || id,
+    _id: app?._id || id,
+    userId: userId,
+    providerId: {
+      _id: userId,
+      name: app?.fullName || user?.name || "Professional Provider",
+      phone: app?.phone || user?.phone || "",
+      profileImage: app?.profileImage || user?.profileImage || undefined,
+    },
+    name: app?.fullName || user?.name || "Professional Provider",
+    fullName: app?.fullName || user?.name || "Professional Provider",
+    trade: app?.category || "Professional Service",
+    category: app?.category || "Professional Service",
+    bio: profile?.bio || app?.description || "Local verified professional",
+    description: profile?.bio || app?.description || "Local verified professional",
+    area: app?.city || app?.address || user?.location || "Bagalkot",
+    location: app?.city || app?.address || user?.location || "Bagalkot",
+    rating: profile?.rating || 4.8,
+    reviews: profile?.reviewCount || 1,
+    rate: app?.price || (profile?.visitingFee ? `₹${profile.visitingFee}` : "₹350"),
+    priceRange: { min: 350, max: 1200 },
+    payUnit: "visit",
+    rateUnit: "/visit",
+    photo: app?.profileImage?.url || user?.profileImage?.url,
+    phone: app?.phone || user?.phone,
+    isAvailable: user?.isOnline !== false,
+    availability: user?.isOnline !== false,
+    experience: app?.experience || (profile?.experienceYears ? `${profile.experienceYears} years` : "2+ years"),
+    services: services || [],
+  };
+
+  res.json(new ApiResponse(200, formatted));
+});
+
+module.exports = { getMyProviderProfile, updateMyProviderProfile, listPublicProviders, getPublicProviderById };

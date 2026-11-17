@@ -31,6 +31,7 @@ import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
 import { useLocalization } from '../../context/LocalizationContext';
 import { serviceApi, ServiceListing } from '../../api/serviceApi';
+import { providerApi } from '../../api/providerApi';
 import { rentalApi } from '../../api/rentalApi';
 import { chatApi } from '../../api/chatApi';
 import { DocumentViewerModal, DocumentItem } from '../../components/common/DocumentViewerModal';
@@ -83,7 +84,15 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
     async function loadService() {
       setLoading(true);
       try {
-        const data = await serviceApi.getService(providerId);
+        let data: any = null;
+        try {
+          data = await providerApi.getProvider(providerId);
+        } catch {
+          // fallback
+        }
+        if (!data) {
+          data = await serviceApi.getService(providerId);
+        }
         setService(data);
       } catch (e) {
         // Handled silently
@@ -99,13 +108,20 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
       Alert.alert('Details Required', 'Please briefly describe the service required.');
       return;
     }
+
+    const targetUserId =
+      (service?.providerId as any)?._id ||
+      (typeof service?.providerId === 'string' ? service?.providerId : null) ||
+      (service as any)?._id ||
+      providerId;
+
     setSubmitting(true);
     try {
       await rentalApi.requestBooking({
-        serviceId: providerId,
+        serviceId: service?._id || providerId,
         bookingType: 'service',
-        category: typeof service?.categoryId === 'object' ? service.categoryId.name : 'General Service',
-        providerId: (service?.providerId as any)?._id || (service?.providerId as any) || undefined,
+        category: typeof service?.categoryId === 'object' ? service.categoryId.name : ((service as any)?.category || 'General Service'),
+        providerId: targetUserId,
         scheduledDate: scheduledWhen,
         details: jobDescription.trim(),
         location: service?.location || 'Bagalkot',
@@ -117,7 +133,18 @@ export const ProviderProfileScreen: React.FC<ProviderProfileScreenProps> = ({
         setJobDescription('');
       }, 2500);
     } catch (e: any) {
-      Alert.alert('Booking Error', e.message || 'Could not send booking request. Please try again.');
+      const isDuplicate =
+        e?.status === 409 ||
+        e?.response?.status === 409 ||
+        String(e?.message).includes('already have an active service request');
+      if (isDuplicate) {
+        Alert.alert(
+          'Active Request Exists',
+          'You already have an active service request with this provider. Please wait for provider confirmation or check your Bookings tab.'
+        );
+      } else {
+        Alert.alert('Booking Error', e.message || 'Could not send booking request. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }

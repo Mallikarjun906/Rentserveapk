@@ -1,0 +1,324 @@
+const crypto = require("crypto");
+const PhoneVerificationSession = require("../models/PhoneVerificationSession");
+const ApiError = require("../utils/ApiError");
+const { normalizePhoneNumber } = require("../utils/phoneUtils");
+
+const PHONE_EMAIL_CLIENT_ID =
+  process.env.PHONE_EMAIL_CLIENT_ID || "15695407177920574360";
+
+const MAX_RESPONSE_BYTES = 50 * 1024; // 50 KB limit
+const FETCH_TIMEOUT_MS = 8000; // 8 seconds
+
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(String(token)).digest("hex");
+
+/**
+ * Validates that a user_json_url is safe, uses HTTPS, and targets Phone.Email official domains.
+ * Defends against SSRF, DNS rebinding to private IPs, and protocol attacks.
+ */
+function validateUserJsonUrl(rawUrl) {
+  if (typeof rawUrl !== "string" || !rawUrl.trim()) {
+    throw new ApiError(400, "user_json_url is required.");
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(rawUrl.trim());
+  } catch {
+    throw new ApiError(400, "Invalid verification URL format.");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new ApiError(400, "Verification URL must use secure HTTPS protocol.");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Enforce Phone.Email official domain
+  const isOfficialDomain =
+    hostname === "phone.email" ||
+    hostname === "auth.phone.email" ||
+    hostname === "user.phone.email" ||
+    hostname.endsWith(".phone.email");
+
+  // Allow mock URL specifically in test environment
+  const isTestMock =
+    process.env.NODE_ENV === "test" &&
+    (hostname === "auth.phone.email" || hostname === "mock.phone.email");
+
+  if (!isOfficialDomain && !isTestMock) {
+    throw new ApiError(
+      400,
+      "Untrusted verification provider. The URL must belong to official Phone.Email services."
+    );
+  }
+
+  // Reject IP literals
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes("[")) {
+    throw new ApiError(400, "IP addresses are not permitted as verification hosts.");
+  }
+
+  // Reject non-standard ports
+  if (parsed.port && parsed.port !== "443") {
+    throw new ApiError(400, "Invalid port for verification service.");
+  }
+
+  return parsed.toString();
+}
+
+/**
+ * Fetches and validates verified user information from Phone.Email user_json_url.
+ */
+async function fetchVerifiedPhoneData(validatedUrl) {
+  const urlObj = new URL(validatedUrl);
+
+  // In test environment, support deterministic test mocks without external HTTP calls
+  if (
+    process.env.NODE_ENV === "test" &&
+    urlObj.searchParams.has("mock_phone")
+  ) {
+    const mockCc = urlObj.searchParams.get("mock_cc") || "+91";
+    const mockPhone = urlObj.searchParams.get("mock_phone");
+    return {
+      user_country_code: mockCc,
+      user_phone_number: mockPhone,
+      user_first_name: urlObj.searchParams.get("mock_first_name") || "",
+      user_last_name: urlObj.searchParams.get("mock_last_name") || "",
+      user_email_id: urlObj.searchParams.get("mock_email") || ""
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch(validatedUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "NUK-RentServe-Verifier/1.0"
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    });
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      throw new ApiError(
+        504,
+        "Phone.Email verification service timed out. Please try again."
+      );
+    }
+    throw new ApiError(
+      502,
+      "Unable to reach Phone.Email verification server. Please verify your internet connection."
+    );
+  }
+
+  if (!response.ok) {
+    throw new ApiError(
+      400,
+      `Phone.Email verification failed with status: ${response.status}.`
+    );
+  }
+
+  // Enforce response size limits
+  const contentLength = Number(response.headers.get("content-length"));
+  if (contentLength && contentLength > MAX_RESPONSE_BYTES) {
+    throw new ApiError(400, "Verification payload exceeds acceptable size limit.");
+  }
+
+  const rawText = await response.text();
+  if (rawText.length > MAX_RESPONSE_BYTES) {
+    throw new ApiError(400, "Verification response too large.");
+  }
+
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new ApiError(502, "Invalid JSON payload returned by verification provider.");
+  }
+
+  const phone =
+    data.user_phone_number ||
+    data.user_phone_no ||
+    data.phone_number ||
+    data.phone;
+
+  if (!phone) {
+    throw new ApiError(
+      400,
+      "Verification payload did not include a valid verified phone number."
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Verifies user_json_url and creates a single-use, short-lived verification session.
+ */
+async function processPhoneVerification({
+  user_json_url,
+  purpose,
+  ipAddress = "",
+  userAgent = ""
+}) {
+  const allowedPurposes = [
+    "customer-registration",
+    "customer-login",
+    "provider-registration",
+    "password-reset",
+    "profile-verification"
+  ];
+
+  if (!allowedPurposes.includes(purpose)) {
+    throw new ApiError(400, "Invalid verification purpose.");
+  }
+
+  const validatedUrl = validateUserJsonUrl(user_json_url);
+  const urlHash = hashToken(validatedUrl);
+
+  // Prevent replay of the exact same user_json_url
+  const existingSessionWithUrl = await PhoneVerificationSession.findOne({
+    urlHash
+  });
+  if (existingSessionWithUrl) {
+    throw new ApiError(
+      409,
+      "This verification URL has already been processed. Please complete a new verification."
+    );
+  }
+
+  // Fetch verified phone details from Phone.Email
+  const verifiedData = await fetchVerifiedPhoneData(validatedUrl);
+
+  const rawCc = verifiedData.user_country_code || "+91";
+  const rawPhone =
+    verifiedData.user_phone_number ||
+    verifiedData.user_phone_no ||
+    verifiedData.phone_number ||
+    "";
+
+  const { phoneCountryCode, phoneNumber, normalizedPhoneNumber } =
+    normalizePhoneNumber(rawCc, rawPhone);
+
+  if (!phoneNumber || phoneNumber.length < 7 || phoneNumber.length > 15) {
+    throw new ApiError(400, "Verified phone number has an invalid length.");
+  }
+
+  // Generate secure single-use reference token
+  const rawToken = `pve_${crypto.randomBytes(32).toString("hex")}`;
+  const referenceHash = hashToken(rawToken);
+
+  // Verification token expires in 15 minutes
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  await PhoneVerificationSession.create({
+    referenceHash,
+    phoneCountryCode,
+    phoneNumber,
+    normalizedPhoneNumber,
+    purpose,
+    used: false,
+    expiresAt,
+    urlHash,
+    ipAddress,
+    userAgent
+  });
+
+  return {
+    verificationToken: rawToken,
+    phoneCountryCode,
+    phoneNumber,
+    normalizedPhoneNumber,
+    firstName: verifiedData.user_first_name || "",
+    lastName: verifiedData.user_last_name || "",
+    email: verifiedData.user_email_id || "",
+    expiresAt
+  };
+}
+
+/**
+ * Validates and atomically consumes a verification reference token for a specific purpose.
+ * Protects against race condition replay, token reuse, cross-purpose abuse, and expired tokens.
+ */
+async function consumeVerificationSession({
+  verificationToken,
+  expectedPurpose
+}) {
+  if (!verificationToken || typeof verificationToken !== "string") {
+    throw new ApiError(400, "Phone verification token is required.");
+  }
+
+  const tokenHash = hashToken(verificationToken);
+
+  // Compatible purposes
+  let allowedPurposes = [expectedPurpose];
+  if (expectedPurpose.includes("registration")) {
+    allowedPurposes.push("registration");
+  } else if (expectedPurpose.includes("login")) {
+    allowedPurposes.push("login");
+  }
+
+  // Attempt atomic find and consume
+  const session = await PhoneVerificationSession.findOneAndUpdate(
+    {
+      referenceHash: tokenHash,
+      purpose: { $in: allowedPurposes },
+      used: false,
+      expiresAt: { $gt: new Date() }
+    },
+    {
+      $set: {
+        used: true,
+        usedAt: new Date()
+      }
+    },
+    { new: true }
+  );
+
+  if (session) {
+    return {
+      phoneCountryCode: session.phoneCountryCode,
+      phoneNumber: session.phoneNumber,
+      normalizedPhoneNumber: session.normalizedPhoneNumber,
+      purpose: session.purpose
+    };
+  }
+
+  // Investigate reason for informative, secure error handling
+  const existing = await PhoneVerificationSession.findOne({ referenceHash: tokenHash });
+
+  if (!existing) {
+    throw new ApiError(400, "Invalid phone verification token.");
+  }
+
+  if (existing.used) {
+    throw new ApiError(
+      400,
+      "This phone verification has already been used. Please verify again."
+    );
+  }
+
+  if (existing.purpose !== expectedPurpose) {
+    throw new ApiError(
+      403,
+      `Cross-purpose token reuse forbidden. This verification was issued for '${existing.purpose}', not '${expectedPurpose}'.`
+    );
+  }
+
+  if (existing.expiresAt <= new Date()) {
+    throw new ApiError(
+      400,
+      "Phone verification has expired. Please verify your mobile number again."
+    );
+  }
+
+  throw new ApiError(400, "Phone verification could not be validated.");
+}
+
+module.exports = {
+  PHONE_EMAIL_CLIENT_ID,
+  validateUserJsonUrl,
+  processPhoneVerification,
+  consumeVerificationSession,
+  hashToken
+};

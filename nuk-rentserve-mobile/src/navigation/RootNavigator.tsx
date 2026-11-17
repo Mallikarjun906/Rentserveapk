@@ -615,6 +615,7 @@ export const RootNavigator: React.FC = () => {
       case 'provider-dashboard':
         return (
           <ProviderDashboardScreen
+            initialTab={current.params?.view}
             onBack={stack.length > 1 ? back : undefined}
             onOpenChat={(params) => go('chat', params)}
             onNavigateSupport={() => go('support')}
@@ -713,8 +714,10 @@ export const RootNavigator: React.FC = () => {
             ]}
           >
             <ProviderDashboardScreen
+              initialTab={current.params?.view}
               onBack={stack.length > 1 ? back : undefined}
               onOpenChat={(params) => go('chat', params)}
+              onNavigateSupport={() => go('support')}
               onLogout={() => reset('login')}
             />
           </View>

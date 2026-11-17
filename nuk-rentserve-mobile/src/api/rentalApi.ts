@@ -143,7 +143,7 @@ export const rentalApi = {
   // Owner or Provider updates booking status
   async updateBookingStatus(
     id: string,
-    status: 'accepted' | 'rejected' | 'cancelled' | 'completed',
+    status: 'accepted' | 'rejected' | 'in_progress' | 'cancelled' | 'completed',
     reason?: string
   ): Promise<any> {
     const res: any = await apiClient.patch(`/bookings/${id}/status`, { status, reason });

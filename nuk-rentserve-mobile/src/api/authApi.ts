@@ -67,6 +67,7 @@ export const authApi = {
     address?: string;
     city?: string;
     terms: boolean;
+    verificationToken?: string;
   }): Promise<AuthResponse> {
     const res: any = await apiClient.post('/auth/register/customer', data);
     return res.data || res;
@@ -120,15 +121,34 @@ export const authApi = {
     return res.data || res;
   },
 
-  // Send OTP
-  async sendOtp(phone: string): Promise<{ success: boolean; message: string }> {
-    const res: any = await apiClient.post('/auth/send-otp', { phone });
+  // Send Mobile OTP
+  async sendOtp(
+    phone: string,
+    purpose: string = 'customer-registration',
+    role: string = 'customer'
+  ): Promise<{ success: boolean; message: string; resendAfterSeconds?: number; expiresInSeconds?: number; devOtp?: string }> {
+    const res: any = await apiClient.post('/auth/send-otp', { phone, purpose, role });
     return res.data || res;
   },
 
-  // Verify OTP
-  async verifyOtp(phone: string, otp: string): Promise<{ success: boolean; message: string }> {
-    const res: any = await apiClient.post('/auth/verify-otp', { phone, otp });
+  // Verify Mobile OTP
+  async verifyOtp(
+    phone: string,
+    otp: string,
+    purpose: string = 'customer-registration'
+  ): Promise<{ success: boolean; verified: boolean; verificationToken: string; message: string }> {
+    const res: any = await apiClient.post('/auth/verify-otp', { phone, otp, purpose });
+    return res.data || res;
+  },
+
+  // Login with Mobile OTP
+  async loginWithOtp(params: {
+    phone?: string;
+    otp?: string;
+    verificationToken?: string;
+    role?: string;
+  }): Promise<AuthResponse> {
+    const res: any = await apiClient.post('/auth/login-with-otp', params);
     return res.data || res;
   },
 

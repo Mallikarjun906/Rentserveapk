@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, saveSession } from '../services/api';
 import { AuthShell, GoogleSignIn, PasswordInput } from './Auth';
+import PhoneEmailButton from '../components/PhoneEmailButton.jsx';
+import PhoneOtpVerification from '../components/PhoneOtpVerification.jsx';
 
 // Helper for file preview
 function FileUploadPreview({ file, label, accept = 'image/*,application/pdf', required = false, onChange }) {
@@ -163,6 +165,8 @@ export function CustomerRegister() {
     city: 'Bagalkot',
     terms: false
   });
+  const [verificationToken, setVerificationToken] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const nav = useNavigate();
@@ -173,6 +177,10 @@ export function CustomerRegister() {
     e.preventDefault();
     setError('');
 
+    if (!verificationToken) {
+      setError('Please verify your mobile number with Phone.Email OTP before creating an account.');
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError('Password and Confirm Password do not match.');
       return;
@@ -184,9 +192,12 @@ export function CustomerRegister() {
 
     setBusy(true);
     try {
-      const data = await api('auth/register/customer', {
+      const data = await api('auth/customer/register', {
         method: 'POST',
-        body: form
+        body: {
+          ...form,
+          verificationToken
+        }
       });
       saveSession(data);
       nav('/dashboard', { replace: true });
@@ -205,8 +216,8 @@ export function CustomerRegister() {
   return (
     <AuthShell
       title="Customer Registration"
-      subtitle="Create a customer account to browse, rent, and book across Karnataka."
-      badge="CUSTOMER REGISTRATION"
+      subtitle="Create a customer account with verified mobile to browse, rent, and book across Karnataka."
+      badge="CUSTOMER REGISTRATION · OTP REQUIRED"
     >
       <form onSubmit={submit} className="form-stack">
         <label>
@@ -221,6 +232,21 @@ export function CustomerRegister() {
           />
         </label>
 
+        {/* Mandatory Phone OTP Verification */}
+        <PhoneOtpVerification
+          purpose="customer-registration"
+          role="customer"
+          onVerified={(data) => {
+            setVerificationToken(data.verificationToken);
+            setPhoneVerified(true);
+            update('phone', data.phone);
+            setError('');
+          }}
+          onError={(msg) => setError(msg)}
+          initialPhone={form.phone}
+          buttonLabel="Send OTP"
+        />
+
         <div className="form-two">
           <label>
             Mobile Number
@@ -228,9 +254,11 @@ export function CustomerRegister() {
               required
               type="tel"
               pattern="[6-9][0-9]{9}"
-              title="Enter valid 10-digit Indian mobile number"
+              title="Verified 10-digit Indian mobile number"
               placeholder="e.g. 9876543210"
               value={form.phone}
+              readOnly={phoneVerified}
+              style={phoneVerified ? { background: '#f8fafc', borderColor: '#22c55e', fontWeight: 600 } : {}}
               onChange={e => update('phone', e.target.value)}
             />
           </label>
@@ -296,8 +324,8 @@ export function CustomerRegister() {
 
         {error && <div className="notice error" role="alert">{error}</div>}
 
-        <button className="btn btn-full" disabled={busy}>
-          {busy ? 'Creating customer account…' : 'Register as Customer'}
+        <button className="btn btn-full" disabled={busy || !phoneVerified} style={!phoneVerified ? { opacity: 0.65, cursor: 'not-allowed' } : {}}>
+          {!phoneVerified ? 'Verify Mobile OTP to Continue' : busy ? 'Creating customer account…' : 'Register as Customer'}
         </button>
 
         <p className="form-note">
@@ -330,6 +358,9 @@ export function ProviderRegister() {
     consent: false,
     terms: false
   });
+  const [verificationToken, setVerificationToken] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [aadhaarDoc, setAadhaarDoc] = useState(null);
   const [addressProofDoc, setAddressProofDoc] = useState(null);
@@ -343,6 +374,10 @@ export function ProviderRegister() {
     e.preventDefault();
     setError('');
 
+    if (!verificationToken) {
+      setError('Please complete mobile verification with Phone.Email OTP before submitting your application.');
+      return;
+    }
     if (!profileImage) {
       setError('A profile photograph is required for provider identification.');
       return;
@@ -360,16 +395,16 @@ export function ProviderRegister() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
+      fd.append('verificationToken', verificationToken);
       fd.append('profileImage', profileImage);
       if (aadhaarDoc) fd.append('aadhaarDocument', aadhaarDoc);
       if (addressProofDoc) fd.append('addressProofDocument', addressProofDoc);
 
-      const data = await api('auth/register/provider', {
+      const data = await api('auth/provider/register', {
         method: 'POST',
         body: fd
       });
-      saveSession(data);
-      nav('/provider/dashboard', { replace: true });
+      setSubmitted(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -377,11 +412,65 @@ export function ProviderRegister() {
     }
   }
 
+  if (submitted) {
+    return (
+      <AuthShell
+        title="Application Submitted"
+        subtitle="Your provider registration is under review."
+        badge="REVIEW PENDING · ADMIN APPROVAL REQUIRED"
+      >
+        <div
+          style={{
+            padding: '24px',
+            background: '#f0fdf4',
+            border: '1.5px solid #22c55e',
+            borderRadius: '12px',
+            marginBottom: '20px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+            <span
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: '#22c55e',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '18px'
+              }}
+            >
+              ✓
+            </span>
+            <h3 style={{ margin: 0, color: '#166534', fontSize: '18px' }}>
+              Registration Received Successfully
+            </h3>
+          </div>
+          <p style={{ margin: '8px 0 0', color: '#15803d', fontSize: '14px', lineHeight: 1.6 }}>
+            Your registration is under review. Please wait for admin approval. Our team will verify your submitted documents and trade details before your listings go live.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <Link to="/provider/login" className="btn btn-full">
+            Go to Provider Sign In
+          </Link>
+          <Link to="/" className="btn btn-outline btn-full">
+            Return to Homepage
+          </Link>
+        </div>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
       title="Service Provider Application"
-      subtitle="Register your trade. An administrator reviews your application before listings go live."
-      badge="SERVICE PROVIDER ONBOARDING"
+      subtitle="Register your trade. Complete mobile OTP verification and submit documents for admin approval."
+      badge="SERVICE PROVIDER ONBOARDING · OTP REQUIRED"
       asideTitle="Grow your business."
       asideSubtitle="Verified trade listings."
     >
@@ -398,6 +487,21 @@ export function ProviderRegister() {
           />
         </label>
 
+        {/* Mandatory Phone OTP Verification */}
+        <PhoneOtpVerification
+          purpose="provider-registration"
+          role="provider"
+          onVerified={(data) => {
+            setVerificationToken(data.verificationToken);
+            setPhoneVerified(true);
+            update('phone', data.phone);
+            setError('');
+          }}
+          onError={(msg) => setError(msg)}
+          initialPhone={form.phone}
+          buttonLabel="Send OTP"
+        />
+
         <div className="form-two">
           <label>
             Mobile Number
@@ -407,6 +511,8 @@ export function ProviderRegister() {
               pattern="[6-9][0-9]{9}"
               placeholder="e.g. 9876543210"
               value={form.phone}
+              readOnly={phoneVerified}
+              style={phoneVerified ? { background: '#f8fafc', borderColor: '#22c55e', fontWeight: 600 } : {}}
               onChange={e => update('phone', e.target.value)}
             />
           </label>
@@ -558,8 +664,8 @@ export function ProviderRegister() {
 
         {error && <div className="notice error" role="alert">{error}</div>}
 
-        <button className="btn btn-full" disabled={busy}>
-          {busy ? 'Submitting Application…' : 'Submit Provider Application'}
+        <button className="btn btn-full" disabled={busy || !phoneVerified} style={!phoneVerified ? { opacity: 0.65, cursor: 'not-allowed' } : {}}>
+          {!phoneVerified ? 'Verify Mobile OTP to Submit Application' : busy ? 'Submitting Application…' : 'Submit Provider Application'}
         </button>
 
         <p className="form-note">
@@ -587,6 +693,8 @@ export function DriverRegister() {
     consent: false,
     terms: false
   });
+  const [verificationToken, setVerificationToken] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [dlDoc, setDlDoc] = useState(null);
   const [rcDoc, setRcDoc] = useState(null);
@@ -601,6 +709,10 @@ export function DriverRegister() {
     e.preventDefault();
     setError('');
 
+    if (!verificationToken) {
+      setError('Please verify your mobile number with OTP before submitting.');
+      return;
+    }
     if (!profileImage) {
       setError('Profile photograph is required for driver verification.');
       return;
@@ -622,6 +734,7 @@ export function DriverRegister() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
+      fd.append('verificationToken', verificationToken);
       fd.append('profileImage', profileImage);
       fd.append('drivingLicenceDocument', dlDoc);
       if (rcDoc) fd.append('vehicleRcDocument', rcDoc);
@@ -661,6 +774,21 @@ export function DriverRegister() {
           />
         </label>
 
+        {/* Mandatory Driver Phone OTP Verification */}
+        <PhoneOtpVerification
+          purpose="driver-registration"
+          role="driver"
+          onVerified={(data) => {
+            setVerificationToken(data.verificationToken);
+            setPhoneVerified(true);
+            update('phone', data.phone);
+            setError('');
+          }}
+          onError={(msg) => setError(msg)}
+          initialPhone={form.phone}
+          buttonLabel="Send OTP"
+        />
+
         <div className="form-two">
           <label>
             Mobile Number (used for trip dispatches)
@@ -670,6 +798,8 @@ export function DriverRegister() {
               pattern="[6-9][0-9]{9}"
               placeholder="e.g. 9876543210"
               value={form.phone}
+              readOnly={phoneVerified}
+              style={phoneVerified ? { background: '#f8fafc', borderColor: '#22c55e', fontWeight: 600 } : {}}
               onChange={e => update('phone', e.target.value)}
             />
           </label>

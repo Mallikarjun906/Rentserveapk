@@ -33,16 +33,24 @@ function hashToken(token) {
 }
 
 const AuditLog = require("../models/AuditLog");
+const { buildPhoneQuery } = require("../utils/phoneUtils");
 
 function sessionUser(user) {
   return {
-    id: user.id,
+    id: user.id || user._id,
     name: user.name,
     email: user.email,
-    phone: user.phone || "",
+    phone: user.phone || user.phoneNumber || "",
+    phoneCountryCode: user.phoneCountryCode || "+91",
+    phoneNumber: user.phoneNumber || user.phone || "",
+    normalizedPhoneNumber: user.normalizedPhoneNumber || "",
+    phoneVerified: Boolean(user.phoneVerified),
+    phoneVerifiedAt: user.phoneVerifiedAt || null,
+    profileCompleted: Boolean(user.profileCompleted),
     role: user.role,
     location: user.location,
     approvalStatus: user.approvalStatus,
+    registrationStatus: user.registrationStatus || user.approvalStatus,
     rejectionReason: user.rejectionReason || ""
   };
 }
@@ -113,7 +121,9 @@ const login = asyncHandler(async (req, res) => {
   const user = await User.findOne({
     $or: [
       { email: loginId.toLowerCase() },
-      { phone: loginId }
+      { phone: loginId },
+      { phoneNumber: loginId },
+      { normalizedPhoneNumber: loginId }
     ]
   }).select("+password +refreshTokenHash");
 
@@ -123,6 +133,35 @@ const login = asyncHandler(async (req, res) => {
 
   if (!user.isActive) {
     throw new ApiError(403, "Account is inactive.");
+  }
+
+  // Provider approval status validation
+  if (user.role === "provider") {
+    if (user.approvalStatus === "pending") {
+      throw new ApiError(
+        403,
+        "Your registration is under review. Please wait for admin approval."
+      );
+    }
+    if (user.approvalStatus === "rejected") {
+      const reason = user.rejectionReason ? ` Reason: ${user.rejectionReason}` : "";
+      throw new ApiError(
+        403,
+        `Your provider registration was rejected by administrator.${reason} You may resubmit documents.`
+      );
+    }
+    if (user.approvalStatus === "suspended") {
+      throw new ApiError(
+        403,
+        "Your provider account has been suspended. Please contact support."
+      );
+    }
+    if (user.approvalStatus !== "approved") {
+      throw new ApiError(
+        403,
+        "Your registration is under review. Please wait for admin approval."
+      );
+    }
   }
 
   const session = await createSession(user);

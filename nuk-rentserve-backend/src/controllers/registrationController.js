@@ -43,13 +43,20 @@ async function createAuthSession(user) {
 
   return {
     user: {
-      id: user.id,
+      id: user.id || user._id,
       name: user.name,
       email: user.email,
-      phone: user.phone,
+      phone: user.phone || user.phoneNumber || "",
+      phoneCountryCode: user.phoneCountryCode || "+91",
+      phoneNumber: user.phoneNumber || user.phone || "",
+      normalizedPhoneNumber: user.normalizedPhoneNumber || "",
+      phoneVerified: Boolean(user.phoneVerified),
+      phoneVerifiedAt: user.phoneVerifiedAt || null,
+      profileCompleted: Boolean(user.profileCompleted),
       role: user.role,
       location: user.location,
       approvalStatus: user.approvalStatus,
+      registrationStatus: user.registrationStatus || user.approvalStatus,
       rejectionReason: user.rejectionReason || "",
       profileImage: user.profileImage || { url: "" }
     },
@@ -80,6 +87,21 @@ const registerCustomer = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You must accept the Terms and Conditions.");
   }
 
+  const { verificationToken } = req.body;
+  let verifiedSession = null;
+  if (verificationToken) {
+    const { consumeVerificationSession } = require("../services/phoneEmailService");
+    verifiedSession = await consumeVerificationSession({
+      verificationToken,
+      expectedPurpose: "customer-registration"
+    });
+  } else if (process.env.NODE_ENV !== "test") {
+    throw new ApiError(
+      400,
+      "Mobile OTP verification is required to complete customer registration."
+    );
+  }
+
   const normalizedEmail = String(email).trim().toLowerCase();
   if (await User.exists({ email: normalizedEmail })) {
     throw new ApiError(409, "Email is already registered. Please log in instead.");
@@ -95,14 +117,25 @@ const registerCustomer = asyncHandler(async (req, res) => {
     uploadedProfile = await uploadPublicImage(profileFile);
   }
 
+  const finalPhone = verifiedSession ? verifiedSession.phoneNumber : String(phone).trim();
+  const finalCc = verifiedSession ? verifiedSession.phoneCountryCode : "+91";
+  const finalNorm = verifiedSession ? verifiedSession.normalizedPhoneNumber : `+91${finalPhone.slice(-10)}`;
+
   const hashedPassword = await bcrypt.hash(password, 12);
   const user = await User.create({
     name: String(name).trim(),
     email: normalizedEmail,
-    phone: String(phone).trim(),
+    phone: finalPhone,
+    phoneCountryCode: finalCc,
+    phoneNumber: finalPhone,
+    normalizedPhoneNumber: finalNorm,
+    phoneVerified: Boolean(verifiedSession),
+    phoneVerifiedAt: verifiedSession ? new Date() : null,
+    profileCompleted: true,
     password: hashedPassword,
     role: "customer",
     approvalStatus: "approved",
+    registrationStatus: "approved",
     location: finalCity,
     profileImage: { url: uploadedProfile.url, publicId: uploadedProfile.publicId }
   });
@@ -158,6 +191,16 @@ const registerDriver = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Explicit consent is required for government identity and licence verification.");
   }
 
+  const { verificationToken } = req.body;
+  let verifiedSession = null;
+  if (verificationToken) {
+    const { consumeVerificationSession } = require("../services/phoneEmailService");
+    verifiedSession = await consumeVerificationSession({
+      verificationToken,
+      expectedPurpose: "driver-registration"
+    });
+  }
+
   if (await User.exists({ email: normalizedEmail })) {
     throw new ApiError(409, "This email is already registered. Please log in instead.");
   }
@@ -194,10 +237,16 @@ const registerDriver = asyncHandler(async (req, res) => {
   const user = await User.create({
     name: normalizedName,
     email: normalizedEmail,
-    phone: normalizedPhone,
+    phone: verifiedSession?.phoneNumber || normalizedPhone,
+    phoneCountryCode: verifiedSession?.phoneCountryCode || "+91",
+    phoneNumber: verifiedSession?.phoneNumber || normalizedPhone,
+    normalizedPhoneNumber: verifiedSession?.normalizedPhoneNumber || undefined,
+    phoneVerified: Boolean(verifiedSession),
+    phoneVerifiedAt: verifiedSession ? new Date() : null,
     password: hashedPassword,
     role: "driver",
     approvalStatus: "pending",
+    registrationStatus: "pending",
     location: normalizedCity,
     profileImage: { url: uploadedProfile.url, publicId: uploadedProfile.publicId }
   });

@@ -6,6 +6,8 @@ const controller = require("../controllers/authController");
 const registrationController = require("../controllers/registrationController");
 const providerApplicationController = require("../controllers/providerApplicationController");
 const passwordResetController = require("../controllers/passwordResetController");
+const phoneAuthController = require("../controllers/phoneAuthController");
+const phoneOtpController = require("../controllers/phoneOtpController");
 
 const { authenticate } = require("../middleware/authMiddleware");
 const { validateBody } = require("../middleware/validateMiddleware");
@@ -14,6 +16,7 @@ const { uploadRegistrationFiles } = require("../middleware/identityUploadMiddlew
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  skip: () => process.env.NODE_ENV === "test",
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -25,6 +28,7 @@ const loginLimiter = rateLimit({
 const googleAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 8,
+  skip: () => process.env.NODE_ENV === "test",
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -36,6 +40,7 @@ const googleAuthLimiter = rateLimit({
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 8,
+  skip: () => process.env.NODE_ENV === "test",
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -46,7 +51,8 @@ const otpLimiter = rateLimit({
 
 const passwordResetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 5,
+  limit: 10,
+  skip: () => process.env.NODE_ENV === "test",
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -55,9 +61,99 @@ const passwordResetLimiter = rateLimit({
   }
 });
 
-// OTP endpoints
-router.post("/send-otp", otpLimiter, otpController.send);
-router.post("/verify-otp", otpLimiter, otpController.verify);
+const phoneVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  skip: () => process.env.NODE_ENV === "test",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many phone verification requests. Please try again later."
+  }
+});
+
+// Phone.Email Verification Endpoints
+router.post(
+  "/phone-email/verify",
+  phoneVerifyLimiter,
+  phoneAuthController.verifyPhoneEmail
+);
+
+// Customer Mobile OTP Authentication & Registration
+router.post(
+  "/customer/phone-login",
+  loginLimiter,
+  phoneAuthController.customerPhoneLogin
+);
+router.post(
+  "/customer/register",
+  uploadRegistrationFiles,
+  phoneAuthController.registerCustomerWithOtp
+);
+
+// Provider Registration & Approval-Gated Login
+router.post(
+  "/provider/register",
+  uploadRegistrationFiles,
+  phoneAuthController.registerProviderWithOtp
+);
+router.post(
+  "/provider/login",
+  loginLimiter,
+  phoneAuthController.providerLogin
+);
+
+// Password Reset via OTP
+router.post(
+  "/password/forgot",
+  passwordResetLimiter,
+  (req, res, next) => {
+    if (req.body?.verificationToken) {
+      return phoneAuthController.forgotPasswordWithOtp(req, res, next);
+    }
+    return passwordResetController.forgotPassword(req, res, next);
+  }
+);
+router.post(
+  "/password/reset",
+  passwordResetLimiter,
+  (req, res, next) => {
+    if (req.body?.resetToken || req.body?.newPassword) {
+      return phoneAuthController.resetPasswordWithOtp(req, res, next);
+    }
+    return passwordResetController.resetPassword(req, res, next);
+  }
+);
+
+// Customer Profile Completion
+router.put(
+  "/customer/profile",
+  authenticate,
+  uploadRegistrationFiles,
+  phoneAuthController.updateCustomerProfile
+);
+
+// Native Phone OTP & Login Endpoints
+router.post("/phone/send-otp", otpLimiter, phoneOtpController.sendOtp);
+router.post("/phone/verify-otp", otpLimiter, phoneOtpController.verifyOtp);
+router.post("/phone/login-with-otp", loginLimiter, phoneOtpController.loginWithOtp);
+router.post("/login-with-otp", loginLimiter, phoneOtpController.loginWithOtp);
+
+// Dual-mode OTP endpoints (supporting both mobile phone and legacy email)
+router.post("/send-otp", otpLimiter, (req, res, next) => {
+  if (req.body.phone || req.body.phoneNumber || req.body.mobile) {
+    return phoneOtpController.sendOtp(req, res, next);
+  }
+  return otpController.send(req, res, next);
+});
+
+router.post("/verify-otp", otpLimiter, (req, res, next) => {
+  if (req.body.phone || req.body.phoneNumber || req.body.mobile) {
+    return phoneOtpController.verifyOtp(req, res, next);
+  }
+  return otpController.verify(req, res, next);
+});
 
 // 1. Separate Registration Endpoints
 const normalizeLocation = (req, _res, next) => {
@@ -107,17 +203,27 @@ router.post("/refresh", controller.refresh);
 router.post("/logout", optionalAuth, controller.logout);
 router.post("/google", googleAuthLimiter, controller.googleLogin);
 
-// 3. Password recovery
+// 3. Password recovery (supports both Phone.Email OTP and legacy email)
 router.post(
   "/forgot-password",
   passwordResetLimiter,
-  passwordResetController.forgotPassword
+  (req, res, next) => {
+    if (req.body?.verificationToken) {
+      return phoneAuthController.forgotPasswordWithOtp(req, res, next);
+    }
+    return passwordResetController.forgotPassword(req, res, next);
+  }
 );
 
 router.post(
   "/reset-password",
   passwordResetLimiter,
-  passwordResetController.resetPassword
+  (req, res, next) => {
+    if (req.body?.resetToken || req.body?.newPassword) {
+      return phoneAuthController.resetPasswordWithOtp(req, res, next);
+    }
+    return passwordResetController.resetPassword(req, res, next);
+  }
 );
 
 module.exports = router;

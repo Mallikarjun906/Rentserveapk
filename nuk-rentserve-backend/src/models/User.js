@@ -27,6 +27,44 @@ const userSchema = new mongoose.Schema(
       default: ""
     },
 
+    phoneCountryCode: {
+      type: String,
+      trim: true,
+      maxlength: 8,
+      default: "+91"
+    },
+
+    phoneNumber: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: ""
+    },
+
+    normalizedPhoneNumber: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
+      default: undefined
+    },
+
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+
+    phoneVerifiedAt: {
+      type: Date,
+      default: null
+    },
+
+    profileCompleted: {
+      type: Boolean,
+      default: false
+    },
+
     profileImage: {
       url: {
         type: String,
@@ -54,6 +92,17 @@ const userSchema = new mongoose.Schema(
     },
 
     approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected", "suspended"],
+      default: function () {
+        return ["provider", "driver", "student"].includes(this.role)
+          ? "pending"
+          : "approved";
+      },
+      index: true
+    },
+
+    registrationStatus: {
       type: String,
       enum: ["pending", "approved", "rejected", "suspended"],
       default: function () {

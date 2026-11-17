@@ -3,6 +3,7 @@ const Booking = require("../models/Booking");
 const Property = require("../models/Property");
 const ServiceListing = require("../models/ServiceListing");
 const ProviderApplication = require("../models/ProviderApplication");
+const ServiceProvider = require("../models/ServiceProvider");
 const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
@@ -15,6 +16,7 @@ const create = asyncHandler(async (req, res) => {
   const {
     propertyId,
     serviceId,
+    providerId,
     bookingType = propertyId ? "property" : "service",
     category,
     serviceCategory,
@@ -27,27 +29,83 @@ const create = asyncHandler(async (req, res) => {
   } = req.body;
 
   // 1. Service Booking Request
-  if (bookingType === "service" || serviceId || category || serviceCategory) {
-    const finalCategory = String(category || serviceCategory || "").trim();
+  if (bookingType === "service" || serviceId || providerId || category || serviceCategory) {
+    const rawCategory = String(category || serviceCategory || "").trim();
     const finalLocation = String(location || req.user.location || "Bagalkot").trim();
     const finalMsg = String(message || details || "").trim();
 
     let targetProviderId = null;
     let eligibleProviders = [];
     let resolvedService = null;
+    let inheritedCategory = "";
 
-    if (serviceId && mongoose.isValidObjectId(serviceId)) {
-      resolvedService = await ServiceListing.findById(serviceId).populate("providerId");
-      if (resolvedService) {
-        targetProviderId = resolvedService.providerId?._id || resolvedService.providerId;
+    // 1A. Direct providerId resolution (User ID, ProviderApplication ID, or ServiceProvider ID)
+    if (providerId && mongoose.isValidObjectId(providerId)) {
+      const pUser = await User.findById(providerId).select("_id role approvalStatus name location");
+      if (pUser && (pUser.role === "provider" || pUser.role === "admin")) {
+        targetProviderId = pUser._id;
+        const app = await ProviderApplication.findOne({ userId: pUser._id, applicationType: "provider" }).select("category");
+        if (app?.category) inheritedCategory = app.category;
+      } else {
+        let app = await ProviderApplication.findById(providerId).select("userId category status");
+        if (!app) {
+          app = await ProviderApplication.findOne({ userId: providerId }).select("userId category status");
+        }
+        if (app?.userId) {
+          targetProviderId = app.userId;
+          if (app.category) inheritedCategory = app.category;
+        } else if (pUser) {
+          targetProviderId = pUser._id;
+        } else {
+          const sp = await ServiceProvider.findById(providerId).select("userId");
+          if (sp?.userId) {
+            targetProviderId = sp.userId;
+          }
+        }
+      }
+
+      if (targetProviderId) {
         if (targetProviderId.toString() === req.user.id) {
-          throw new ApiError(400, "You cannot book your own service listing.");
+          throw new ApiError(400, "You cannot send a booking request to yourself.");
         }
         eligibleProviders = [targetProviderId];
       }
     }
 
-    // If general service request or need to match eligible providers
+    // 1B. ServiceId resolution
+    if (serviceId && mongoose.isValidObjectId(serviceId)) {
+      resolvedService = await ServiceListing.findById(serviceId).populate("providerId");
+      if (resolvedService) {
+        const svcProvId = resolvedService.providerId?._id || resolvedService.providerId;
+        if (!targetProviderId && svcProvId) {
+          targetProviderId = svcProvId;
+          if (targetProviderId.toString() === req.user.id) {
+            throw new ApiError(400, "You cannot book your own service listing.");
+          }
+          eligibleProviders = [targetProviderId];
+        }
+        if (resolvedService.title) inheritedCategory = resolvedService.title;
+      } else if (!targetProviderId) {
+        // Fallback: check if serviceId was sent with a ProviderApplication ID
+        const app = await ProviderApplication.findById(serviceId).select("userId category");
+        if (app?.userId) {
+          targetProviderId = app.userId;
+          if (targetProviderId.toString() === req.user.id) {
+            throw new ApiError(400, "You cannot send a booking request to yourself.");
+          }
+          eligibleProviders = [targetProviderId];
+          if (app.category) inheritedCategory = app.category;
+        }
+      }
+    }
+
+    const finalCategory =
+      (rawCategory && rawCategory !== "General Service" && rawCategory !== "Professional Service" ? rawCategory : "") ||
+      inheritedCategory ||
+      rawCategory ||
+      "Professional Service";
+
+    // 1C. If no direct provider was specified, broadcast to matching approved providers in category/city
     if (eligibleProviders.length === 0 && finalCategory) {
       const catRegex = new RegExp(esc(finalCategory), "i");
       const matchedApps = await ProviderApplication.find({
@@ -70,36 +128,63 @@ const create = asyncHandler(async (req, res) => {
       }
     }
 
-    // Prevent duplicate active pending requests
-    const duplicate = await Booking.findOne({
+    // 1D. Scoped duplicate check: prevents duplicate active bookings for the SAME provider or service
+    const duplicateQuery = {
       customerId: req.user.id,
       bookingType: "service",
-      status: "pending",
-      $or: [
-        ...(serviceId ? [{ serviceId }] : []),
-        ...(finalCategory ? [{ category: finalCategory }] : [])
-      ]
-    });
+      status: { $in: ["pending", "accepted", "in_progress"] },
+    };
+
+    if (targetProviderId) {
+      duplicateQuery.providerId = targetProviderId;
+    } else if (resolvedService?._id) {
+      duplicateQuery.serviceId = resolvedService._id;
+    } else if (finalCategory && finalCategory !== "Professional Service") {
+      duplicateQuery.category = finalCategory;
+    }
+
+    const duplicate = await Booking.findOne(duplicateQuery).select("_id status category createdAt");
 
     if (duplicate) {
-      throw new ApiError(
-        409,
-        "You already have a pending service request for this service. Please wait for provider confirmation."
+      return res.status(409).json(
+        new ApiResponse(
+          409,
+          {
+            existingBookingId: duplicate._id,
+            status: duplicate.status,
+            category: duplicate.category,
+            createdAt: duplicate.createdAt,
+          },
+          "You already have an active service request with this provider. Please wait for provider confirmation."
+        )
       );
     }
+
+    let parsedScheduledDate = null;
+    let scheduledNote = "";
+    if (scheduledDate) {
+      const parsed = new Date(scheduledDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        parsedScheduledDate = parsed;
+      } else {
+        scheduledNote = ` [Scheduled: ${scheduledDate}]`;
+      }
+    }
+
+    const finalCombinedMsg = (finalMsg || "") + scheduledNote;
 
     const booking = await Booking.create({
       customerId: req.user.id,
       providerId: targetProviderId,
       serviceId: resolvedService?._id || null,
       bookingType: "service",
-      category: finalCategory || resolvedService?.title || "Professional Service",
-      serviceCategory: finalCategory || resolvedService?.title || "Professional Service",
+      category: finalCategory,
+      serviceCategory: finalCategory,
       location: finalLocation,
       locationCoordinates: locationCoordinates || undefined,
-      scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
-      message: finalMsg,
-      details: finalMsg,
+      scheduledDate: parsedScheduledDate,
+      message: finalCombinedMsg,
+      details: finalCombinedMsg,
       status: "pending",
       eligibleProviders
     });
@@ -271,6 +356,24 @@ const updateStatus = asyncHandler(async (req, res) => {
     booking.rejectionReason = String(reason || "Declined by owner").trim();
     await booking.save();
     return res.json(new ApiResponse(200, booking, "Booking rejected."));
+  }
+
+  if (status === "in_progress") {
+    if (booking.status !== "accepted") {
+      throw new ApiError(400, "Only accepted bookings can be started.");
+    }
+    booking.status = "in_progress";
+    await booking.save();
+    return res.json(new ApiResponse(200, booking, "Job started. Please coordinate with the customer."));
+  }
+
+  if (status === "completed") {
+    if (!["accepted", "in_progress"].includes(booking.status)) {
+      throw new ApiError(400, "Only active bookings can be completed.");
+    }
+    booking.status = "completed";
+    await booking.save();
+    return res.json(new ApiResponse(200, booking, "Job marked as completed. Earnings record updated."));
   }
 
   booking.status = status;
