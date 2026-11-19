@@ -216,6 +216,15 @@ export default function Layout({ children }) {
           </div>
 
           <div className="footer-col">
+            <b>Legal & Privacy (DPDP)</b>
+            <Link to="/privacy">Privacy Policy</Link>
+            <Link to="/terms">Terms & Conditions</Link>
+            <Link to="/refund">Refund & Cancellation</Link>
+            <Link to="/cookies">Cookie Policy</Link>
+            <Link to="/delete-account" style={{ color: 'var(--red)', fontWeight: 600 }}>Delete Account / Data</Link>
+          </div>
+
+          <div className="footer-col">
             <b>Role Sign In</b>
             <Link to="/login">Customer Login</Link>
             <Link to="/provider/login">Service Provider Login</Link>
@@ -225,7 +234,14 @@ export default function Layout({ children }) {
           </div>
         </div>
 
-        <div className="wrap footer-bottom" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', marginTop: '20px', fontSize: '12px', color: '#94A3B8', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <span>
+            <b>NUK RentServe Operations:</b> Navanagar / Sector 10, Bagalkot, Karnataka – 587102 · Grievance Officer: <a href="mailto:grievance@nukrentserve.com" style={{ color: '#E2E8F0', textDecoration: 'underline' }}>grievance@nukrentserve.com</a>
+          </span>
+          <span>Compliant with Digital Personal Data Protection Act, 2023 & IT Act, 2000</span>
+        </div>
+
+        <div className="wrap footer-bottom" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>
           <span>© {new Date().getFullYear()} NUK RentServe · Built for Communities Across Karnataka</span>
           <span>Security & Role-Based Access Enforced · v2.1</span>
         </div>

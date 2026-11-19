@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import RequireAuth, { PublicPage } from './components/RequireAuth.jsx';
+import CookieBanner from './components/CookieBanner.jsx';
 import Home from './pages/Home.jsx';
 import {
   Login,
@@ -28,6 +29,11 @@ import DriverDashboard from './pages/DriverDashboard.jsx';
 import StudentDashboard from './pages/StudentDashboard.jsx';
 import OwnerDashboard from './pages/OwnerDashboard.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import TermsOfService from './pages/TermsOfService.jsx';
+import RefundPolicy from './pages/RefundPolicy.jsx';
+import CookiePolicy from './pages/CookiePolicy.jsx';
+import DeleteAccount from './pages/DeleteAccount.jsx';
 import { readUser } from './services/api';
 
 function RoleDashboard() {
@@ -53,6 +59,13 @@ export default function App() {
         <Route path="/services/:id" element={<PublicPage><Detail kind="service" /></PublicPage>} />
         <Route path="/transport" element={<PublicPage><Transport /></PublicPage>} />
         <Route path="/transport/:id" element={<PublicPage><Detail kind="transport" /></PublicPage>} />
+
+        {/* Legal & Compliance Routes */}
+        <Route path="/privacy" element={<PublicPage><PrivacyPolicy /></PublicPage>} />
+        <Route path="/terms" element={<PublicPage><TermsOfService /></PublicPage>} />
+        <Route path="/refund" element={<PublicPage><RefundPolicy /></PublicPage>} />
+        <Route path="/cookies" element={<PublicPage><CookiePolicy /></PublicPage>} />
+        <Route path="/delete-account" element={<PublicPage><DeleteAccount /></PublicPage>} />
 
         {/* 1. Distinct Role Registration Routes */}
         <Route path="/register" element={<PublicPage><RegisterHub /></PublicPage>} />
@@ -105,6 +118,7 @@ export default function App() {
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <CookieBanner />
     </Layout>
   );
 }

@@ -1,0 +1,26 @@
+{
+  "sourceDatabase": "nuk_rentserve",
+  "createdAt": "2026-11-17T13:17:50.290Z",
+  "collections": {
+    "servicelistings": 0,
+    "passwordresettokens": 0,
+    "users": 13,
+    "enquiries": 0,
+    "servicecategories": 7,
+    "bookings": 2,
+    "supporttickets": 0,
+    "transportmessages": 0,
+    "phoneotps": 0,
+    "phoneverificationsessions": 0,
+    "providerapplications": 3,
+    "reviews": 0,
+    "auditlogs": 11,
+    "properties": 0,
+    "transportbookings": 0,
+    "notifications": 0,
+    "conversations": 0,
+    "jobapplications": 0,
+    "serviceproviders": 2,
+    "emailotps": 0
+  }
+}

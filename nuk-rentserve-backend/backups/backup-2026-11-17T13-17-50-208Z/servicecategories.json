@@ -1,0 +1,72 @@
+[
+  {
+    "_id": "6ae3511b811dbf48caf2980a",
+    "name": "Carpenter",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:50.202Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "carpenter",
+    "updatedAt": "2026-11-17T12:57:17.944Z"
+  },
+  {
+    "_id": "6ae3511b811dbf48caf2980b",
+    "name": "Plumber",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:50.822Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "plumber",
+    "updatedAt": "2026-11-17T12:57:18.469Z"
+  },
+  {
+    "_id": "6ae3511b811dbf48caf2980c",
+    "name": "Electrician",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:50.882Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "electrician",
+    "updatedAt": "2026-11-17T12:57:18.542Z"
+  },
+  {
+    "_id": "6ae3511c811dbf48caf2980d",
+    "name": "Painter",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:50.983Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "painter",
+    "updatedAt": "2026-11-17T12:57:18.614Z"
+  },
+  {
+    "_id": "6ae3511c811dbf48caf2980e",
+    "name": "Cleaning",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:51.068Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "cleaning",
+    "updatedAt": "2026-11-17T12:57:18.688Z"
+  },
+  {
+    "_id": "6ae3511c811dbf48caf2980f",
+    "name": "Appliance Repair",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:51.222Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "appliance-repair",
+    "updatedAt": "2026-11-17T12:57:18.759Z"
+  },
+  {
+    "_id": "6ae3511c811dbf48caf29810",
+    "name": "Other Services",
+    "__v": 0,
+    "createdAt": "2026-10-29T13:58:51.304Z",
+    "description": "Local service",
+    "isActive": true,
+    "slug": "other-services",
+    "updatedAt": "2026-11-17T12:57:18.830Z"
+  }
+]

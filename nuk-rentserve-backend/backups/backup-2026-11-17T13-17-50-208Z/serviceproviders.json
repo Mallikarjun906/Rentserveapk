@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "6ae551bb9e64483a659f559e",
+    "userId": "6ae551b785a5ef1828384470",
+    "__v": 0,
+    "bio": "Certified domestic & commercial wiring, inverter installation and repairs.",
+    "createdAt": "2026-10-31T02:26:02.053Z",
+    "displayName": "Demo Professional Electrician",
+    "experienceYears": 0,
+    "profileImage": {
+      "url": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80",
+      "publicId": "demo-provider-profile"
+    },
+    "reviewNote": "",
+    "skills": [],
+    "updatedAt": "2026-10-31T02:26:02.053Z",
+    "vehicleImages": [],
+    "verificationStatus": "pending"
+  },
+  {
+    "_id": "6ae551bb9e64483a659f55a0",
+    "userId": "6ae551b785a5ef1828384473",
+    "__v": 0,
+    "bio": "Daily auto rickshaw travel across Bagalkot and Navanagar. Honest meter / Karnataka standard rates.",
+    "createdAt": "2026-10-31T02:26:02.241Z",
+    "displayName": "Demo Auto Driver",
+    "experienceYears": 0,
+    "profileImage": {
+      "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=80",
+      "publicId": "demo-driver-profile"
+    },
+    "reviewNote": "",
+    "skills": [],
+    "updatedAt": "2026-10-31T02:26:02.241Z",
+    "vehicleImages": [
+      {
+        "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=80",
+        "publicId": "demo-driver-auto",
+        "_id": "6ae551ba85a5ef182838447d"
+      }
+    ],
+    "verificationStatus": "pending"
+  }
+]

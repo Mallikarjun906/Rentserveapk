@@ -1,6 +1,7 @@
-// User Login Screen with Continue with Google & Modern Role Selection Cards
+// User Login Screen with Two Visible Methods: "Login with OTP" and "Login with Password"
+// Fully integrated with Backend Phone OTP verification, Google Sign-In & Role Portals
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +22,10 @@ import {
   Eye,
   EyeOff,
   LogIn,
+  Smartphone,
+  KeyRound,
+  RotateCw,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
@@ -28,9 +33,11 @@ import { Logo } from '../../components/common/Logo';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
+import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { checkBackendConnectivity, AppApiError, ApiErrorKind } from '../../api/client';
+import { isValidPhone } from '../../utils/validators';
 
 interface LoginScreenProps {
   onRegisterCustomer: () => void;
@@ -52,19 +59,110 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onSuccess,
 }) => {
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, loginWithOtp } = useAuth();
   const { t } = useLocalization();
 
+  // Active Login Method Tab: 'otp' | 'password'
+  const [activeTab, setActiveTab] = useState<'otp' | 'password'>('otp');
+
+  // Password Login State
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // OTP Login State
+  const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+
+  // Google & Global States
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [errorKind, setErrorKind] = useState<ApiErrorKind | null>(null);
   const [checkingConnection, setCheckingConnection] = useState(false);
 
-  const handleLogin = async () => {
+  // Resend Countdown Timer
+  useEffect(() => {
+    let interval: any = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
+  // Handle Send OTP
+  const handleSendOtp = async () => {
+    if (otpLoading) return;
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    if (!isValidPhone(cleanPhone)) {
+      setError(t('Enter a valid 10-digit Indian mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
+      setErrorKind(null);
+      return;
+    }
+
+    setError('');
+    setErrorKind(null);
+    setOtpLoading(true);
+
+    try {
+      const response = await authApi.sendOtp(cleanPhone, 'login');
+      setOtpSent(true);
+      setResendTimer(response.resendAfterSeconds || 60);
+      if (response.devOtp) {
+        setDevOtp(response.devOtp);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('Failed to send OTP. Please try again.', 'OTP ಕಳುಹಿಸಲು ವಿಫಲವಾಗಿದೆ.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Handle Verify OTP and Login
+  const handleVerifyOtpAndLogin = async () => {
+    if (otpLoading) return;
+
+    if (!otpCode.trim() || otpCode.trim().length !== 6) {
+      setError(t('Please enter the 6-digit OTP code', 'ದಯವಿಟ್ಟು 6-ಅಂಕಿಯ OTP ಕೋಡ್ ನಮೂದಿಸಿ'));
+      setErrorKind(null);
+      return;
+    }
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    setError('');
+    setErrorKind(null);
+    setOtpLoading(true);
+
+    try {
+      const loggedIn = await loginWithOtp({
+        phone: cleanPhone,
+        otp: otpCode.trim(),
+        role: 'customer',
+      });
+      onSuccess(loggedIn);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || t('Invalid OTP. Please check and try again.', 'ತಪ್ಪಾದ OTP. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.');
+      setError(msg);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Handle Password Login
+  const handlePasswordLogin = async () => {
     if (loading || checkingConnection) return;
 
     if (!identifier.trim()) {
@@ -136,14 +234,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   const handleRetry = async () => {
-    if (checkingConnection || loading) return;
+    if (checkingConnection || loading || otpLoading) return;
 
-    if (!identifier.trim() || !password) {
-      setError(t('Please enter your login details', 'ದಯವಿಟ್ಟು ಲಾಗಿನ್ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ'));
-      return;
+    if (activeTab === 'password') {
+      if (!identifier.trim() || !password) {
+        setError(t('Please enter your login details', 'ದಯವಿಟ್ಟು ಲಾಗಿನ್ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ'));
+        return;
+      }
+    } else {
+      if (!phone.trim()) {
+        setError(t('Please enter your mobile number', 'ದಯವಿಟ್ಟು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ'));
+        return;
+      }
     }
 
-    // If it was a network or server issue, do a live backend ping first
     if (
       errorKind === 'NO_INTERNET' ||
       errorKind === 'COLD_START_TIMEOUT' ||
@@ -176,57 +280,51 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           return;
         }
 
-        // Server is verified healthy! Proceed to login immediately
         setError('');
-        await handleLogin();
+        setErrorKind(null);
+        if (activeTab === 'password') {
+          await handlePasswordLogin();
+        } else if (otpSent) {
+          await handleVerifyOtpAndLogin();
+        } else {
+          await handleSendOtp();
+        }
       } catch {
-        await handleLogin();
+        setError(t('Server is unreachable. Please try again later.', 'ಸರ್ವರ್ ಸಂಪರ್ಕ ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ.'));
       } finally {
         setCheckingConnection(false);
       }
     } else {
-      // Re-trigger standard login attempt
-      await handleLogin();
+      if (activeTab === 'password') {
+        await handlePasswordLogin();
+      } else if (otpSent) {
+        await handleVerifyOtpAndLogin();
+      } else {
+        await handleSendOtp();
+      }
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
+  // Google OAuth
+  const handleGoogleSignIn = async () => {
+    if (googleLoading || loading || otpLoading) return;
     setGoogleLoading(true);
-
-    const googleClientId =
-      process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
-      process.env.VITE_GOOGLE_CLIENT_ID ||
-      '';
-
-    if (!googleClientId) {
-      setGoogleLoading(false);
-      Alert.alert(
-        t('Google Sign-In Configuration', 'ಗೂಗಲ್ ಲಾಗಿನ್ ಸಂರಚನೆ'),
-        t(
-          'Google Sign-In requires an active EXPO_PUBLIC_GOOGLE_CLIENT_ID in your configuration. Please sign in securely with your email/mobile and password, or add your Google Client ID to enable 1-tap sign-in.',
-          'ಗೂಗಲ್ ಲಾಗಿನ್ ಸಕ್ರಿಯಗೊಳಿಸಲು EXPO_PUBLIC_GOOGLE_CLIENT_ID ಅಗತ್ಯವಿದೆ. ದಯವಿಟ್ಟು ಮೊಬೈಲ್/ಇಮೇಲ್ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ಬಳಸಿ ಲಾಗಿನ್ ಆಗಿ.'
-        )
-      );
-      return;
-    }
+    setError('');
 
     try {
-      const gThis = typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
-      if (Platform.OS === 'web' && gThis?.google?.accounts?.id) {
-        gThis.google.accounts.id.prompt(async (notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setGoogleLoading(false);
-          }
-        });
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          t('Google Sign-In', 'ಗೂಗಲ್ ಸೈನ್-ಇನ್'),
+          t('On Web, please use the Google Sign-In button on the NUK RentServe website.', 'ವೆಬ್ ಆವೃತ್ತಿಯಲ್ಲಿ ಸೈನ್ ಇನ್ ಮಾಡಿ.')
+        );
       } else {
         Alert.alert(
-          'Google OAuth',
-          'Connecting to Google Identity Services with Client ID: ' + googleClientId.slice(0, 16) + '…'
+          t('Google Sign-In', 'ಗೂಗಲ್ ಸೈನ್-ಇನ್'),
+          t('Please sign in using your verified Mobile Number or Password below.', 'ದಯವಿಟ್ಟು ಕೆಳಗಿನ ಮೊಬೈಲ್ OTP ಅಥವಾ ಪಾಸ್‌ವರ್ಡ್ ಬಳಸಿ.')
         );
       }
     } catch (err: any) {
-      setError(err.message || 'Google sign-in was cancelled or failed.');
+      setError(err.message || t('Google Sign-In unavailable.', 'ಗೂಗಲ್ ಸೈನ್-ಇನ್ ಲಭ್ಯವಿಲ್ಲ.'));
     } finally {
       setGoogleLoading(false);
     }
@@ -249,11 +347,50 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <Text style={styles.brandTitle}>NUK RentServe</Text>
             <Text style={styles.title}>{t('loginTitle', 'ಸ್ವಾಗತ')}</Text>
             <Text style={styles.sub}>
-              {t('loginSub', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್ ಮೂಲಕ ಲಾಗಿನ್ ಆಗಿ')}
+              {t('loginSub', 'ಮೊಬೈಲ್ OTP ಅಥವಾ ಪಾಸ್‌ವರ್ಡ್ ಮೂಲಕ ಲಾಗಿನ್ ಆಗಿ')}
             </Text>
           </View>
 
-          {/* Error Banner with Genuine Connectivity Verification */}
+          {/* Two Visible Method Tabs */}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === 'otp' && styles.tabBtnActive]}
+              onPress={() => {
+                setActiveTab('otp');
+                setError('');
+              }}
+              activeOpacity={0.8}
+            >
+              <Smartphone
+                size={18}
+                color={activeTab === 'otp' ? COLORS.white : COLORS.mute}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.tabText, activeTab === 'otp' && styles.tabTextActive]}>
+                {t('Login with OTP', 'ಮೊಬೈಲ್ OTP ಲಾಗಿನ್')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === 'password' && styles.tabBtnActive]}
+              onPress={() => {
+                setActiveTab('password');
+                setError('');
+              }}
+              activeOpacity={0.8}
+            >
+              <KeyRound
+                size={18}
+                color={activeTab === 'password' ? COLORS.white : COLORS.mute}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.tabText, activeTab === 'password' && styles.tabTextActive]}>
+                {t('Login with Password', 'ಪಾಸ್‌ವರ್ಡ್ ಲಾಗಿನ್')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Error Banner with Connectivity Verification */}
           {error ? (
             <ErrorBanner
               message={error}
@@ -265,51 +402,155 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
           {/* Main Form Card */}
           <View style={[styles.formCard, SHADOWS.card]}>
-            <Input
-              label={t('Mobile Number or Email', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್')}
-              placeholder="e.g. 9845012345 or user@example.com"
-              value={identifier}
-              onChangeText={setIdentifier}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+            {activeTab === 'otp' ? (
+              /* TAB 1: LOGIN WITH OTP */
+              <View>
+                <View style={styles.phoneInputRow}>
+                  <View style={styles.countryCodeBox}>
+                    <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label={t('Mobile Number', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ')}
+                      placeholder="9845012345"
+                      value={phone}
+                      onChangeText={(val) => {
+                        setPhone(val);
+                        if (otpSent) setOtpSent(false);
+                      }}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      editable={!otpSent}
+                    />
+                  </View>
+                </View>
 
-            <Input
-              label={t('password', 'ಗುಪ್ತಪದ (Password)')}
-              placeholder="••••••••"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              rightIcon={
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color={COLORS.mute} />
-                  ) : (
-                    <Eye size={20} color={COLORS.mute} />
-                  )}
+                {!otpSent ? (
+                  <Button
+                    title={t('Send OTP', 'OTP ಕಳುಹಿಸಿ')}
+                    onPress={handleSendOtp}
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    loading={otpLoading}
+                    icon={<Smartphone size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+                    style={styles.submitBtn}
+                  />
+                ) : (
+                  <View style={styles.otpVerifySection}>
+                    <View style={styles.otpHeaderRow}>
+                      <Text style={styles.otpSentLabel}>
+                        {t('OTP sent to +91 ', '+91 ಗೆ OTP ಕಳುಹಿಸಲಾಗಿದೆ ')}{phone}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setOtpSent(false);
+                          setOtpCode('');
+                          setDevOtp(null);
+                        }}
+                      >
+                        <Text style={styles.changePhoneText}>{t('Change', 'ಬದಲಾಯಿಸಿ')}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {devOtp && (
+                      <TouchableOpacity
+                        style={styles.devOtpBadge}
+                        onPress={() => setOtpCode(devOtp)}
+                      >
+                        <Text style={styles.devOtpText}>
+                          🛠️ Test Code: <Text style={{ fontWeight: '900' }}>{devOtp}</Text> (Tap to fill)
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <Input
+                      label={t('Enter 6-Digit OTP', '6-ಅಂಕಿಯ OTP ನಮೂದಿಸಿ')}
+                      placeholder="••••••"
+                      value={otpCode}
+                      onChangeText={setOtpCode}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      style={{ letterSpacing: 8, textAlign: 'center', fontSize: 20, fontWeight: '800' }}
+                    />
+
+                    <View style={styles.resendRow}>
+                      {resendTimer > 0 ? (
+                        <Text style={styles.resendTimerText}>
+                          {t('Resend OTP in ', 'ಮರುಕಳುಹಿಸಿ ')}{resendTimer}s
+                        </Text>
+                      ) : (
+                        <TouchableOpacity onPress={handleSendOtp} disabled={otpLoading}>
+                          <Text style={styles.resendActionText}>
+                            {t('Resend OTP', 'ಮತ್ತೆ OTP ಕಳುಹಿಸಿ')}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    <Button
+                      title={t('Verify & Login', 'ದೃಢೀಕರಿಸಿ ಲಾಗಿನ್ ಆಗಿ')}
+                      onPress={handleVerifyOtpAndLogin}
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      loading={otpLoading}
+                      icon={<CheckCircle2 size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+                      style={styles.submitBtn}
+                    />
+                  </View>
+                )}
+              </View>
+            ) : (
+              /* TAB 2: LOGIN WITH PASSWORD */
+              <View>
+                <Input
+                  label={t('Mobile Number or Email', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಇಮೇಲ್')}
+                  placeholder="9845012345 or user@example.com"
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+
+                <Input
+                  label={t('password', 'ಗುಪ್ತಪದ (Password)')}
+                  placeholder="••••••••"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  rightIcon={
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color={COLORS.mute} />
+                      ) : (
+                        <Eye size={20} color={COLORS.mute} />
+                      )}
+                    </TouchableOpacity>
+                  }
+                />
+
+                <TouchableOpacity onPress={onForgotPassword} style={styles.forgotBtn}>
+                  <Text style={styles.forgotText}>
+                    {t('forgotPassword', 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?')}
+                  </Text>
                 </TouchableOpacity>
-              }
-            />
 
-            <TouchableOpacity onPress={onForgotPassword} style={styles.forgotBtn}>
-              <Text style={styles.forgotText}>
-                {t('forgotPassword', 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?')}
-              </Text>
-            </TouchableOpacity>
-
-            <Button
-              title={t('Sign In', 'ಲಾಗಿನ್')}
-              onPress={handleLogin}
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={loading}
-              icon={<LogIn size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
-              style={styles.submitBtn}
-            />
+                <Button
+                  title={t('Sign In', 'ಲಾಗಿನ್')}
+                  onPress={handlePasswordLogin}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  loading={loading}
+                  icon={<LogIn size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+                  style={styles.submitBtn}
+                />
+              </View>
+            )}
 
             {/* Divider */}
             <View style={styles.dividerRow}>
@@ -318,59 +559,46 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <View style={styles.dividerLine} />
             </View>
 
-            {/* CONTINUE WITH GOOGLE */}
+            {/* Google Authentication */}
             <TouchableOpacity
-              style={[styles.googleBtn, SHADOWS.card]}
-              onPress={handleGoogleLogin}
-              disabled={googleLoading || loading}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Continue with Google"
+              style={styles.googleBtn}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading || loading || otpLoading}
+              activeOpacity={0.8}
             >
-              {googleLoading ? (
-                <ActivityIndicator size="small" color={COLORS.brand} />
-              ) : (
-                <View style={styles.googleContent}>
-                  <View style={styles.googleGContainer}>
-                    <Text style={styles.googleGText}>G</Text>
-                  </View>
-                  <Text style={styles.googleBtnText}>
-                    {t('Continue with Google', 'Google ಮೂಲಕ ಮುಂದುವರಿಯಿರಿ')}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.googleContent}>
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color="#4285F4" />
+                ) : (
+                  <>
+                    <View style={styles.googleGContainer}>
+                      <Text style={styles.googleGText}>G</Text>
+                    </View>
+                    <Text style={styles.googleBtnText}>
+                      {t('Continue with Google', 'ಗೂಗಲ್ ಮೂಲಕ ಮುಂದುವರಿಯಿರಿ')}
+                    </Text>
+                  </>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* Registration Options Card */}
+          {/* Quick Registration Hub */}
           <View style={[styles.regSection, SHADOWS.card]}>
             <Text style={styles.regTitle}>
-              {t('New to NUK RentServe? Select Registration:', 'ಹೊಸ ಬಳಕೆದಾರರೇ? ನೋಂದಣಿ ಆಯ್ಕೆಮಾಡಿ:')}
+              {t('New to NUK RentServe? Create your account:', 'ಹೊಸ ಬಳಕೆದಾರರೇ? ಖಾತೆಯನ್ನು ರಚಿಸಿ:')}
             </Text>
-
             <View style={styles.regGrid}>
               <TouchableOpacity
                 style={styles.regTile}
                 onPress={onRegisterCustomer}
                 activeOpacity={0.7}
               >
-                <View style={[styles.regTileIconBox, { backgroundColor: '#FEE2E2' }]}>
-                  <User size={20} color={COLORS.brand} />
+                <View style={[styles.regTileIconBox, { backgroundColor: '#EEF2FF' }]}>
+                  <User size={18} color="#4F46E5" />
                 </View>
                 <Text style={styles.regTileTitle}>{t('Customer', 'ಗ್ರಾಹಕ')}</Text>
-                <Text style={styles.regTileSub}>Rentals & rides</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.regTile}
-                onPress={onRegisterDriver}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.regTileIconBox, { backgroundColor: '#FEF3C7' }]}>
-                  <Car size={20} color={COLORS.warn} />
-                </View>
-                <Text style={styles.regTileTitle}>{t('Driver', 'ಚಾಲಕ')}</Text>
-                <Text style={styles.regTileSub}>Auto / Car / Van</Text>
+                <Text style={styles.regTileSub}>{t('Rent & Hire', 'ಬಾಡಿಗೆ/ಸೇವೆ')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -378,11 +606,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 onPress={onRegisterProvider}
                 activeOpacity={0.7}
               >
-                <View style={[styles.regTileIconBox, { backgroundColor: '#E0F2FE' }]}>
-                  <Wrench size={20} color={COLORS.info} />
+                <View style={[styles.regTileIconBox, { backgroundColor: '#ECFDF5' }]}>
+                  <Wrench size={18} color="#059669" />
                 </View>
-                <Text style={styles.regTileTitle}>{t('Provider', 'ಸೇವೆ')}</Text>
-                <Text style={styles.regTileSub}>Technician</Text>
+                <Text style={styles.regTileTitle}>{t('Provider', 'ಪೂರೈಕೆದಾರ')}</Text>
+                <Text style={styles.regTileSub}>{t('Trades & Work', 'ಸೇವಾ ಕೆಲಸ')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.regTile}
+                onPress={onRegisterDriver}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.regTileIconBox, { backgroundColor: '#FFFBEB' }]}>
+                  <Car size={18} color="#D97706" />
+                </View>
+                <Text style={styles.regTileTitle}>{t('Driver', 'ಚಾಲಕ')}</Text>
+                <Text style={styles.regTileSub}>{t('Auto & Car', 'ಆಟೋ/ಕಾರು')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -390,11 +630,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 onPress={onRegisterStudent}
                 activeOpacity={0.7}
               >
-                <View style={[styles.regTileIconBox, { backgroundColor: '#E5F4EC' }]}>
-                  <GraduationCap size={20} color={COLORS.ok} />
+                <View style={[styles.regTileIconBox, { backgroundColor: '#FDF2F8' }]}>
+                  <GraduationCap size={18} color="#DB2777" />
                 </View>
                 <Text style={styles.regTileTitle}>{t('Student', 'ವಿದ್ಯಾರ್ಥಿ')}</Text>
-                <Text style={styles.regTileSub}>Partner</Text>
+                <Text style={styles.regTileSub}>{t('Partner', 'ಪಾಲುದಾರ')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -420,10 +660,38 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
   scroll: { padding: 20, justifyContent: 'center', flexGrow: 1, paddingBottom: 32 },
-  header: { alignItems: 'center', marginBottom: 18 },
-  brandTitle: { fontSize: 13, fontWeight: '800', color: COLORS.brand, marginTop: 8, letterSpacing: 0.5 },
+  header: { alignItems: 'center', marginBottom: 14 },
+  brandTitle: { fontSize: 13, fontWeight: '800', color: COLORS.brand, marginTop: 6, letterSpacing: 0.5 },
   title: { fontSize: 24, fontWeight: '900', color: COLORS.ink, marginTop: 4 },
   sub: { fontSize: 13, color: COLORS.mute, marginTop: 4, textAlign: 'center' },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E7EB',
+    borderRadius: RADIUS.lg,
+    padding: 4,
+    marginBottom: 16,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+  },
+  tabBtnActive: {
+    backgroundColor: COLORS.brand,
+    ...SHADOWS.card,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.mute,
+  },
+  tabTextActive: {
+    color: COLORS.white,
+    fontWeight: '800',
+  },
   formCard: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
@@ -431,6 +699,75 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.line,
     marginBottom: 16,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  countryCodeBox: {
+    height: 48,
+    marginTop: 26,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.paper,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countryCodeText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
+  otpVerifySection: {
+    marginTop: 4,
+  },
+  otpHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  otpSentLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.ink,
+  },
+  changePhoneText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.brand,
+  },
+  devOtpBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: RADIUS.md,
+    padding: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  devOtpText: {
+    fontSize: 12,
+    color: '#92400E',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  resendTimerText: {
+    fontSize: 13,
+    color: COLORS.mute,
+    fontWeight: '600',
+  },
+  resendActionText: {
+    fontSize: 13,
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 14 },
   forgotText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },

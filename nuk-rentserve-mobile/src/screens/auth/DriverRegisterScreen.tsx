@@ -1,6 +1,7 @@
-// Driver Registration Screen (/register/driver) with Real Document Uploads & Lucide Icons
+// Driver Registration Screen (/register/driver) with Mandatory Phone OTP Verification
+// Fully integrated with Backend Phone Verification Session, Real Document Uploads & Lucide Icons
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +20,8 @@ import {
   Eye,
   EyeOff,
   UserPlus,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
@@ -64,6 +67,15 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
   const [regNumber, setRegNumber] = useState('');
   const [dlNumber, setDlNumber] = useState('');
 
+  // Phone OTP Verification State
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+
   // Real Upload Files
   const [profileImage, setProfileImage] = useState<UploadFile | null>(null);
   const [dlDoc, setDlDoc] = useState<UploadFile | null>(null);
@@ -77,13 +89,94 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
   const [error, setError] = useState('');
   const [submittedApp, setSubmittedApp] = useState(false);
 
+  // 60-Second Resend Countdown Timer
+  useEffect(() => {
+    let interval: any = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
+  // Handle Send OTP
+  const handleSendOtp = async () => {
+    if (otpLoading) return;
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    if (!isValidPhone(cleanPhone)) {
+      setError(t('Enter a valid 10-digit Indian mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
+      return;
+    }
+
+    setError('');
+    setOtpLoading(true);
+
+    try {
+      const response = await authApi.sendOtp(cleanPhone, 'driver-registration', 'driver');
+      setOtpSent(true);
+      setResendTimer(response.resendAfterSeconds || 60);
+      if (response.devOtp) {
+        setDevOtp(response.devOtp);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('Failed to send OTP. Please try again.', 'OTP ಕಳುಹಿಸಲು ವಿಫಲವಾಗಿದೆ.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Handle Verify OTP
+  const handleVerifyOtp = async () => {
+    if (otpLoading) return;
+
+    if (!otpCode.trim() || otpCode.trim().length !== 6) {
+      setError(t('Please enter the 6-digit OTP code', 'ದಯವಿಟ್ಟು 6-ಅಂಕಿಯ OTP ಕೋಡ್ ನಮೂದಿಸಿ'));
+      return;
+    }
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    setError('');
+    setOtpLoading(true);
+
+    try {
+      const response = await authApi.verifyOtp(cleanPhone, otpCode.trim(), 'driver-registration');
+      if (response.success && response.verificationToken) {
+        setPhoneVerified(true);
+        setVerificationToken(response.verificationToken);
+        setOtpSent(false);
+      } else {
+        setError(response.message || t('Invalid OTP. Please try again.', 'ತಪ್ಪಾದ OTP.'));
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('OTP verification failed.', 'OTP ದೃಢೀಕರಣ ವಿಫಲವಾಗಿದೆ.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResetPhone = () => {
+    setPhoneVerified(false);
+    setVerificationToken(null);
+    setOtpSent(false);
+    setOtpCode('');
+    setDevOtp(null);
+  };
+
   const handleRegister = async () => {
     if (!fullName.trim() || fullName.trim().length < 3) {
       setError(t('Please enter your full name as on Driving Licence', 'ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಪ್ರಕಾರ ಪೂರ್ಣ ಹೆಸರು ನಮೂದಿಸಿ'));
       return;
     }
-    if (!isValidPhone(phone)) {
-      setError(t('Enter a valid 10-digit mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
+    if (!phoneVerified || !verificationToken) {
+      setError(t('Mobile OTP verification is mandatory. Please verify your number.', 'ಮೊಬೈಲ್ OTP ಪರಿಶೀಲನೆ ಕಡ್ಡಾಯವಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.'));
       return;
     }
     if (!isValidEmail(email)) {
@@ -125,6 +218,9 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       return;
     }
 
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
     setError('');
     setLoading(true);
 
@@ -132,7 +228,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       const formData = new FormData();
       formData.append('fullName', fullName.trim());
       formData.append('email', email.trim().toLowerCase());
-      formData.append('phone', phone.trim());
+      formData.append('phone', cleanPhone);
       formData.append('password', password);
       formData.append('address', address.trim() || 'Bagalkot');
       formData.append('city', city.trim());
@@ -141,6 +237,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       formData.append('vehicleRegistrationNumber', regNumber.trim());
       formData.append('terms', 'true');
       formData.append('consent', 'true');
+      formData.append('verificationToken', verificationToken);
 
       if (profileImage) {
         await appendFileToFormData(formData, 'profileImage', profileImage);
@@ -159,10 +256,9 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
       }
 
       await authApi.registerDriver(formData);
-      await login(email.trim().toLowerCase(), password);
       setSubmittedApp(true);
     } catch (err: any) {
-      setError(err.message || 'Driver registration failed. Please check inputs.');
+      setError(err.response?.data?.message || err.message || 'Driver registration failed. Please check your documents.');
     } finally {
       setLoading(false);
     }
@@ -172,23 +268,23 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
     return (
       <View style={[styles.root, { paddingBottom: insets.bottom }]}>
         <Header title={t('Application Submitted', 'ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ')} />
-        <ScrollView contentContainerStyle={styles.successScroll}>
+        <ScrollView contentContainerStyle={styles.scroll}>
           <View style={[styles.successBox, SHADOWS.card]}>
             <View style={styles.clockCircle}>
               <Clock size={40} color={COLORS.warn} />
             </View>
             <Badge tone="warn" label={t('Pending Verification', 'ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ')} />
             <Text style={styles.successTitle}>
-              {t('Driver Application Submitted!', 'ಚಾಲಕರ ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ!')}
+              {t('Driver Application Under Review!', 'ಚಾಲಕರ ಅರ್ಜಿ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ!')}
             </Text>
             <Text style={styles.successSub}>
               {t(
-                'Our administration team in Bagalkot will review your Driving Licence and Vehicle RC within 24 hours. Transport booking dispatch will be enabled upon administrator approval.',
-                'ನಮ್ಮ ಆಡಳಿತ ತಂಡವು 24 ಗಂಟೆಗಳ ಒಳಗೆ ನಿಮ್ಮ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಮತ್ತು ಆರ್‌ಸಿಯನ್ನು ಪರಿಶೀಲಿಸುತ್ತದೆ. ಅನುಮೋದನೆಯ ನಂತರ ಪ್ರಯಾಣ ಸೇವೆ ಸಕ್ರಿಯಗೊಳ್ಳುತ್ತದೆ.'
+                'Our transport safety team will verify your Driving Licence and Vehicle RC details. Once verified, you will be able to go online, accept customer trips and track earnings.',
+                'ನಮ್ಮ ಸಾರಿಗೆ ತಂಡವು ನಿಮ್ಮ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಮತ್ತು ವಾಹನ ಆರ್‌ಸಿ ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸುತ್ತದೆ. ಅನುಮೋದನೆಯ ನಂತರ ಪ್ರಯಾಣಗಳನ್ನು ಸ್ವೀಕರಿಸಬಹುದು.'
               )}
             </Text>
             <Button
-              title={t('Go to Driver Dashboard', 'ಚಾಲಕರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹೋಗಿ')}
+              title={t('Go to Driver Dashboard', 'ಡ್ರೈವರ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹೋಗಿ')}
               onPress={onSuccess}
               variant="primary"
               size="lg"
@@ -242,14 +338,107 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
               onChangeText={setFullName}
             />
 
-            <Input
-              label={t('Mobile Number', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ')}
-              placeholder="10-digit mobile"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              prefix="+91"
-            />
+            {/* MANDATORY PHONE OTP VERIFICATION */}
+            <View style={styles.phoneSection}>
+              <View style={styles.phoneInputRow}>
+                <View style={styles.countryCodeBox}>
+                  <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label={t('Mobile Number (Mandatory OTP Verification)', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ (OTP ಕಡ್ಡಾಯ)')}
+                    placeholder="10-digit mobile"
+                    value={phone}
+                    onChangeText={(val) => {
+                      setPhone(val);
+                      if (phoneVerified) handleResetPhone();
+                    }}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    editable={!phoneVerified}
+                  />
+                </View>
+              </View>
+
+              {phoneVerified ? (
+                <View style={styles.verifiedBadge}>
+                  <CheckCircle2 size={18} color="#059669" style={{ marginRight: 6 }} />
+                  <Text style={styles.verifiedText}>
+                    {t('Mobile Number Verified: +91 ', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ದೃಢೀಕರಿಸಲಾಗಿದೆ: +91 ')}{phone}
+                  </Text>
+                  <TouchableOpacity onPress={handleResetPhone} style={styles.changeBtn}>
+                    <Text style={styles.changeBtnText}>{t('Change', 'ಬದಲಾಯಿಸಿ')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : !otpSent ? (
+                <Button
+                  title={t('Verify Mobile with OTP', 'OTP ಮೂಲಕ ಮೊಬೈಲ್ ದೃಢೀಕರಿಸಿ')}
+                  onPress={handleSendOtp}
+                  variant="outline"
+                  size="md"
+                  fullWidth
+                  loading={otpLoading}
+                  icon={<Smartphone size={16} color={COLORS.brand} style={{ marginRight: 6 }} />}
+                  style={{ marginTop: 8 }}
+                />
+              ) : (
+                <View style={styles.otpVerifyBox}>
+                  <View style={styles.otpHeaderRow}>
+                    <Text style={styles.otpSentLabel}>
+                      {t('OTP code sent to +91 ', '+91 ಗೆ OTP ಕಳುಹಿಸಲಾಗಿದೆ ')}{phone}
+                    </Text>
+                    <TouchableOpacity onPress={handleResetPhone}>
+                      <Text style={styles.changeBtnText}>{t('Change Number', 'ಸಂಖ್ಯೆ ಬದಲಾಯಿಸಿ')}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {devOtp && (
+                    <TouchableOpacity
+                      style={styles.devOtpBadge}
+                      onPress={() => setOtpCode(devOtp)}
+                    >
+                      <Text style={styles.devOtpText}>
+                        🛠️ Test Code: <Text style={{ fontWeight: '900' }}>{devOtp}</Text> (Tap to fill)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <Input
+                    label={t('Enter 6-Digit OTP', '6-ಅಂಕಿಯ OTP ನಮೂದಿಸಿ')}
+                    placeholder="••••••"
+                    value={otpCode}
+                    onChangeText={setOtpCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    style={{ letterSpacing: 8, textAlign: 'center', fontSize: 18, fontWeight: '800' }}
+                  />
+
+                  <View style={styles.resendRow}>
+                    {resendTimer > 0 ? (
+                      <Text style={styles.resendTimerText}>
+                        {t('Resend OTP in ', 'ಮರುಕಳುಹಿಸಿ ')}{resendTimer}s
+                      </Text>
+                    ) : (
+                      <TouchableOpacity onPress={handleSendOtp} disabled={otpLoading}>
+                        <Text style={styles.resendActionText}>
+                          {t('Resend OTP', 'ಮತ್ತೆ OTP ಕಳುಹಿಸಿ')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <Button
+                    title={t('Confirm OTP Code', 'OTP ಕೋಡ್ ದೃಢೀಕರಿಸಿ')}
+                    onPress={handleVerifyOtp}
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    loading={otpLoading}
+                    icon={<CheckCircle2 size={16} color={COLORS.white} style={{ marginRight: 6 }} />}
+                  />
+                </View>
+              )}
+            </View>
 
             <Input
               label={t('Email Address', 'ಇಮೇಲ್ ವಿಳಾಸ')}
@@ -355,8 +544,8 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
             />
 
             <DocumentUploader
-              label={t('Driving Licence (DL)', 'ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್')}
-              description="Front & back or clear copy (PDF, JPG, PNG)"
+              label={t('Driving Licence Document', 'ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್')}
+              description="Clear photo or PDF of driving licence"
               file={dlDoc}
               onFileSelect={setDlDoc}
               required
@@ -364,22 +553,22 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
             />
 
             <DocumentUploader
-              label={t('Vehicle RC Document', 'ವಾಹನ ಆರ್‌ಸಿ')}
-              description="Registration Certificate copy (PDF, JPG, PNG)"
+              label={t('Vehicle RC / Registration Certificate', 'ವಾಹನ ಆರ್‌ಸಿ')}
+              description="Clear photo or PDF of registration certificate"
               file={rcDoc}
               onFileSelect={setRcDoc}
               uploadState={loading ? 'uploading' : rcDoc ? 'selected' : 'idle'}
             />
 
             <DocumentUploader
-              label={t('Address Proof Document', 'ವಿಳಾಸ ಪುರಾವೆ')}
-              description="Aadhaar, Voter ID, or Utility Bill (PDF, JPG, PNG)"
+              label={t('Address Proof / Aadhaar Document', 'ವಿಳಾಸ ಪುರಾವೆ / ಆಧಾರ್')}
+              description="Aadhaar or local address verification document"
               file={addressDoc}
               onFileSelect={setAddressDoc}
               uploadState={loading ? 'uploading' : addressDoc ? 'selected' : 'idle'}
             />
 
-            {/* Consent & Terms Checkboxes */}
+            {/* Checkboxes */}
             <TouchableOpacity
               style={styles.checkboxRow}
               onPress={() => setConsent(!consent)}
@@ -390,8 +579,8 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
               </View>
               <Text style={styles.checkboxLabel}>
                 {t(
-                  'I consent to official verification of my Driving Licence & Vehicle RC for public passenger and goods transport.',
-                  'ನನ್ನ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಮತ್ತು ವಾಹನ ಆರ್‌ಸಿ ಪರಿಶೀಲನೆಗೆ ನಾನು ಒಪ್ಪಿಗೆ ನೀಡುತ್ತೇನೆ.'
+                  'I give consent to NUK RentServe to verify my Driving Licence and Vehicle registration with official transport authorities.',
+                  'ನನ್ನ ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್ ಪರಿಶೀಲನೆಗೆ ನಾನು ಒಪ್ಪಿಗೆ ನೀಡುತ್ತೇನೆ.'
                 )}
               </Text>
             </TouchableOpacity>
@@ -405,7 +594,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
                 {terms ? <Check size={14} color={COLORS.white} strokeWidth={3} /> : null}
               </View>
               <Text style={styles.checkboxLabel}>
-                {t('I accept NUK RentServe Driver Partner', 'ನಾನು ಒಪ್ಪುತ್ತೇನೆ')}{' '}
+                {t('I agree to NUK RentServe Driver Partner', 'ನಾನು ಒಪ್ಪುತ್ತೇನೆ')}{' '}
                 <Text style={styles.termsLink} onPress={onReadTerms}>
                   {t('Terms & Conditions', 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು')}
                 </Text>
@@ -413,7 +602,7 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
             </TouchableOpacity>
 
             <Button
-              title={t('Submit Driver Application', 'ಚಾಲಕರ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ')}
+              title={t('Submit Driver Application', 'ಅರ್ಜಿ ಸಲ್ಲಿಸಿ')}
               onPress={handleRegister}
               variant="primary"
               size="lg"
@@ -438,40 +627,136 @@ export const DriverRegisterScreen: React.FC<DriverRegisterScreenProps> = ({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 36 },
-  header: { alignItems: 'center', marginBottom: 14 },
-  title: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 8 },
+  scroll: { padding: 20, flexGrow: 1, paddingBottom: 40 },
+  header: { alignItems: 'center', marginBottom: 16 },
+  title: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 4 },
   noticeBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
     borderWidth: 1,
-    borderColor: '#FDE68A',
     borderRadius: RADIUS.md,
     padding: 12,
     marginBottom: 16,
   },
   noticeText: {
-    fontSize: 12,
-    color: '#92400E',
-    fontWeight: '600',
     flex: 1,
-    lineHeight: 17,
+    fontSize: 12,
+    color: '#991B1B',
+    lineHeight: 18,
   },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
-    padding: 18,
+    padding: 20,
     borderWidth: 1.5,
     borderColor: COLORS.line,
   },
   sectionHeader: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.brand,
+    color: COLORS.ink,
+    marginTop: 16,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  phoneSection: {
+    marginBottom: 14,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  countryCodeBox: {
+    height: 48,
+    marginTop: 26,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.paper,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countryCodeText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    borderRadius: RADIUS.md,
+    padding: 10,
     marginTop: 8,
+  },
+  verifiedText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  changeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  changeBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.brand,
+  },
+  otpVerifyBox: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    marginTop: 8,
+  },
+  otpHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  otpSentLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.ink,
+  },
+  devOtpBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: RADIUS.md,
+    padding: 8,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  devOtpText: {
+    fontSize: 12,
+    color: '#92400E',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
-    letterSpacing: 0.2,
+  },
+  resendTimerText: {
+    fontSize: 12,
+    color: COLORS.mute,
+    fontWeight: '600',
+  },
+  resendActionText: {
+    fontSize: 12,
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   inputLabel: {
     fontSize: 13,
@@ -489,19 +774,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 9,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.paper,
     borderWidth: 1.5,
     borderColor: COLORS.line,
+    backgroundColor: COLORS.paper,
   },
   vehiclePillActive: {
     borderColor: COLORS.brand,
-    backgroundColor: COLORS.brandTint,
+    backgroundColor: '#FFF1F2',
   },
   vehiclePillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.ink,
   },
@@ -515,9 +800,9 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 4,
     borderWidth: 2,
     borderColor: COLORS.line,
     alignItems: 'center',
@@ -530,15 +815,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.brand,
   },
   checkboxLabel: {
-    fontSize: 12,
-    color: COLORS.ink,
     flex: 1,
-    lineHeight: 17,
+    fontSize: 12,
+    color: COLORS.mute,
+    lineHeight: 18,
   },
   termsLink: {
     color: COLORS.brand,
     fontWeight: '800',
-    textDecorationLine: 'underline',
   },
   submitBtn: {
     marginTop: 14,
@@ -550,13 +834,8 @@ const styles = StyleSheet.create({
   },
   loginLinkText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.brand,
-  },
-  successScroll: {
-    padding: 24,
-    justifyContent: 'center',
-    flexGrow: 1,
   },
   successBox: {
     backgroundColor: COLORS.white,
@@ -579,18 +858,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     color: COLORS.ink,
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 12,
     textAlign: 'center',
   },
   successSub: {
     fontSize: 13,
     color: COLORS.mute,
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 20,
+    marginTop: 8,
+    lineHeight: 20,
   },
   successBtn: {
-    marginTop: 8,
+    marginTop: 20,
   },
 });

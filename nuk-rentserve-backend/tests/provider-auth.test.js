@@ -139,6 +139,16 @@ describe("service provider registration and authentication", () => {
   test("supports password login and rejects invalid credentials", async () => {
     await registerProvider();
 
+    // Verify unapproved provider login is rejected
+    const pendingLogin = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ identifier: registrationFields.email, password: registrationFields.password });
+    expect(pendingLogin.status).toBe(403);
+    expect(pendingLogin.body.message).toMatch(/under review/i);
+
+    // Approve provider and verify successful login
+    await User.updateOne({ email: registrationFields.email }, { $set: { approvalStatus: "approved" } });
+
     const login = await request(app)
       .post("/api/v1/auth/login")
       .send({ identifier: registrationFields.email, password: registrationFields.password });

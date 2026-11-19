@@ -236,10 +236,34 @@ export const PRIVACY_POLICY: Section[] = [
     ]
   },
   {
-    h: ['Your choices', 'ನಿಮ್ಮ ಆಯ್ಕೆಗಳು'],
+    h: ['Your choices & DPDP Rights', 'ನಿಮ್ಮ ಆಯ್ಕೆಗಳು'],
     b: [
-      'You can ask to see, correct or delete your data from Settings. Some records may be kept for as long as the law requires. We record the version and time at which you accepted these terms.',
+      'You can ask to see, correct or delete your data from Settings under the Digital Personal Data Protection Act, 2023. We record the version and time at which you accepted these terms.',
       'ಸೆಟ್ಟಿಂಗ್ಸ್‌ನಿಂದ ನಿಮ್ಮ ಮಾಹಿತಿಯನ್ನು ನೋಡಲು, ಸರಿಪಡಿಸಲು ಅಥವಾ ಅಳಿಸಲು ಕೇಳಬಹುದು. ಕಾನೂನು ಕೇಳುವಷ್ಟು ಕಾಲ ಕೆಲವು ದಾಖಲೆಗಳನ್ನು ಉಳಿಸಿಕೊಳ್ಳಬಹುದು. ನೀವು ಈ ನಿಯಮಗಳನ್ನು ಒಪ್ಪಿದ ಆವೃತ್ತಿ ಮತ್ತು ಸಮಯವನ್ನು ದಾಖಲಿಸುತ್ತೇವೆ.'
+    ]
+  }
+];
+
+export const REFUND_POLICY: Section[] = [
+  {
+    h: ['0% Commission & Direct Payment', '೦% ಕಮಿಷನ್ ಮತ್ತು ನೇರ ಪಾವತಿ'],
+    b: [
+      'NUK RentServe does not collect or hold customer payments, trip fares or rental deposits. All payments are made directly between the customer and the provider or driver in cash or direct UPI.',
+      'NUK RentServe ಯಾವುದೇ ಪಾವತಿಯನ್ನು ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ. ಪ್ರಯಾಣದ ದರ ಮತ್ತು ಸೇವಾ ಶುಲ್ಕವನ್ನು ನೇರವಾಗಿ ಚಾಲಕರಿಗೆ ಅಥವಾ ಸೇವಾ ಒದಗಿಸುವವರಿಗೆ ನಗದು ಅಥವಾ ಯುಪಿಐ ಮೂಲಕ ಪಾವತಿಸಲಾಗುತ್ತದೆ.'
+    ]
+  },
+  {
+    h: ['Ride & Booking Cancellations', 'ರದ್ದತಿ ನಿಯಮಗಳು'],
+    b: [
+      'You can cancel an auto or car request at any time prior to driver arrival with zero cancellation fees. Once a journey or service is completed, the agreed fee is non-refundable.',
+      'ಚಾಲಕರು ಬರುವ ಮೊದಲು ನೀವು ಯಾವುದೇ ಶುಲ್ಕವಿಲ್ಲದೆ ಪ್ರಯಾಣವನ್ನು ರದ್ದುಗೊಳಿಸಬಹುದು. ಸೇವೆ ಪೂರ್ಣಗೊಂಡ ನಂತರ ಒಪ್ಪಿದ ಶುಲ್ಕವನ್ನು ಮರುಪಾವತಿಸಲಾಗುವುದಿಲ್ಲ.'
+    ]
+  },
+  {
+    h: ['Grievance & Support Contact', 'ದೂರು ಪರಿಹಾರ ಸಂಪರ್ಕ'],
+    b: [
+      'For dispute assistance or grievance redressal, contact us at grievance@nukrentserve.com or visit our operations desk at Navanagar, Sector 10, Bagalkot, Karnataka – 587102.',
+      'ದೂರುಗಳ ಪರಿಹಾರಕ್ಕಾಗಿ grievance@nukrentserve.com ಗೆ ಇಮೇಲ್ ಮಾಡಿ ಅಥವಾ ನವನಗರ, ಸೆಕ್ಟರ್ 10, ಬಾಗಲಕೋಟೆ ಕಚೇರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.'
     ]
   }
 ];

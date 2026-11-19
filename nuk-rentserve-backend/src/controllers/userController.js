@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const ServiceProvider = require("../models/ServiceProvider");
 const ProviderApplication = require("../models/ProviderApplication");
+const AuditLog = require("../models/AuditLog");
 const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
 const asyncHandler = require("../utils/asyncHandler");
@@ -87,4 +88,41 @@ const updateProfilePhoto = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { user, profileImage }, "Profile photo updated successfully."));
 });
 
-module.exports = { getMe, updateMe, updateProfilePhoto };
+const deleteAccount = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, "User not found.");
+
+  // Anonymize personal data in compliance with DPDP Act 2023
+  const anonymizedEmail = `deleted_${user._id}_${Date.now()}@anonymized.local`;
+  user.name = "Deactivated User";
+  user.email = anonymizedEmail;
+  user.phone = "";
+  user.phoneNumber = "";
+  user.normalizedPhoneNumber = undefined;
+  user.phoneVerified = false;
+  user.password = undefined;
+  user.profileImage = { url: "", publicId: "" };
+  user.isActive = false;
+  user.isOnline = false;
+  user.refreshTokenHash = undefined;
+  await user.save();
+
+  // Deactivate linked applications and listings
+  await ProviderApplication.updateMany(
+    { userId: user._id },
+    { $set: { status: "rejected", isOnline: false, rejectionReason: "Account deleted by user request." } }
+  );
+
+  await AuditLog.create({
+    adminId: null,
+    action: "ACCOUNT_DELETED_BY_USER",
+    targetType: "User",
+    targetId: user._id,
+    details: { reason: req.body?.reason || "User requested self-deletion" },
+    ipAddress: req.ip
+  });
+
+  res.json(new ApiResponse(200, null, "Your account and personal data have been successfully deleted."));
+});
+
+module.exports = { getMe, updateMe, updateProfilePhoto, deleteAccount };

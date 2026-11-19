@@ -1,0 +1,50 @@
+[
+  {
+    "_id": "6af309f9723b037adb068933",
+    "customerId": "6af30955075e14232d8ea8ed",
+    "ownerId": null,
+    "providerId": null,
+    "propertyId": null,
+    "serviceId": null,
+    "bookingType": "service",
+    "category": "Electrician",
+    "serviceCategory": "Electrician",
+    "location": "Navanagar Sector 12, Bagalkot",
+    "scheduledDate": null,
+    "requestedMoveInDate": null,
+    "message": "Tripping MCB in kitchen and main switch replacement [Scheduled: Tomorrow, 11:00 AM]",
+    "details": "Tripping MCB in kitchen and main switch replacement [Scheduled: Tomorrow, 11:00 AM]",
+    "status": "cancelled",
+    "rejectionReason": "",
+    "eligibleProviders": [],
+    "rejectedBy": [],
+    "createdAt": "2026-11-10T12:11:37.465Z",
+    "updatedAt": "2026-11-10T12:14:48.416Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af30ab8458e252309128e9d",
+    "customerId": "6af30955075e14232d8ea8ed",
+    "ownerId": null,
+    "providerId": "6af30954075e14232d8ea8e9",
+    "propertyId": null,
+    "serviceId": null,
+    "bookingType": "service",
+    "category": "Electrician",
+    "serviceCategory": "Electrician",
+    "location": "Navanagar Sector 12, Bagalkot",
+    "scheduledDate": null,
+    "requestedMoveInDate": null,
+    "message": "Tripping MCB in kitchen and main switch replacement [Scheduled: Tomorrow, 11:00 AM]",
+    "details": "Tripping MCB in kitchen and main switch replacement [Scheduled: Tomorrow, 11:00 AM]",
+    "status": "completed",
+    "rejectionReason": "",
+    "eligibleProviders": [
+      "6af30954075e14232d8ea8e9"
+    ],
+    "rejectedBy": [],
+    "createdAt": "2026-11-10T12:14:48.858Z",
+    "updatedAt": "2026-11-10T12:14:50.605Z",
+    "__v": 0
+  }
+]

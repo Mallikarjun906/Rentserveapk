@@ -1,6 +1,7 @@
-// Service Provider Registration Screen (/register/provider) with Real Document Uploads & Lucide Icons
+// Service Provider Registration Screen (/register/provider) with Mandatory Phone OTP Verification
+// Fully integrated with Backend Phone Verification Session, Real Document Uploads & Lucide Icons
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +23,8 @@ import {
   Eye,
   EyeOff,
   UserPlus,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
@@ -77,6 +80,15 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
   const [experience, setExperience] = useState('3 years');
   const [description, setDescription] = useState('');
 
+  // Phone OTP Verification State
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+
   // GPS Coordinates & Location Detection State
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -94,6 +106,87 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  // 60-Second Resend Countdown Timer
+  useEffect(() => {
+    let interval: any = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
+  // Handle Send OTP
+  const handleSendOtp = async () => {
+    if (otpLoading) return;
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    if (!isValidPhone(cleanPhone)) {
+      setError(t('Enter a valid 10-digit Indian mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
+      return;
+    }
+
+    setError('');
+    setOtpLoading(true);
+
+    try {
+      const response = await authApi.sendOtp(cleanPhone, 'provider-registration', 'provider');
+      setOtpSent(true);
+      setResendTimer(response.resendAfterSeconds || 60);
+      if (response.devOtp) {
+        setDevOtp(response.devOtp);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('Failed to send OTP. Please try again.', 'OTP ಕಳುಹಿಸಲು ವಿಫಲವಾಗಿದೆ.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Handle Verify OTP
+  const handleVerifyOtp = async () => {
+    if (otpLoading) return;
+
+    if (!otpCode.trim() || otpCode.trim().length !== 6) {
+      setError(t('Please enter the 6-digit OTP code', 'ದಯವಿಟ್ಟು 6-ಅಂಕಿಯ OTP ಕೋಡ್ ನಮೂದಿಸಿ'));
+      return;
+    }
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    setError('');
+    setOtpLoading(true);
+
+    try {
+      const response = await authApi.verifyOtp(cleanPhone, otpCode.trim(), 'provider-registration');
+      if (response.success && response.verificationToken) {
+        setPhoneVerified(true);
+        setVerificationToken(response.verificationToken);
+        setOtpSent(false);
+      } else {
+        setError(response.message || t('Invalid OTP. Please try again.', 'ತಪ್ಪಾದ OTP.'));
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('OTP verification failed.', 'OTP ದೃಢೀಕರಣ ವಿಫಲವಾಗಿದೆ.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResetPhone = () => {
+    setPhoneVerified(false);
+    setVerificationToken(null);
+    setOtpSent(false);
+    setOtpCode('');
+    setDevOtp(null);
+  };
+
   // Automatic GPS Location Detection
   const detectLocation = async (userInitiated = false) => {
     setDetectingLocation(true);
@@ -102,16 +195,18 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       if (status !== 'granted') {
         if (userInitiated) {
           Alert.alert(
-            'Location Permission Required',
-            'Please enable GPS location permission to automatically detect your workshop or service area.'
+            'GPS Permission Needed',
+            'Allow location access so nearby customers can find your service workshop in Bagalkot.'
           );
         }
         return;
       }
+
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      if (pos?.coords) {
+
+      if (pos && pos.coords) {
         setCoords({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
@@ -144,8 +239,8 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       setError(t('Please enter your full business / personal name', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ'));
       return;
     }
-    if (!isValidPhone(phone)) {
-      setError(t('Enter a valid 10-digit mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
+    if (!phoneVerified || !verificationToken) {
+      setError(t('Mobile OTP verification is mandatory. Please verify your number.', 'ಮೊಬೈಲ್ OTP ಪರಿಶೀಲನೆ ಕಡ್ಡಾಯವಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.'));
       return;
     }
     if (!isValidEmail(email)) {
@@ -177,6 +272,9 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       }
     }
 
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
     setError('');
     setLoading(true);
 
@@ -184,16 +282,17 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       const formData = new FormData();
       formData.append('fullName', fullName.trim());
       formData.append('email', email.trim().toLowerCase());
-      formData.append('phone', phone.trim());
+      formData.append('phone', cleanPhone);
       formData.append('password', password);
       formData.append('dob', dob || '1995-01-01');
       formData.append('address', address.trim() || 'Bagalkot');
-      formData.append('city', city.trim());
+      formData.append('city', city.trim() || 'Bagalkot');
       formData.append('category', category);
-      formData.append('experience', experience);
-      formData.append('description', description.trim() || `${category} services in ${city}`);
-      formData.append('terms', 'true');
+      formData.append('experience', experience.trim());
+      formData.append('description', description.trim());
       formData.append('consent', 'true');
+      formData.append('terms', 'true');
+      formData.append('verificationToken', verificationToken);
 
       if (coords) {
         formData.append('latitude', String(coords.latitude));
@@ -203,20 +302,17 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
       if (profileFile) {
         await appendFileToFormData(formData, 'profileImage', profileFile);
       }
-
       if (idFile) {
-        await appendFileToFormData(formData, 'aadhaarDocument', idFile);
+        await appendFileToFormData(formData, 'idDocument', idFile);
       }
-
       if (addressFile) {
         await appendFileToFormData(formData, 'addressProofDocument', addressFile);
       }
 
       await authApi.registerProvider(formData);
-      await login(email.trim().toLowerCase(), password);
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || 'Provider registration failed. Please check details.');
+      setError(err.response?.data?.message || err.message || 'Registration failed. Please check your documents.');
     } finally {
       setLoading(false);
     }
@@ -225,8 +321,8 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
   if (submitted) {
     return (
       <View style={[styles.root, { paddingBottom: insets.bottom }]}>
-        <Header title={t('Application Submitted', 'ಅರ್ಜಿ ಸಲ್ಲಿಕೆಯಾಗಿದೆ')} />
-        <ScrollView contentContainerStyle={styles.successScroll}>
+        <Header title={t('Registration Submitted', 'ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗಿದೆ')} />
+        <ScrollView contentContainerStyle={styles.scroll}>
           <View style={[styles.successBox, SHADOWS.card]}>
             <View style={styles.clockCircle}>
               <Clock size={40} color={COLORS.warn} />
@@ -296,14 +392,107 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
               onChangeText={setFullName}
             />
 
-            <Input
-              label={t('Mobile Number', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ')}
-              placeholder="10-digit mobile"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              prefix="+91"
-            />
+            {/* MANDATORY PHONE OTP VERIFICATION */}
+            <View style={styles.phoneSection}>
+              <View style={styles.phoneInputRow}>
+                <View style={styles.countryCodeBox}>
+                  <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label={t('Mobile Number (Mandatory OTP Verification)', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ (OTP ಕಡ್ಡಾಯ)')}
+                    placeholder="10-digit mobile"
+                    value={phone}
+                    onChangeText={(val) => {
+                      setPhone(val);
+                      if (phoneVerified) handleResetPhone();
+                    }}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    editable={!phoneVerified}
+                  />
+                </View>
+              </View>
+
+              {phoneVerified ? (
+                <View style={styles.verifiedBadge}>
+                  <CheckCircle2 size={18} color="#059669" style={{ marginRight: 6 }} />
+                  <Text style={styles.verifiedText}>
+                    {t('Mobile Number Verified: +91 ', 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ದೃಢೀಕರಿಸಲಾಗಿದೆ: +91 ')}{phone}
+                  </Text>
+                  <TouchableOpacity onPress={handleResetPhone} style={styles.changeBtn}>
+                    <Text style={styles.changeBtnText}>{t('Change', 'ಬದಲಾಯಿಸಿ')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : !otpSent ? (
+                <Button
+                  title={t('Verify Mobile with OTP', 'OTP ಮೂಲಕ ಮೊಬೈಲ್ ದೃಢೀಕರಿಸಿ')}
+                  onPress={handleSendOtp}
+                  variant="outline"
+                  size="md"
+                  fullWidth
+                  loading={otpLoading}
+                  icon={<Smartphone size={16} color={COLORS.brand} style={{ marginRight: 6 }} />}
+                  style={{ marginTop: 8 }}
+                />
+              ) : (
+                <View style={styles.otpVerifyBox}>
+                  <View style={styles.otpHeaderRow}>
+                    <Text style={styles.otpSentLabel}>
+                      {t('OTP code sent to +91 ', '+91 ಗೆ OTP ಕಳುಹಿಸಲಾಗಿದೆ ')}{phone}
+                    </Text>
+                    <TouchableOpacity onPress={handleResetPhone}>
+                      <Text style={styles.changeBtnText}>{t('Change Number', 'ಸಂಖ್ಯೆ ಬದಲಾಯಿಸಿ')}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {devOtp && (
+                    <TouchableOpacity
+                      style={styles.devOtpBadge}
+                      onPress={() => setOtpCode(devOtp)}
+                    >
+                      <Text style={styles.devOtpText}>
+                        🛠️ Test Code: <Text style={{ fontWeight: '900' }}>{devOtp}</Text> (Tap to fill)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <Input
+                    label={t('Enter 6-Digit OTP', '6-ಅಂಕಿಯ OTP ನಮೂದಿಸಿ')}
+                    placeholder="••••••"
+                    value={otpCode}
+                    onChangeText={setOtpCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    style={{ letterSpacing: 8, textAlign: 'center', fontSize: 18, fontWeight: '800' }}
+                  />
+
+                  <View style={styles.resendRow}>
+                    {resendTimer > 0 ? (
+                      <Text style={styles.resendTimerText}>
+                        {t('Resend OTP in ', 'ಮರುಕಳುಹಿಸಿ ')}{resendTimer}s
+                      </Text>
+                    ) : (
+                      <TouchableOpacity onPress={handleSendOtp} disabled={otpLoading}>
+                        <Text style={styles.resendActionText}>
+                          {t('Resend OTP', 'ಮತ್ತೆ OTP ಕಳುಹಿಸಿ')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <Button
+                    title={t('Confirm OTP Code', 'OTP ಕೋಡ್ ದೃಢೀಕರಿಸಿ')}
+                    onPress={handleVerifyOtp}
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    loading={otpLoading}
+                    icon={<CheckCircle2 size={16} color={COLORS.white} style={{ marginRight: 6 }} />}
+                  />
+                </View>
+              )}
+            </View>
 
             <Input
               label={t('Email Address', 'ಇಮೇಲ್ ವಿಳಾಸ')}
@@ -487,93 +676,190 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.paper },
   keyboard: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 36 },
-  header: { alignItems: 'center', marginBottom: 14 },
-  title: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 8 },
+  scroll: { padding: 20, flexGrow: 1, paddingBottom: 40 },
+  header: { alignItems: 'center', marginBottom: 16 },
+  title: { fontSize: 22, fontWeight: '900', color: COLORS.ink, marginTop: 4 },
   noticeBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
     borderWidth: 1,
-    borderColor: '#FDE68A',
     borderRadius: RADIUS.md,
     padding: 12,
     marginBottom: 16,
   },
   noticeText: {
-    fontSize: 12,
-    color: '#92400E',
-    fontWeight: '600',
     flex: 1,
-    lineHeight: 17,
+    fontSize: 12,
+    color: '#991B1B',
+    lineHeight: 18,
   },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xl,
-    padding: 18,
+    padding: 20,
     borderWidth: 1.5,
     borderColor: COLORS.line,
   },
   sectionHeader: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.brand,
+    color: COLORS.ink,
+    marginTop: 16,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  phoneSection: {
+    marginBottom: 14,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  countryCodeBox: {
+    height: 48,
+    marginTop: 26,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.paper,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countryCodeText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    borderRadius: RADIUS.md,
+    padding: 10,
     marginTop: 8,
+  },
+  verifiedText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  changeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  changeBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.brand,
+  },
+  otpVerifyBox: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    marginTop: 8,
+  },
+  otpHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  otpSentLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.ink,
+  },
+  devOtpBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: RADIUS.md,
+    padding: 8,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  devOtpText: {
+    fontSize: 12,
+    color: '#92400E',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
-    letterSpacing: 0.2,
+  },
+  resendTimerText: {
+    fontSize: 12,
+    color: COLORS.mute,
+    fontWeight: '600',
+  },
+  resendActionText: {
+    fontSize: 12,
+    color: COLORS.brand,
+    fontWeight: '800',
   },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.ink,
     marginBottom: 8,
+    marginTop: 4,
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
     marginBottom: 14,
   },
   catChip: {
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.paper,
-    borderWidth: 1,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
+    backgroundColor: COLORS.paper,
   },
   catChipActive: {
-    backgroundColor: COLORS.brandTint,
     borderColor: COLORS.brand,
+    backgroundColor: COLORS.brand,
   },
   catText: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.mute,
+    color: COLORS.ink,
   },
   catTextActive: {
-    color: COLORS.brand,
-    fontWeight: '800',
+    color: COLORS.white,
   },
   gpsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.paper,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
     paddingVertical: 10,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.brand,
+    backgroundColor: '#FFF1F2',
+    marginBottom: 10,
   },
   gpsBtnText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.brand,
   },
   locationStatus: {
-    fontSize: 11,
-    color: COLORS.ok,
+    fontSize: 12,
+    color: '#059669',
     fontWeight: '700',
     marginBottom: 10,
   },
@@ -583,9 +869,9 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 4,
     borderWidth: 2,
     borderColor: COLORS.line,
     alignItems: 'center',
@@ -598,15 +884,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.brand,
   },
   checkboxLabel: {
-    fontSize: 12,
-    color: COLORS.ink,
     flex: 1,
-    lineHeight: 17,
+    fontSize: 12,
+    color: COLORS.mute,
+    lineHeight: 18,
   },
   termsLink: {
     color: COLORS.brand,
     fontWeight: '800',
-    textDecorationLine: 'underline',
   },
   submitBtn: {
     marginTop: 14,
@@ -618,13 +903,8 @@ const styles = StyleSheet.create({
   },
   loginLinkText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.brand,
-  },
-  successScroll: {
-    padding: 24,
-    justifyContent: 'center',
-    flexGrow: 1,
   },
   successBox: {
     backgroundColor: COLORS.white,
@@ -647,18 +927,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     color: COLORS.ink,
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 12,
     textAlign: 'center',
   },
   successSub: {
     fontSize: 13,
     color: COLORS.mute,
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 20,
+    marginTop: 8,
+    lineHeight: 20,
   },
   successBtn: {
-    marginTop: 8,
+    marginTop: 20,
   },
 });
