@@ -266,11 +266,13 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
   // Map to unified PhoneVerificationSession purpose
   let sessionPurpose = "customer-registration";
-  if (rawPurpose.includes("provider")) sessionPurpose = "provider-registration";
+  if (rawPurpose === "provider-login") sessionPurpose = "provider-login";
+  else if (rawPurpose === "driver-login") sessionPurpose = "driver-login";
+  else if (rawPurpose.includes("login")) sessionPurpose = "customer-login";
+  else if (rawPurpose.includes("provider")) sessionPurpose = "provider-registration";
   else if (rawPurpose.includes("driver")) sessionPurpose = "driver-registration";
   else if (rawPurpose.includes("student")) sessionPurpose = "student-registration";
-  else if (rawPurpose.includes("password")) sessionPurpose = "password-reset";
-  else if (rawPurpose.includes("login")) sessionPurpose = "customer-login";
+  else if (rawPurpose.includes("password") || rawPurpose.includes("reset")) sessionPurpose = "password-reset";
 
   // Create PhoneVerificationSession for registration / login consumption
   const rawToken = `pve_${crypto.randomBytes(32).toString("hex")}`;

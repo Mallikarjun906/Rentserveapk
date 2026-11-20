@@ -127,8 +127,16 @@ export const authApi = {
     purpose: string = 'customer-registration',
     role: string = 'customer'
   ): Promise<{ success: boolean; message: string; resendAfterSeconds?: number; expiresInSeconds?: number; devOtp?: string }> {
-    const res: any = await apiClient.post('/auth/send-otp', { phone, purpose, role });
-    return res.data || res;
+    try {
+      const res: any = await apiClient.post('/auth/phone/send-otp', { phone, purpose, role });
+      return res.data || res;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        const res: any = await apiClient.post('/auth/send-otp', { phone, purpose, role });
+        return res.data || res;
+      }
+      throw err;
+    }
   },
 
   // Verify Mobile OTP
@@ -137,8 +145,16 @@ export const authApi = {
     otp: string,
     purpose: string = 'customer-registration'
   ): Promise<{ success: boolean; verified: boolean; verificationToken: string; message: string }> {
-    const res: any = await apiClient.post('/auth/verify-otp', { phone, otp, purpose });
-    return res.data || res;
+    try {
+      const res: any = await apiClient.post('/auth/phone/verify-otp', { phone, otp, purpose });
+      return res.data || res;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        const res: any = await apiClient.post('/auth/verify-otp', { phone, otp, purpose });
+        return res.data || res;
+      }
+      throw err;
+    }
   },
 
   // Login with Mobile OTP
@@ -148,8 +164,16 @@ export const authApi = {
     verificationToken?: string;
     role?: string;
   }): Promise<AuthResponse> {
-    const res: any = await apiClient.post('/auth/login-with-otp', params);
-    return res.data || res;
+    try {
+      const res: any = await apiClient.post('/auth/phone/login-with-otp', params);
+      return res.data || res;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        const res: any = await apiClient.post('/auth/login-with-otp', params);
+        return res.data || res;
+      }
+      throw err;
+    }
   },
 
   // Forgot Password

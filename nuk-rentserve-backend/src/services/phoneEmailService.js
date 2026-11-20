@@ -152,22 +152,43 @@ async function fetchVerifiedPhoneData(validatedUrl) {
   return data;
 }
 
+function normalizeVerificationPurpose(rawPurpose) {
+  if (!rawPurpose) return "customer-registration";
+  const p = String(rawPurpose).trim().toLowerCase();
+  if (p === "login" || p === "customer-login") return "customer-login";
+  if (p === "registration" || p === "customer-registration") return "customer-registration";
+  if (p === "provider-login") return "provider-login";
+  if (p === "driver-login") return "driver-login";
+  if (p === "provider-registration") return "provider-registration";
+  if (p === "driver-registration") return "driver-registration";
+  if (p === "student-registration") return "student-registration";
+  if (p === "password-reset" || p === "forgot-password") return "password-reset";
+  if (p === "profile-verification") return "profile-verification";
+  return p;
+}
+
 /**
  * Verifies user_json_url and creates a single-use, short-lived verification session.
  */
 async function processPhoneVerification({
   user_json_url,
-  purpose,
+  purpose: rawPurpose,
   ipAddress = "",
   userAgent = ""
 }) {
   const allowedPurposes = [
     "customer-registration",
     "customer-login",
+    "provider-login",
+    "driver-login",
     "provider-registration",
+    "driver-registration",
+    "student-registration",
     "password-reset",
     "profile-verification"
   ];
+
+  const purpose = normalizeVerificationPurpose(rawPurpose);
 
   if (!allowedPurposes.includes(purpose)) {
     throw new ApiError(400, "Invalid verification purpose.");
@@ -250,12 +271,13 @@ async function consumeVerificationSession({
 
   const tokenHash = hashToken(verificationToken);
 
+  const normExpected = normalizeVerificationPurpose(expectedPurpose);
   // Compatible purposes
-  let allowedPurposes = [expectedPurpose];
-  if (expectedPurpose.includes("registration")) {
-    allowedPurposes.push("registration");
-  } else if (expectedPurpose.includes("login")) {
-    allowedPurposes.push("login");
+  let allowedPurposes = [normExpected, expectedPurpose];
+  if (normExpected.includes("registration")) {
+    allowedPurposes.push("registration", "customer-registration");
+  } else if (normExpected.includes("login")) {
+    allowedPurposes.push("login", "customer-login");
   }
 
   // Attempt atomic find and consume

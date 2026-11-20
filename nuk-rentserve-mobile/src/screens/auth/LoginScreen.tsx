@@ -116,7 +116,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setOtpLoading(true);
 
     try {
-      const response = await authApi.sendOtp(cleanPhone, 'login');
+      const response = await authApi.sendOtp(cleanPhone, 'login', 'customer');
       setOtpSent(true);
       setResendTimer(response.resendAfterSeconds || 60);
       if (response.devOtp) {

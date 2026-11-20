@@ -39,7 +39,7 @@ const googleAuthLimiter = rateLimit({
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 8,
+  limit: process.env.NODE_ENV === "production" ? 10 : 100,
   skip: () => process.env.NODE_ENV === "test",
   standardHeaders: true,
   legacyHeaders: false,

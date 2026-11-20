@@ -11,30 +11,40 @@ export const PROD_API_BASE_URL =
 export function resolveApiBaseUrl(): string {
   // 1. If explicit local development is requested via environment variable, use local backend
   if (process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true') {
-    return 'http://localhost:5000/api/v1';
+    return Platform.OS === 'android'
+      ? 'http://10.0.2.2:5000/api/v1'
+      : 'http://localhost:5000/api/v1';
   }
 
   // 2. If explicit custom URL is provided via environment variable, sanitize and use it
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (
-    envUrl &&
-    envUrl.trim().length > 0 &&
-    !envUrl.includes('localhost') &&
-    !envUrl.includes('127.0.0.1') &&
-    !envUrl.includes('10.0.2.2')
-  ) {
-    return envUrl.trim().replace(/\/+$/, '');
+  if (envUrl && envUrl.trim().length > 0) {
+    const trimmed = envUrl.trim().replace(/\/+$/, '');
+    if (Platform.OS === 'web') {
+      return trimmed;
+    }
+    if (Platform.OS === 'android' && (trimmed.includes('localhost') || trimmed.includes('127.0.0.1'))) {
+      return trimmed.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+    }
+    if (
+      !trimmed.includes('localhost') &&
+      !trimmed.includes('127.0.0.1') &&
+      !trimmed.includes('10.0.2.2')
+    ) {
+      return trimmed;
+    }
   }
 
   // 3. If explicit manifest extra apiUrl is provided, sanitize and use it
   const manifestApiUrl = Constants.expoConfig?.extra?.apiUrl;
-  if (
-    manifestApiUrl &&
-    !manifestApiUrl.includes('localhost') &&
-    !manifestApiUrl.includes('127.0.0.1') &&
-    !manifestApiUrl.includes('10.0.2.2')
-  ) {
-    return manifestApiUrl.replace(/\/+$/, '');
+  if (manifestApiUrl) {
+    const trimmed = manifestApiUrl.replace(/\/+$/, '');
+    if (Platform.OS === 'web') {
+      return trimmed;
+    }
+    if (!trimmed.includes('localhost') && !trimmed.includes('127.0.0.1') && !trimmed.includes('10.0.2.2')) {
+      return trimmed;
+    }
   }
 
   // 4. Safe default: Always use the live production Render backend across all devices & platforms

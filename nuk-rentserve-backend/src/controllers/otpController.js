@@ -12,20 +12,48 @@ const hash = (value) =>
 const validEmail = (email) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
 
+const VALID_PURPOSES = new Set([
+  "customer-registration",
+  "provider-registration",
+  "driver-registration",
+  "student-registration",
+  "registration",
+  "login",
+  "customer-login",
+  "provider-login",
+  "driver-login",
+  "password-reset",
+  "forgot-password",
+  "profile-verification"
+]);
+
 const validatePurpose = (purpose) => {
-  if (purpose !== "customer-registration") {
+  const p = String(purpose || "").trim().toLowerCase();
+  if (!p || (!VALID_PURPOSES.has(p) && p !== "customer-registration")) {
     throw new ApiError(400, "Invalid registration purpose.");
   }
+  return p;
 };
 
-const send = asyncHandler(async (req, res) => {
+const send = asyncHandler(async (req, res, next) => {
+  // Delegate to Phone OTP controller if mobile phone number is provided
+  if (req.body.phone || req.body.phoneNumber || req.body.mobile) {
+    const phoneOtpController = require("./phoneOtpController");
+    return phoneOtpController.sendOtp(req, res, next);
+  }
+
   const email = String(req.body.email || "").trim().toLowerCase();
-  validatePurpose(req.body.purpose);
+  const purpose = validatePurpose(req.body.purpose);
 
   if (!validEmail(email)) {
     throw new ApiError(400, "Enter a valid email address.");
   }
-  if (await User.exists({ email })) {
+
+  const isReg =
+    purpose === "customer-registration" ||
+    purpose === "registration";
+
+  if (isReg && (await User.exists({ email }))) {
     throw new ApiError(409, "This email is already registered.");
   }
 
@@ -68,7 +96,13 @@ const send = asyncHandler(async (req, res) => {
   );
 });
 
-const verify = asyncHandler(async (req, res) => {
+const verify = asyncHandler(async (req, res, next) => {
+  // Delegate to Phone OTP controller if mobile phone number is provided
+  if (req.body.phone || req.body.phoneNumber || req.body.mobile) {
+    const phoneOtpController = require("./phoneOtpController");
+    return phoneOtpController.verifyOtp(req, res, next);
+  }
+
   const email = String(req.body.email || "").trim().toLowerCase();
   const otp = String(req.body.otp || "").trim();
   validatePurpose(req.body.purpose);
