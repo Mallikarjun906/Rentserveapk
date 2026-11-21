@@ -36,7 +36,6 @@ import { authApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { isValidEmail, isValidPhone } from '../../utils/validators';
-import { PhoneEmailModal, PhoneEmailResult } from '../../components/auth/PhoneEmailModal';
 
 interface CustomerRegisterScreenProps {
   onLogin: () => void;
@@ -86,7 +85,6 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
   const [resendTimer, setResendTimer] = useState(0);
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
-  const [phoneEmailModalVisible, setPhoneEmailModalVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -104,47 +102,6 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
       if (interval) clearInterval(interval);
     };
   }, [resendTimer]);
-
-  // Open Official Phone.Email Verification Modal
-  const handleOpenPhoneEmail = () => {
-    if (otpLoading) return;
-
-    const raw = phone.replace(/\D/g, '');
-    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
-
-    if (cleanPhone && cleanPhone.length > 0 && !isValidPhone(cleanPhone)) {
-      setError(t('Enter a valid 10-digit Indian mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
-      return;
-    }
-
-    setError('');
-    setPhoneEmailModalVisible(true);
-  };
-
-  // Handle Phone.Email verification success
-  const handlePhoneEmailSuccess = async (result: PhoneEmailResult) => {
-    setOtpLoading(true);
-    setError('');
-    try {
-      const verifyRes = await authApi.verifyPhoneEmail(
-        result.token ? { token: result.token } : { user_json_url: result.user_json_url },
-        'customer-registration'
-      );
-
-      if (verifyRes.verificationToken) {
-        setPhoneVerified(true);
-        setVerificationToken(verifyRes.verificationToken);
-        if (verifyRes.phoneNumber) {
-          setPhone(verifyRes.phoneNumber);
-        }
-        setOtpSent(false);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || t('Phone verification failed.', 'ಮೊಬೈಲ್ ಪರಿಶೀಲನೆ ವಿಫಲವಾಗಿದೆ.'));
-    } finally {
-      setOtpLoading(false);
-    }
-  };
 
   // Handle Send OTP
   const handleSendOtp = async () => {
@@ -364,7 +321,7 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
               ) : !otpSent ? (
                 <Button
                   title={t('Verify Mobile with OTP', 'OTP ಮೂಲಕ ಮೊಬೈಲ್ ದೃಢೀಕರಿಸಿ')}
-                  onPress={handleOpenPhoneEmail}
+                  onPress={handleSendOtp}
                   variant="outline"
                   size="md"
                   fullWidth
@@ -528,16 +485,6 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Official Phone.Email Modal */}
-          <PhoneEmailModal
-            visible={phoneEmailModalVisible}
-            onClose={() => setPhoneEmailModalVisible(false)}
-            onSuccess={handlePhoneEmailSuccess}
-            onError={(err) => setError(err)}
-            phone={phone}
-            purpose="customer-registration"
-          />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
