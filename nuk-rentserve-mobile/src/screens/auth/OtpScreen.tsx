@@ -51,12 +51,7 @@ export const OtpScreen: React.FC<OtpScreenProps> = ({
       await authApi.verifyOtp(phone, otp);
       onSuccess();
     } catch (err: any) {
-      // In offline/demo mode, any 6-digit code succeeds
-      if (otp.length >= 4) {
-        onSuccess();
-      } else {
-        setError(err.message || 'Invalid OTP code.');
-      }
+      setError(err.response?.data?.message || err.message || t('Invalid OTP code. Please try again.', 'ತಪ್ಪಾದ OTP ಕೋಡ್. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.'));
     } finally {
       setLoading(false);
     }

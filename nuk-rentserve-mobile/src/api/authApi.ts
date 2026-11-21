@@ -121,6 +121,18 @@ export const authApi = {
     return res.data || res;
   },
 
+  // Verify Phone.Email user_json_url or JWT token
+  async verifyPhoneEmail(
+    input: string | { user_json_url?: string; token?: string },
+    purpose: string = 'customer-login'
+  ): Promise<{ verificationToken: string; phoneNumber: string; phoneCountryCode: string }> {
+    const payload = typeof input === 'string'
+      ? (input.startsWith('http') ? { user_json_url: input, purpose } : { token: input, purpose })
+      : { ...input, purpose };
+    const res: any = await apiClient.post('/auth/phone-email/verify', payload);
+    return res.data || res;
+  },
+
   // Send Mobile OTP
   async sendOtp(
     phone: string,
@@ -162,6 +174,8 @@ export const authApi = {
     phone?: string;
     otp?: string;
     verificationToken?: string;
+    token?: string;
+    user_json_url?: string;
     role?: string;
   }): Promise<AuthResponse> {
     try {

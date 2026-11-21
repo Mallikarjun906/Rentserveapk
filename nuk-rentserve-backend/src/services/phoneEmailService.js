@@ -1,10 +1,11 @@
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 const PhoneVerificationSession = require("../models/PhoneVerificationSession");
 const ApiError = require("../utils/ApiError");
 const { normalizePhoneNumber } = require("../utils/phoneUtils");
 
 const PHONE_EMAIL_CLIENT_ID =
-  process.env.PHONE_EMAIL_CLIENT_ID || "15695407177920574360";
+  process.env.PHONE_EMAIL_CLIENT_ID || "18875442659397262084";
 
 const MAX_RESPONSE_BYTES = 50 * 1024; // 50 KB limit
 const FETCH_TIMEOUT_MS = 8000; // 8 seconds
@@ -168,10 +169,58 @@ function normalizeVerificationPurpose(rawPurpose) {
 }
 
 /**
- * Verifies user_json_url and creates a single-use, short-lived verification session.
+ * Verifies Phone.Email JWT token signed with account private API Key (HS256)
+ */
+function verifyPhoneEmailJwt(token) {
+  if (!token || typeof token !== "string") {
+    throw new ApiError(400, "Phone.Email verification token is required.");
+  }
+
+  const apiKey = (process.env.PHONE_EMAIL_API_KEY || "o9l6U47i3BvhYRp6iCHuNhdAkY944oEP").trim();
+  if (!apiKey) {
+    throw new ApiError(500, "PHONE_EMAIL_API_KEY is not configured on the server.");
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token.trim(), apiKey, { algorithms: ["HS256"] });
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      throw new ApiError(401, "Phone.Email verification token has expired. Please verify again.");
+    }
+    throw new ApiError(401, `Phone.Email token verification failed: ${err.message}`);
+  }
+
+  // Validate claims
+  if (decoded.iss && decoded.iss !== "phmail" && !decoded.iss.includes("phone.email")) {
+    throw new ApiError(401, "Invalid Phone.Email token issuer.");
+  }
+
+  const phone =
+    decoded.phone_no ||
+    decoded.user_phone_number ||
+    decoded.phone_number ||
+    decoded.phone;
+
+  if (!phone) {
+    throw new ApiError(400, "Phone.Email token did not contain a valid verified phone number.");
+  }
+
+  return {
+    user_country_code: decoded.country_code || decoded.user_country_code || "+91",
+    user_phone_number: String(phone).replace(/\D/g, "").slice(-10),
+    user_first_name: decoded.first_name || decoded.user_first_name || "",
+    user_last_name: decoded.last_name || decoded.user_last_name || "",
+    user_email_id: decoded.email || decoded.user_email_id || ""
+  };
+}
+
+/**
+ * Verifies user_json_url or JWT token and creates a single-use, short-lived verification session.
  */
 async function processPhoneVerification({
   user_json_url,
+  token,
   purpose: rawPurpose,
   ipAddress = "",
   userAgent = ""
@@ -194,22 +243,41 @@ async function processPhoneVerification({
     throw new ApiError(400, "Invalid verification purpose.");
   }
 
-  const validatedUrl = validateUserJsonUrl(user_json_url);
-  const urlHash = hashToken(validatedUrl);
+  let verifiedData;
+  let identifierHash;
 
-  // Prevent replay of the exact same user_json_url
-  const existingSessionWithUrl = await PhoneVerificationSession.findOne({
-    urlHash
-  });
-  if (existingSessionWithUrl) {
-    throw new ApiError(
-      409,
-      "This verification URL has already been processed. Please complete a new verification."
-    );
+  if (token) {
+    identifierHash = hashToken(token);
+    // Prevent replay of the exact same token
+    const existingSessionWithToken = await PhoneVerificationSession.findOne({
+      urlHash: identifierHash
+    });
+    if (existingSessionWithToken) {
+      throw new ApiError(
+        409,
+        "This verification token has already been processed. Please complete a new verification."
+      );
+    }
+    verifiedData = verifyPhoneEmailJwt(token);
+  } else if (user_json_url) {
+    const validatedUrl = validateUserJsonUrl(user_json_url);
+    identifierHash = hashToken(validatedUrl);
+
+    // Prevent replay of the exact same user_json_url
+    const existingSessionWithUrl = await PhoneVerificationSession.findOne({
+      urlHash: identifierHash
+    });
+    if (existingSessionWithUrl) {
+      throw new ApiError(
+        409,
+        "This verification URL has already been processed. Please complete a new verification."
+      );
+    }
+
+    verifiedData = await fetchVerifiedPhoneData(validatedUrl);
+  } else {
+    throw new ApiError(400, "Either token or user_json_url must be provided for verification.");
   }
-
-  // Fetch verified phone details from Phone.Email
-  const verifiedData = await fetchVerifiedPhoneData(validatedUrl);
 
   const rawCc = verifiedData.user_country_code || "+91";
   const rawPhone =
@@ -240,7 +308,7 @@ async function processPhoneVerification({
     purpose,
     used: false,
     expiresAt,
-    urlHash,
+    urlHash: identifierHash,
     ipAddress,
     userAgent
   });
@@ -340,6 +408,7 @@ async function consumeVerificationSession({
 module.exports = {
   PHONE_EMAIL_CLIENT_ID,
   validateUserJsonUrl,
+  verifyPhoneEmailJwt,
   processPhoneVerification,
   consumeVerificationSession,
   hashToken

@@ -8,7 +8,10 @@ const ApiResponse = require("../utils/ApiResponse");
 const asyncHandler = require("../utils/asyncHandler");
 const { normalizePhoneNumber, buildPhoneQuery } = require("../utils/phoneUtils");
 const { sendSmsOtp } = require("../services/smsService");
-const { consumeVerificationSession } = require("../services/phoneEmailService");
+const {
+  consumeVerificationSession,
+  processPhoneVerification
+} = require("../services/phoneEmailService");
 
 const hashToken = (token) =>
   crypto.createHash("sha256").update(String(token)).digest("hex");
@@ -192,8 +195,8 @@ const sendOtp = asyncHandler(async (req, res) => {
     expiresInSeconds: expiryMinutes * 60
   };
 
-  // Provide devOtp for development & test environments
-  if (process.env.NODE_ENV !== "production") {
+  // Provide devOtp only when explicitly requested by SHOW_DEV_OTP env flag
+  if (process.env.SHOW_DEV_OTP === "true") {
     responsePayload.devOtp = otp;
   }
 
@@ -327,7 +330,24 @@ const loginWithOtp = asyncHandler(async (req, res) => {
     targetNormalizedPhone = session.normalizedPhoneNumber;
     targetCountryCode = session.phoneCountryCode || "+91";
   }
-  // Mode B: Direct phone + OTP verification
+  // Mode B: Direct Phone.Email token or user_json_url
+  else if (req.body.token || req.body.user_json_url) {
+    const result = await processPhoneVerification({
+      token: req.body.token,
+      user_json_url: req.body.user_json_url,
+      purpose: "customer-login",
+      ipAddress: req.ip || "",
+      userAgent: req.get("user-agent") || ""
+    });
+    const session = await consumeVerificationSession({
+      verificationToken: result.verificationToken,
+      expectedPurpose: "customer-login"
+    });
+    targetPhone = session.phoneNumber;
+    targetNormalizedPhone = session.normalizedPhoneNumber;
+    targetCountryCode = session.phoneCountryCode || "+91";
+  }
+  // Mode C: Direct phone + OTP verification
   else if (phone && otp) {
     const { phoneCountryCode, phoneNumber, normalizedPhoneNumber } =
       normalizePhoneNumber("+91", phone);

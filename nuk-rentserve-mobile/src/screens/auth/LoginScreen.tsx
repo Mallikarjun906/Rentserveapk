@@ -38,6 +38,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { checkBackendConnectivity, AppApiError, ApiErrorKind } from '../../api/client';
 import { isValidPhone } from '../../utils/validators';
+import { PhoneEmailModal, PhoneEmailResult } from '../../components/auth/PhoneEmailModal';
 
 interface LoginScreenProps {
   onRegisterCustomer: () => void;
@@ -78,6 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [resendTimer, setResendTimer] = useState(0);
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [phoneEmailModalVisible, setPhoneEmailModalVisible] = useState(false);
 
   // Google & Global States
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -98,8 +100,53 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     };
   }, [resendTimer]);
 
-  // Handle Send OTP
-  const handleSendOtp = async () => {
+  // Open Phone.Email OTP Authentication Modal (Sends Real Free Carrier SMS OTP)
+  const handleOpenPhoneEmail = () => {
+    if (otpLoading) return;
+
+    const raw = phone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+
+    if (cleanPhone && cleanPhone.length > 0 && !isValidPhone(cleanPhone)) {
+      setError(t('Enter a valid 10-digit Indian mobile number', 'ಮಾನ್ಯ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ'));
+      setErrorKind(null);
+      return;
+    }
+
+    setError('');
+    setErrorKind(null);
+    setPhoneEmailModalVisible(true);
+  };
+
+  const handleSendOtp = handleOpenPhoneEmail;
+
+  // Callback when Phone.Email OTP verification succeeds
+  const handlePhoneEmailSuccess = async (result: PhoneEmailResult) => {
+    setOtpLoading(true);
+    setError('');
+    try {
+      // 1. Verify token or user_json_url with backend using Phone.Email private API key
+      const verifyRes = await authApi.verifyPhoneEmail(
+        result.token ? { token: result.token } : { user_json_url: result.user_json_url },
+        'customer-login'
+      );
+
+      // 2. Perform Customer Phone Login session creation
+      const loggedIn = await loginWithOtp({
+        verificationToken: verifyRes.verificationToken,
+        role: 'customer'
+      });
+
+      onSuccess(loggedIn);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('Login failed. Please try again.', 'ಲಾಗಿನ್ ವಿಫಲವಾಗಿದೆ.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Direct send OTP fallback
+  const handleDirectSendOtp = async () => {
     if (otpLoading) return;
 
     const raw = phone.replace(/\D/g, '');
@@ -426,16 +473,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </View>
 
                 {!otpSent ? (
-                  <Button
-                    title={t('Send OTP', 'OTP ಕಳುಹಿಸಿ')}
-                    onPress={handleSendOtp}
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    loading={otpLoading}
-                    icon={<Smartphone size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
-                    style={styles.submitBtn}
-                  />
+                  <View style={{ gap: 10 }}>
+                    <Button
+                      title={t('Send OTP', 'OTP ಕಳುಹಿಸಿ')}
+                      onPress={handleOpenPhoneEmail}
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      loading={otpLoading}
+                      icon={<Smartphone size={18} color={COLORS.white} style={{ marginRight: 8 }} />}
+                      style={styles.submitBtn}
+                    />
+                  </View>
                 ) : (
                   <View style={styles.otpVerifySection}>
                     <View style={styles.otpHeaderRow}>
@@ -452,17 +501,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                         <Text style={styles.changePhoneText}>{t('Change', 'ಬದಲಾಯಿಸಿ')}</Text>
                       </TouchableOpacity>
                     </View>
-
-                    {devOtp && (
-                      <TouchableOpacity
-                        style={styles.devOtpBadge}
-                        onPress={() => setOtpCode(devOtp)}
-                      >
-                        <Text style={styles.devOtpText}>
-                          🛠️ Test Code: <Text style={{ fontWeight: '900' }}>{devOtp}</Text> (Tap to fill)
-                        </Text>
-                      </TouchableOpacity>
-                    )}
 
                     <Input
                       label={t('Enter 6-Digit OTP', '6-ಅಂಕಿಯ OTP ನಮೂದಿಸಿ')}
@@ -650,6 +688,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               {t('Administrator Console Login', 'ನಿರ್ವಾಹಕರ ಪೋರ್ಟಲ್')}
             </Text>
           </TouchableOpacity>
+
+          {/* Official Phone.Email Modal */}
+          <PhoneEmailModal
+            visible={phoneEmailModalVisible}
+            onClose={() => setPhoneEmailModalVisible(false)}
+            onSuccess={handlePhoneEmailSuccess}
+            onError={(err) => setError(err)}
+            phone={phone}
+            purpose="customer-login"
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -772,6 +820,21 @@ const styles = StyleSheet.create({
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 14 },
   forgotText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
   submitBtn: { marginBottom: 12 },
+  phoneEmailAltBtn: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    borderRadius: RADIUS.lg,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  phoneEmailAltBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#15803D',
+  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',

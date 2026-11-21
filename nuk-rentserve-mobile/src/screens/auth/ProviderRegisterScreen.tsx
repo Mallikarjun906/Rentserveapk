@@ -446,17 +446,6 @@ export const ProviderRegisterScreen: React.FC<ProviderRegisterScreenProps> = ({
                     </TouchableOpacity>
                   </View>
 
-                  {devOtp && (
-                    <TouchableOpacity
-                      style={styles.devOtpBadge}
-                      onPress={() => setOtpCode(devOtp)}
-                    >
-                      <Text style={styles.devOtpText}>
-                        🛠️ Test Code: <Text style={{ fontWeight: '900' }}>{devOtp}</Text> (Tap to fill)
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
                   <Input
                     label={t('Enter 6-Digit OTP', '6-ಅಂಕಿಯ OTP ನಮೂದಿಸಿ')}
                     placeholder="••••••"

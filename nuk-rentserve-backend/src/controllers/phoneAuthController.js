@@ -74,10 +74,10 @@ async function createAuthSession(user) {
  * POST /api/auth/phone-email/verify or /api/v1/auth/phone-email/verify
  */
 const verifyPhoneEmail = asyncHandler(async (req, res) => {
-  const { user_json_url, purpose } = req.body;
+  const { user_json_url, token, purpose } = req.body;
 
-  if (!user_json_url) {
-    throw new ApiError(400, "user_json_url is required.");
+  if (!user_json_url && !token) {
+    throw new ApiError(400, "user_json_url or token is required.");
   }
   if (!purpose) {
     throw new ApiError(400, "purpose is required.");
@@ -85,6 +85,7 @@ const verifyPhoneEmail = asyncHandler(async (req, res) => {
 
   const result = await processPhoneVerification({
     user_json_url,
+    token,
     purpose,
     ipAddress: req.ip || "",
     userAgent: req.headers["user-agent"] || ""
@@ -207,17 +208,31 @@ const registerCustomerWithOtp = asyncHandler(async (req, res) => {
  * POST /api/auth/customer/phone-login or /api/v1/auth/customer/phone-login
  */
 const customerPhoneLogin = asyncHandler(async (req, res) => {
-  const { verificationToken } = req.body;
+  const { verificationToken, token, user_json_url } = req.body;
 
-  if (!verificationToken) {
+  let verifiedSession;
+
+  if (verificationToken) {
+    // Validate and atomically consume the verification session
+    verifiedSession = await consumeVerificationSession({
+      verificationToken,
+      expectedPurpose: "customer-login"
+    });
+  } else if (token || user_json_url) {
+    const result = await processPhoneVerification({
+      token,
+      user_json_url,
+      purpose: "customer-login",
+      ipAddress: req.ip || "",
+      userAgent: req.headers["user-agent"] || ""
+    });
+    verifiedSession = await consumeVerificationSession({
+      verificationToken: result.verificationToken,
+      expectedPurpose: "customer-login"
+    });
+  } else {
     throw new ApiError(400, "Phone verification token is required.");
   }
-
-  // Validate and atomically consume the verification session
-  const verifiedSession = await consumeVerificationSession({
-    verificationToken,
-    expectedPurpose: "customer-login"
-  });
 
   const { phoneCountryCode, phoneNumber, normalizedPhoneNumber } =
     verifiedSession;
