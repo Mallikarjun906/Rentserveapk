@@ -363,7 +363,7 @@ export const CustomerRegisterScreen: React.FC<CustomerRegisterScreenProps> = ({
                 </View>
               ) : !otpSent ? (
                 <Button
-                  title={t('Verify Mobile with Phone.Email OTP', 'Phone.Email OTP ಮೂಲಕ ಮೊಬೈಲ್ ದೃಢೀಕರಿಸಿ')}
+                  title={t('Verify Mobile with OTP', 'OTP ಮೂಲಕ ಮೊಬೈಲ್ ದೃಢೀಕರಿಸಿ')}
                   onPress={handleOpenPhoneEmail}
                   variant="outline"
                   size="md"

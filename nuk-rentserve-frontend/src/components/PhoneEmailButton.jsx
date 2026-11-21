@@ -9,7 +9,7 @@ import { api } from '../services/api';
  * Official Script: https://www.phone.email/sign_in_button_v1.js
  */
 export default function PhoneEmailButton({
-  clientId = '15695407177920574360',
+  clientId = import.meta.env.VITE_PHONE_EMAIL_CLIENT_ID || '18875442659397262084',
   purpose = 'customer-registration',
   onSuccess,
   onError,

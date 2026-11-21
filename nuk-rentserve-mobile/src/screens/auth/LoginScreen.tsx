@@ -820,21 +820,6 @@ const styles = StyleSheet.create({
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 14 },
   forgotText: { fontSize: 13, fontWeight: '700', color: COLORS.brand },
   submitBtn: { marginBottom: 12 },
-  phoneEmailAltBtn: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#22C55E',
-    borderRadius: RADIUS.lg,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  phoneEmailAltBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#15803D',
-  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
